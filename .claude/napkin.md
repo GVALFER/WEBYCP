@@ -53,6 +53,15 @@
 10. **[2026-09-03] Treat domains and aliases as one global hostname namespace**
     Do instead: normalize names before persistence and reject collisions against primary, alias, and reserved previous names in the same transaction until rename reconciliation finishes.
 
+## Systemd & Runtime
+
+1. **[2026-09-04] Go interface discovery needs Netlink inside the Agent sandbox**
+   Do instead: retain `AF_NETLINK` in the Agent's `RestrictAddressFamilies` whenever certificate DNS preflight uses `net.InterfaceAddrs`.
+2. **[2026-09-04] Agent operations can legitimately exceed five seconds**
+   Do instead: keep a multi-minute internal client timeout for Certbot and backup operations while relying on job state for user-facing progress.
+3. **[2026-09-04] Metadata restore must preserve active TLS**
+   Do instead: reconcile each active domain first, then reapply its active certificate before completing the restore job.
+
 ## User Directives
 
 1. **[2026-09-03] Converse in European Portuguese**

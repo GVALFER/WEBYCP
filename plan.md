@@ -693,7 +693,7 @@ artifact and served successfully afterward.
 
 ### M8 — Hardening and native packaging
 
-- [ ] Add systemd sandboxing appropriate to each process.
+- [x] Add systemd sandboxing appropriate to each process.
 - [x] Add production configuration and filesystem permissions.
 - [x] Add reproducible Linux amd64 release archives and SHA-256 checksums.
 - [ ] Add install, upgrade, migration, and recovery commands.
@@ -707,9 +707,9 @@ destructive option.
 ### M9 — External VPS validation and v1 release candidate
 
 - [ ] Rotate chat-shared credentials and install a temporary SSH key.
-- [ ] Perform read-only host preflight.
+- [x] Perform read-only host preflight.
 - [ ] Confirm snapshot/recovery options.
-- [ ] Install the release candidate.
+- [x] Install the release candidate.
 - [ ] Run the complete lifecycle test suite.
 - [ ] Review logs, permissions, recovery behavior, and resource cleanup.
 - [ ] Remove temporary access after testing.
