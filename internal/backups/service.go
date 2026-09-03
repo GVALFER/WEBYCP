@@ -27,6 +27,7 @@ type Service struct {
 	domains    *domains.Service
 	databases  *databases.Service
 	cron       *cronjob.Service
+	certs      CertificateReconciler
 	nodes      nodes.Repository
 	agent      Agent
 	notify     func()
@@ -41,8 +42,8 @@ type restorePayload struct {
 	Scope      RestoreScope `json:"scope"`
 }
 
-func NewService(repository Repository, accounts *accounts.Service, domains *domains.Service, databases *databases.Service, cron *cronjob.Service, nodes nodes.Repository, agent Agent, notify func()) *Service {
-	return &Service{repository: repository, accounts: accounts, domains: domains, databases: databases, cron: cron, nodes: nodes, agent: agent, notify: notify}
+func NewService(repository Repository, accounts *accounts.Service, domains *domains.Service, databases *databases.Service, cron *cronjob.Service, certs CertificateReconciler, nodes nodes.Repository, agent Agent, notify func()) *Service {
+	return &Service{repository: repository, accounts: accounts, domains: domains, databases: databases, cron: cron, certs: certs, nodes: nodes, agent: agent, notify: notify}
 }
 
 func (s *Service) Plans(ctx context.Context, userID string, admin bool) ([]Plan, error) {
@@ -268,6 +269,9 @@ func (s *Service) RestoreJob(ctx context.Context, job jobs.Job) error {
 			}
 			if err := s.agent.EnsureDomain(ctx, node.Endpoint, account.ID, account.SystemUser, domain.ID, domain.Name, domain.PHPVersion, aliases); err != nil {
 				return fmt.Errorf("reconcile restored domain: %w", err)
+			}
+			if err := s.certs.ReconcileDomain(ctx, domain.ID); err != nil {
+				return fmt.Errorf("reconcile restored certificate: %w", err)
 			}
 		}
 	}

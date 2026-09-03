@@ -150,6 +150,24 @@ func (s *Service) Provision(ctx context.Context, job jobs.Job) error {
 	if err != nil {
 		return err
 	}
+	return s.provision(ctx, certificate)
+}
+
+func (s *Service) ReconcileDomain(ctx context.Context, domainID string) error {
+	certificate, err := s.repository.DomainCertificate(ctx, domainID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if certificate.Status != "active" {
+		return nil
+	}
+	return s.provision(ctx, certificate)
+}
+
+func (s *Service) provision(ctx context.Context, certificate Certificate) error {
 	node, err := s.nodes.Node(ctx, certificate.NodeID)
 	if err != nil {
 		return err

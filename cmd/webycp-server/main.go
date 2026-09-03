@@ -52,7 +52,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	agent := agentclient.New(5 * time.Second)
+	agent := agentclient.New(2 * time.Minute)
 	nodeService := nodes.NewService(store, agent)
 	worker := jobs.NewWorker(store, store, logger)
 	accountService := accounts.NewService(store, store, agent, worker.Notify)
@@ -60,7 +60,7 @@ func main() {
 	databaseService := databases.NewService(store, accountService, store, agent, worker.Notify)
 	cronService := cronjob.NewService(store, accountService, store, agent, worker.Notify)
 	certificateService := certificates.NewService(store, domainService, accountService, store, agent, worker.Notify)
-	backupService := backups.NewService(store, accountService, domainService, databaseService, cronService, store, agent, worker.Notify)
+	backupService := backups.NewService(store, accountService, domainService, databaseService, cronService, certificateService, store, agent, worker.Notify)
 	worker.Handle(jobs.KindAccountCreate, accountService.Provision)
 	worker.Handle(jobs.KindAccountDelete, accountService.ProvisionAction)
 	worker.Handle(jobs.KindAccountDisable, accountService.ProvisionAction)

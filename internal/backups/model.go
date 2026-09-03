@@ -68,3 +68,7 @@ type Agent interface {
 	DeleteBackup(context.Context, string, agentbackup.ArtifactRequest) error
 	EnsureDomain(context.Context, string, string, string, string, string, string, []string) error
 }
+
+type CertificateReconciler interface {
+	ReconcileDomain(context.Context, string) error
+}

@@ -118,7 +118,10 @@ func (d *Driver) preflight(ctx context.Context, primary string, names []string) 
 	}
 	localIPs, err := d.local()
 	if err != nil || len(localIPs) == 0 {
-		return nil, fmt.Errorf("inspect managed node addresses")
+		if err != nil {
+			return nil, fmt.Errorf("inspect managed node addresses: %w", err)
+		}
+		return nil, fmt.Errorf("inspect managed node addresses: no global unicast addresses found")
 	}
 	addresses := make(map[string]struct{}, len(localIPs))
 	for _, value := range localIPs {
