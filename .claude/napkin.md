@@ -18,7 +18,7 @@
 4. **[2026-09-03] Keep the control panel architecture modular without overbuilding v1**
    Do instead: define narrow service interfaces and ship only the initial implementation for each v1 capability.
 5. **[2026-09-03] Test privileged flows across the real Unix-socket boundary**
-   Do instead: verify API cookie/CSRF behavior, durable job transitions, Agent protocol validation, and observed node state together before extending Agent operations.
+   Do instead: verify API cookie/CSRF behavior, durable job transitions, Agent protocol validation, and the Agent's effective systemd mount permissions together before extending Agent operations.
 6. **[2026-09-03] Activate generated service configs only through validation and rollback**
    Do instead: use `agent/configfile` snapshots and atomic writes, run the service's config test, and restore the previous file before a recovery reload on failure; keep Nginx sites behind WEBYCP's exact include anchor.
 7. **[2026-09-03] Keep resource deletion recoverable and retry-safe**
