@@ -9,10 +9,10 @@
 
 ## Execution & Validation (Highest Priority)
 
-1. **[2026-09-03] Scope Go package commands away from frontend dependencies**
-   Do instead: run Go checks against `./cmd/... ./internal/...`; `./...` may traverse Go packages embedded in `web/node_modules`.
-2. **[2026-09-03] Keep test-host credentials out of the repository and logs**
+1. **[2026-09-03] Keep test-host credentials out of the repository and logs**
    Do instead: rotate any chat-shared password, install a temporary SSH key, verify the target read-only, confirm recovery, and state destructive scope before remote integration tests.
+2. **[2026-09-03] Scope Go package commands away from frontend dependencies**
+   Do instead: run Go checks against `./cmd/... ./internal/...`; `./...` may traverse Go packages embedded in `web/node_modules`.
 3. **[2026-09-03] Treat SSL lifecycle as a complete v1 requirement**
    Do instead: cover panel and hosted-domain certificates, ACME issuance, renewal, expiry state, validation, atomic installation, and safe Nginx reloads.
 4. **[2026-09-03] Keep the control panel architecture modular without overbuilding v1**
@@ -25,6 +25,10 @@
    Do instead: complete the typed Agent operation before deleting metadata, quarantine customer files under the account by immutable resource ID, and make job replay treat already-finished deletion as success.
 8. **[2026-09-03] Preserve live panel TLS while renewing certificates**
    Do instead: keep the last valid panel listener active while preparing HTTP-01, and replace its Nginx configuration only after Certbot has produced a valid certificate.
+9. **[2026-09-03] Separate durable state by privilege boundary**
+   Do instead: keep Server-owned SQLite files under `/var/lib/webycp/server` and Agent-owned recovery, ACME, certificate, and backup data outside directories writable by the unprivileged Server.
+10. **[2026-09-03] Build releases from an explicit allowlist with normalized metadata**
+   Do instead: require a clean worktree, locked frontend dependencies, static trimmed Go binaries, a fixed archive timestamp and ownership, and an adjacent SHA-256 checksum.
 
 ## Project Conventions
 

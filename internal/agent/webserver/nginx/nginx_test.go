@@ -205,6 +205,34 @@ func TestPanelChallengeKeepsExistingTLSDuringRenewal(t *testing.T) {
 	}
 }
 
+func TestPanelChallengeKeepsHTTPPanelAvailable(t *testing.T) {
+	driver := testDriver(t)
+	driver.run = func(context.Context, string, ...string) error { return nil }
+	bootstrap := []byte("# Managed by WEBYCP.\nserver { listen 8443 ssl; server_name _; }\n")
+	if err := os.WriteFile(filepath.Join(driver.available, "panel.conf"), bootstrap, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := driver.EnsurePanelChallenge(context.Background(), "panel.example.com"); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(driver.available, "panel.conf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := string(data)
+	for _, expected := range []string{
+		string(bootstrap),
+		"server_name panel.example.com;",
+		"location ^~ /.well-known/acme-challenge/",
+		"proxy_pass http://127.0.0.1:8080;",
+	} {
+		if !strings.Contains(config, expected) {
+			t.Fatalf("panel challenge config is missing %q:\n%s", expected, config)
+		}
+	}
+}
+
 func TestDisableKeepsConfigAndRemovesLink(t *testing.T) {
 	driver := installedDriver(t)
 	if err := driver.Disable(context.Background(), testDomainID); err != nil {

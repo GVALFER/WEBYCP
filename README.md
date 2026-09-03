@@ -62,6 +62,30 @@ Run the complete repository check:
 make check
 ```
 
+## Production installation
+
+Production installation consumes a release containing Linux amd64 binaries and
+the compiled frontend. On Ubuntu 24.04, run:
+
+```sh
+sudo ./packaging/ubuntu/install.sh
+```
+
+Maintainers build a versioned release and its SHA-256 checksum from a clean
+worktree with:
+
+```sh
+make release VERSION=0.1.0
+```
+
+The result is written to `dist/webycp-0.1.0-linux-amd64.tar.gz`. The build uses
+the locked frontend dependencies, static Go binaries, normalized archive
+metadata, the current commit timestamp, and the current commit identifier.
+
+The initial panel is available on `https://SERVER_IP:8443` with a temporary
+self-signed certificate. See the [Ubuntu packaging guide](packaging/README.md)
+for the installed services, paths, permissions, and bootstrap TLS flow.
+
 ## REST resources
 
 - Bootstrap and authentication: `/api/v1/bootstrap`, `/api/v1/auth/*`
@@ -92,3 +116,9 @@ Never commit server credentials, private keys, generated certificates, backup
 artifacts, or production environment files. The public API must not run as
 root. Rotate any credential that has been shared through chat before external
 host testing.
+
+## License
+
+Copyright 2026 Gualter Fernandes.
+
+Licensed under the [Apache License 2.0](LICENSE).

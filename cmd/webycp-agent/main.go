@@ -16,20 +16,24 @@ import (
 	agentserver "github.com/GVALFER/WEBYCP/internal/agent/server"
 	"github.com/GVALFER/WEBYCP/internal/agent/webserver/nginx"
 	"github.com/GVALFER/WEBYCP/internal/buildinfo"
-	"github.com/GVALFER/WEBYCP/internal/envx"
+	"github.com/GVALFER/WEBYCP/internal/config"
 	"github.com/GVALFER/WEBYCP/internal/httpx"
 	"github.com/GVALFER/WEBYCP/internal/signalx"
 )
 
 func main() {
+	if buildinfo.Show(os.Args, os.Stdout) {
+		return
+	}
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	ctx, stop := signalx.Context()
 	defer stop()
 
-	socket := envx.String("WEBYCP_AGENT_SOCKET", "/run/webycp/agent.sock")
-	listener, cleanup, err := agentserver.Listen(socket)
+	settings := config.AgentFromEnv()
+	listener, cleanup, err := agentserver.Listen(settings.Socket)
 	if err != nil {
-		logger.Error("failed to listen", "error", err, "socket", socket)
+		logger.Error("failed to listen", "error", err, "socket", settings.Socket)
 		os.Exit(1)
 	}
 	defer cleanup()
@@ -47,7 +51,7 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	logger.Info("agent started", "socket", socket, "version", buildinfo.Version)
+	logger.Info("agent started", "socket", settings.Socket, "version", buildinfo.Version)
 	if err := httpx.Serve(ctx, server, listener); err != nil {
 		logger.Error("agent stopped with an error", "error", err)
 		os.Exit(1)

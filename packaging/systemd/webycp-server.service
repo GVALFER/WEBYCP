@@ -1,0 +1,44 @@
+[Unit]
+Description=WEBYCP control panel server
+Documentation=https://github.com/GVALFER/WEBYCP
+Wants=network-online.target webycp-agent.service
+After=network-online.target webycp-agent.service
+
+[Service]
+Type=simple
+User=webycp
+Group=webycp
+EnvironmentFile=/etc/webycp/server.env
+ExecStart=/usr/lib/webycp/webycp-server
+WorkingDirectory=/var/lib/webycp/server
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+UMask=0077
+
+StateDirectory=webycp/server
+StateDirectoryMode=0700
+
+AmbientCapabilities=
+CapabilityBoundingSet=
+LockPersonality=true
+MemoryDenyWriteExecute=true
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

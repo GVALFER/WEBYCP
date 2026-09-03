@@ -27,6 +27,10 @@ import (
 )
 
 func main() {
+	if buildinfo.Show(os.Args, os.Stdout) {
+		return
+	}
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	ctx, stop := signalx.Context()
 	defer stop()

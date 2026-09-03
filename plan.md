@@ -466,8 +466,10 @@ Initial target paths:
 
 ```text
 /etc/webycp/                         application configuration
-/var/lib/webycp/                     SQLite and durable state
-/var/lib/webycp/certificates/        root-controlled certificate material
+/var/lib/webycp/server/              SQLite and unprivileged durable state
+/var/lib/webycp/account-trash/       root-controlled deleted account data
+/var/lib/webycp/acme/                root-controlled HTTP-01 challenge data
+/etc/letsencrypt/live/webycp-*/      root-controlled certificate material
 /var/backups/webycp/                 local backup artifacts
 /run/webycp/agent.sock               privileged Agent socket
 /home/wcp_<account-id-prefix>/       hosting account home and site data
@@ -594,11 +596,11 @@ stored in this repository, generated artifacts, logs, or the napkin.
 - [x] Include full SSL/TLS lifecycle in v1.
 - [x] Define the initial repository and process boundaries.
 - [x] Choose the public Go module/repository path (`github.com/GVALFER/WEBYCP`).
-- [ ] Choose the open-source license.
+- [x] Choose the open-source license (Apache-2.0).
 - [x] Choose npm as the JavaScript package manager.
 
-Verification: this plan is reviewed and the remaining license choice is
-recorded before public packaging.
+Verification: the architecture, repository path, package manager, and license
+decisions are recorded before public packaging.
 
 ### M1 — Scaffold and developer workflow
 
@@ -692,7 +694,8 @@ artifact and served successfully afterward.
 ### M8 — Hardening and native packaging
 
 - [ ] Add systemd sandboxing appropriate to each process.
-- [ ] Add production configuration and filesystem permissions.
+- [x] Add production configuration and filesystem permissions.
+- [x] Add reproducible Linux amd64 release archives and SHA-256 checksums.
 - [ ] Add install, upgrade, migration, and recovery commands.
 - [ ] Add dependency, security, and secret scanning.
 - [ ] Document backup, restore, certificate, and Agent recovery procedures.
@@ -737,6 +740,6 @@ of M9 and must not be treated as complete yet.
 
 ## 19. Immediate Next Step
 
-Pause for review before M8. The next implementation phase is production
-hardening and native Ubuntu packaging; external VPS validation follows only in
-M9 and only under the access policy above.
+M8 is in progress. Add the upgrade, migration, and recovery workflow, then
+validate the service sandbox on a disposable Ubuntu 24.04 environment. External
+VPS validation follows only in M9 and only under the access policy above.
