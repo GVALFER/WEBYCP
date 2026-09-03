@@ -124,7 +124,7 @@ func (l *Linux) Ensure(ctx context.Context, accountID, systemUser string) error 
 		return err
 	}
 	home := filepath.Join(l.home, systemUser)
-	marker := "WEBYCP:" + accountID
+	marker := hostuser.Marker(accountID)
 	found, err := l.lookup(systemUser)
 	if err == nil {
 		identity, err := hostuser.Validate(found, l.home, accountID, systemUser)

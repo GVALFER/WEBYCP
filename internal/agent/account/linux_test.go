@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+
+	"github.com/GVALFER/WEBYCP/internal/agent/hostuser"
 )
 
 func TestEnsureCreatesMissingUser(t *testing.T) {
@@ -28,7 +30,7 @@ func TestEnsureCreatesMissingUser(t *testing.T) {
 		}
 		return &user.User{
 			Username: name, Uid: uid, Gid: gid, HomeDir: filepath.Join(manager.home, name),
-			Name: "WEBYCP:" + accountID,
+			Name: hostuser.Marker(accountID),
 		}, nil
 	}
 	manager.run = func(_ context.Context, name string, values ...string) error {
@@ -47,7 +49,7 @@ func TestEnsureCreatesMissingUser(t *testing.T) {
 	}
 	want := []string{
 		"--create-home", "--home-dir", filepath.Join(manager.home, "wcp_0123456789ab"),
-		"--shell", nologinPath, "--comment", "WEBYCP:" + accountID,
+		"--shell", nologinPath, "--comment", hostuser.Marker(accountID),
 		"--user-group", "--", "wcp_0123456789ab",
 	}
 	if !reflect.DeepEqual(args, want) {
@@ -80,7 +82,7 @@ func TestEnsureIsIdempotent(t *testing.T) {
 	manager.lookup = func(name string) (*user.User, error) {
 		return &user.User{
 			Username: name, Uid: uid, Gid: gid, HomeDir: filepath.Join(manager.home, name),
-			Name: "WEBYCP:" + accountID,
+			Name: hostuser.Marker(accountID),
 		}, nil
 	}
 	manager.run = func(context.Context, string, ...string) error {
@@ -114,7 +116,7 @@ func TestEnsureRejectsUnexpectedUser(t *testing.T) {
 	manager.lookup = func(name string) (*user.User, error) {
 		return &user.User{
 			Username: name, Uid: "0", HomeDir: "/home/" + name,
-			Name: "WEBYCP:" + accountID,
+			Name: hostuser.Marker(accountID),
 		}, nil
 	}
 	if err := manager.Ensure(context.Background(), accountID, "wcp_0123456789ab"); err == nil {
@@ -152,7 +154,7 @@ func TestDisableAndEnableAccountHome(t *testing.T) {
 		t.Fatal(err)
 	}
 	manager.lookup = func(string) (*user.User, error) {
-		return &user.User{Username: systemUser, Uid: uid, Gid: gid, HomeDir: home, Name: "WEBYCP:" + accountID}, nil
+		return &user.User{Username: systemUser, Uid: uid, Gid: gid, HomeDir: home, Name: hostuser.Marker(accountID)}, nil
 	}
 	manager.lookupGroup = func(string) (*user.Group, error) {
 		return &user.Group{Gid: gid}, nil
@@ -195,7 +197,7 @@ func TestDeleteQuarantinesHomeAndIsRetrySafe(t *testing.T) {
 		if !exists {
 			return nil, user.UnknownUserError(systemUser)
 		}
-		return &user.User{Username: systemUser, Uid: uid, Gid: gid, HomeDir: home, Name: "WEBYCP:" + accountID}, nil
+		return &user.User{Username: systemUser, Uid: uid, Gid: gid, HomeDir: home, Name: hostuser.Marker(accountID)}, nil
 	}
 	manager.run = func(_ context.Context, name string, args ...string) error {
 		if name != userdelPath || !reflect.DeepEqual(args, []string{"--", systemUser}) {

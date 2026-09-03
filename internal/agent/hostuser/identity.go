@@ -11,11 +11,17 @@ import (
 
 const WebGroup = "www-data"
 
+const markerPrefix = "WEBYCP-"
+
 type Identity struct {
 	Home       string
 	SystemUser string
 	UID        int
 	GID        int
+}
+
+func Marker(accountID string) string {
+	return markerPrefix + accountID
 }
 
 func ValidateNames(accountID, systemUser string) error {
@@ -44,7 +50,7 @@ func Validate(found *user.User, homeRoot, accountID, systemUser string) (Identit
 	if found.HomeDir != expectedHome {
 		return Identity{}, fmt.Errorf("system user home is %q, expected %q", found.HomeDir, expectedHome)
 	}
-	if found.Name != "WEBYCP:"+accountID {
+	if found.Name != Marker(accountID) {
 		return Identity{}, fmt.Errorf("system user is not owned by this account")
 	}
 	uid, err := strconv.Atoi(found.Uid)

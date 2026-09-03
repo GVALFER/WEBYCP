@@ -231,7 +231,7 @@ func testManager(t *testing.T) (*Manager, *runtimeDriver, *driver) {
 	manager.lookup = func(name string) (*user.User, error) {
 		return &user.User{
 			Username: name, Uid: uid, Gid: gid, HomeDir: accountHome,
-			Name: "WEBYCP:" + testAccountID,
+			Name: hostuser.Marker(testAccountID),
 		}, nil
 	}
 	manager.lookupGroup = func(string) (*user.Group, error) {

@@ -39,7 +39,7 @@
 3. **[2026-09-03] Route protected mutations through the established security path**
    Do instead: require the `HttpOnly` session, CSRF header, appropriate role, a durable job for host changes, and audit both the request and final execution outcome.
 4. **[2026-09-03] Never adopt pre-existing host identities by username alone**
-   Do instead: derive `wcp_*` usernames from resource IDs and verify the `WEBYCP:<resource-id>` ownership marker before treating a Linux user as managed.
+   Do instead: derive `wcp_*` usernames from resource IDs and verify the passwd-safe `WEBYCP-<resource-id>` ownership marker before treating a Linux user as managed.
 5. **[2026-09-03] Make privileged filesystem changes through no-follow descriptors**
    Do instead: open trusted roots and child directories with `O_NOFOLLOW`, then apply ownership and modes through file descriptors instead of mutable absolute paths.
 6. **[2026-09-03] Use SWR for frontend server state**
