@@ -12,3 +12,5 @@
 .env.*
 !.env.example
 .DS_Store
+.playwright-mcp
+.claude
