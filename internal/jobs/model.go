@@ -1,0 +1,77 @@
+package jobs
+
+import (
+	"context"
+	"errors"
+	"time"
+)
+
+const (
+	KindAccountCreate       = "account.create"
+	KindAccountDelete       = "account.delete"
+	KindAccountDisable      = "account.disable"
+	KindAccountEnable       = "account.enable"
+	KindAliasCreate         = "alias.create"
+	KindAliasDelete         = "alias.delete"
+	KindAliasDisable        = "alias.disable"
+	KindAliasEnable         = "alias.enable"
+	KindAliasUpdate         = "alias.update"
+	KindDomainCreate        = "domain.create"
+	KindDomainDelete        = "domain.delete"
+	KindDomainDisable       = "domain.disable"
+	KindDomainEnable        = "domain.enable"
+	KindDomainUpdate        = "domain.update"
+	KindNodeProbe           = "node.probe"
+	KindCertificateIssue    = "certificate.issue"
+	KindCertificateRenew    = "certificate.renew"
+	KindDatabaseCreate      = "database.create"
+	KindDatabaseDelete      = "database.delete"
+	KindDatabaseUserCreate  = "database_user.create"
+	KindDatabaseUserDelete  = "database_user.delete"
+	KindDatabaseGrantCreate = "database_grant.create"
+	KindDatabaseGrantDelete = "database_grant.delete"
+	KindCronSync            = "cron.sync"
+	KindBackupCreate        = "backup.create"
+	KindBackupRestore       = "backup.restore"
+)
+
+var ErrNone = errors.New("no queued jobs")
+
+type Job struct {
+	ID          string
+	NodeID      string
+	UserID      string
+	Kind        string
+	Status      string
+	Payload     string
+	Attempts    int64
+	MaxAttempts int64
+	Error       string
+	CreatedAt   time.Time
+	StartedAt   *time.Time
+	FinishedAt  *time.Time
+}
+
+type Step struct {
+	ID         string
+	JobID      string
+	Name       string
+	Status     string
+	Message    string
+	StartedAt  time.Time
+	FinishedAt *time.Time
+}
+
+type Repository interface {
+	CreateJob(context.Context, Job) (Job, error)
+	Job(context.Context, string) (Job, error)
+	Jobs(context.Context, int64) ([]Job, error)
+	ClaimJob(context.Context, time.Time) (Job, error)
+	CompleteJob(context.Context, string, time.Time) error
+	RetryJob(context.Context, string, string) error
+	FailJob(context.Context, string, string, time.Time) error
+	RecoverJobs(context.Context, time.Time) error
+	CreateStep(context.Context, Step) (Step, error)
+	FinishStep(context.Context, string, string, string, time.Time) error
+	Steps(context.Context, string) ([]Step, error)
+}

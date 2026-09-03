@@ -1,0 +1,1881 @@
+openapi: 3.0.3
+info:
+    title: WEBYCP Public API
+    version: 0.5.0
+    description: Public REST API used by the WEBYCP web application.
+paths:
+    /api/v1/health:
+        get:
+            operationId: getHealth
+            summary: Get API health
+            responses:
+                "200":
+                    description: The API is healthy.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/HealthResponse"
+    /api/v1/bootstrap:
+        get:
+            operationId: getBootstrap
+            summary: Check whether the first administrator must be created
+            responses:
+                "200":
+                    description: Bootstrap state.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/BootstrapResponse"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+        post:
+            operationId: createBootstrap
+            summary: Create the first administrator
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/BootstrapRequest"
+            responses:
+                "201":
+                    description: Administrator created and authenticated.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AuthResponse"
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
+                "409":
+                    $ref: "#/components/responses/ConflictError"
+                "422":
+                    $ref: "#/components/responses/ValidationError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+    /api/v1/auth/login:
+        post:
+            operationId: login
+            summary: Create an authenticated session
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/LoginRequest"
+            responses:
+                "200":
+                    description: Authenticated session.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AuthResponse"
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "422":
+                    $ref: "#/components/responses/ValidationError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+    /api/v1/auth/logout:
+        post:
+            operationId: logout
+            summary: Delete the current session
+            security:
+                - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "204":
+                    description: Session deleted.
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "403":
+                    $ref: "#/components/responses/ForbiddenError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+    /api/v1/auth/me:
+        get:
+            operationId: getCurrentUser
+            summary: Get the current authenticated user and CSRF token
+            security:
+                - cookieAuth: []
+            responses:
+                "200":
+                    description: Current session.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AuthResponse"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+    /api/v1/accounts:
+        get:
+            operationId: listAccounts
+            summary: List accessible hosting accounts
+            security:
+                - cookieAuth: []
+            responses:
+                "200":
+                    description: Hosting accounts.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AccountListResponse"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+        post:
+            operationId: createAccount
+            summary: Create and queue provisioning for a hosting account
+            security:
+                - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CreateAccountRequest"
+            responses:
+                "202":
+                    description: Account provisioning queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AccountJobResponse"
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "403":
+                    $ref: "#/components/responses/ForbiddenError"
+                "404":
+                    $ref: "#/components/responses/NotFoundError"
+                "409":
+                    $ref: "#/components/responses/ConflictError"
+                "422":
+                    $ref: "#/components/responses/ValidationError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+    /api/v1/accounts/{accountId}:
+        patch:
+            operationId: setAccount
+            summary: Enable or disable a hosting account
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/AccountID"
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/UpdateEnabledRequest"
+            responses:
+                "202":
+                    description: Account operation queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AccountJobResponse"
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        delete:
+            operationId: deleteAccount
+            summary: Delete an empty hosting account and quarantine its home
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/AccountID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: Account deletion queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AccountJobResponse"
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/domains:
+        get:
+            operationId: listDomains
+            summary: List accessible domains
+            security:
+                - cookieAuth: []
+            responses:
+                "200":
+                    description: Domains.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/DomainListResponse"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+        post:
+            operationId: createDomain
+            summary: Create and queue provisioning for a domain
+            security:
+                - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CreateDomainRequest"
+            responses:
+                "202":
+                    description: Domain provisioning queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/DomainJobResponse"
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "403":
+                    $ref: "#/components/responses/ForbiddenError"
+                "404":
+                    $ref: "#/components/responses/NotFoundError"
+                "409":
+                    $ref: "#/components/responses/ConflictError"
+                "422":
+                    $ref: "#/components/responses/ValidationError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+    /api/v1/domains/{domainId}:
+        patch:
+            operationId: setDomain
+            summary: Update a domain hostname or enabled state
+            security:
+                - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/DomainID"
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/UpdateDomainRequest"
+            responses:
+                "202":
+                    description: Domain operation queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/DomainJobResponse"
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "403":
+                    $ref: "#/components/responses/ForbiddenError"
+                "404":
+                    $ref: "#/components/responses/NotFoundError"
+                "409":
+                    $ref: "#/components/responses/ConflictError"
+                "422":
+                    $ref: "#/components/responses/ValidationError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+        delete:
+            operationId: deleteDomain
+            summary: Delete a domain and quarantine its document root
+            security:
+                - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/DomainID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: Domain deletion queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/DomainJobResponse"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "403":
+                    $ref: "#/components/responses/ForbiddenError"
+                "404":
+                    $ref: "#/components/responses/NotFoundError"
+                "409":
+                    $ref: "#/components/responses/ConflictError"
+                "422":
+                    $ref: "#/components/responses/ValidationError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+    /api/v1/domains/{domainId}/aliases:
+        get:
+            operationId: listDomainAliases
+            summary: List aliases for an accessible domain
+            security:
+                - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/DomainID"
+            responses:
+                "200":
+                    description: Domain aliases.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/DomainAliasListResponse"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "403":
+                    $ref: "#/components/responses/ForbiddenError"
+                "404":
+                    $ref: "#/components/responses/NotFoundError"
+                "422":
+                    $ref: "#/components/responses/ValidationError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+        post:
+            operationId: createDomainAlias
+            summary: Create and queue provisioning for a domain alias
+            security:
+                - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/DomainID"
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CreateDomainAliasRequest"
+            responses:
+                "202":
+                    description: Domain alias provisioning queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/DomainAliasJobResponse"
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "403":
+                    $ref: "#/components/responses/ForbiddenError"
+                "404":
+                    $ref: "#/components/responses/NotFoundError"
+                "409":
+                    $ref: "#/components/responses/ConflictError"
+                "422":
+                    $ref: "#/components/responses/ValidationError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+    /api/v1/domains/{domainId}/aliases/{aliasId}:
+        patch:
+            operationId: setDomainAlias
+            summary: Update a domain alias hostname or enabled state
+            security:
+                - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/DomainID"
+                - $ref: "#/components/parameters/AliasID"
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/UpdateDomainRequest"
+            responses:
+                "202":
+                    description: Domain alias operation queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/DomainAliasJobResponse"
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "403":
+                    $ref: "#/components/responses/ForbiddenError"
+                "404":
+                    $ref: "#/components/responses/NotFoundError"
+                "409":
+                    $ref: "#/components/responses/ConflictError"
+                "422":
+                    $ref: "#/components/responses/ValidationError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+        delete:
+            operationId: deleteDomainAlias
+            summary: Delete a domain alias
+            security:
+                - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/DomainID"
+                - $ref: "#/components/parameters/AliasID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: Domain alias deletion queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/DomainAliasJobResponse"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "403":
+                    $ref: "#/components/responses/ForbiddenError"
+                "404":
+                    $ref: "#/components/responses/NotFoundError"
+                "409":
+                    $ref: "#/components/responses/ConflictError"
+                "422":
+                    $ref: "#/components/responses/ValidationError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+    /api/v1/certificates:
+        get:
+            operationId: listCertificates
+            summary: List accessible certificates
+            security: [{ cookieAuth: [] }]
+            responses:
+                "200":
+                    description: Certificates.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CertificateListResponse"
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/domains/{domainId}/certificate:
+        post:
+            operationId: issueDomainCertificate
+            summary: Issue a certificate for a domain and eligible aliases
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/DomainID"
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/IssueCertificateRequest"
+            responses:
+                "202":
+                    description: Certificate issuance queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CertificateJobResponse"
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/certificates/panel:
+        post:
+            operationId: issuePanelCertificate
+            summary: Bootstrap or renew the panel certificate
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/IssuePanelCertificateRequest"
+            responses:
+                "202":
+                    description: Panel certificate issuance queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CertificateJobResponse"
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/certificates/{certificateId}/renew:
+        post:
+            operationId: renewCertificate
+            summary: Renew a certificate now
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/CertificateID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: Renewal queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CertificateJobResponse"
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/certificates/{certificateId}:
+        patch:
+            operationId: setCertificate
+            summary: Set the HTTPS redirect policy
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/CertificateID"
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/UpdateCertificateRequest"
+            responses:
+                "202":
+                    description: Certificate configuration queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CertificateJobResponse"
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/databases:
+        get:
+            operationId: listDatabases
+            summary: List accessible MySQL databases
+            security: [{ cookieAuth: [] }]
+            responses:
+                "200":
+                    description: Databases.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DatabaseListResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        post:
+            operationId: createDatabase
+            summary: Create a MySQL database
+            security: [{ cookieAuth: [] }]
+            parameters: [{ $ref: "#/components/parameters/CSRFToken" }]
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/CreateDatabaseRequest" }
+            responses:
+                "202":
+                    description: Database creation queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DatabaseJobResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/databases/{databaseId}:
+        delete:
+            operationId: deleteDatabase
+            summary: Delete a MySQL database
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/DatabaseID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: Database deletion queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DatabaseJobResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/database-users:
+        get:
+            operationId: listDatabaseUsers
+            summary: List accessible MySQL users
+            security: [{ cookieAuth: [] }]
+            responses:
+                "200":
+                    description: Database users.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DatabaseUserListResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        post:
+            operationId: createDatabaseUser
+            summary: Create a MySQL user and reveal its generated password once
+            security: [{ cookieAuth: [] }]
+            parameters: [{ $ref: "#/components/parameters/CSRFToken" }]
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/CreateDatabaseUserRequest" }
+            responses:
+                "202":
+                    description: Database user creation queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DatabaseUserJobResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/database-users/{databaseUserId}:
+        delete:
+            operationId: deleteDatabaseUser
+            summary: Delete a MySQL user
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/DatabaseUserID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: Database user deletion queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DatabaseUserJobResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/database-grants:
+        get:
+            operationId: listDatabaseGrants
+            summary: List accessible grants
+            security: [{ cookieAuth: [] }]
+            responses:
+                "200":
+                    description: Database grants.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DatabaseGrantListResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/databases/{databaseId}/users/{databaseUserId}:
+        put:
+            operationId: createDatabaseGrant
+            summary: Grant a user access to a database in the same account
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/DatabaseID"
+                - $ref: "#/components/parameters/DatabaseUserID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: Grant creation queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DatabaseGrantJobResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        delete:
+            operationId: deleteDatabaseGrant
+            summary: Revoke a user's access to a database
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/DatabaseID"
+                - $ref: "#/components/parameters/DatabaseUserID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: Grant deletion queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DatabaseGrantJobResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/cron-jobs:
+        get:
+            operationId: listCronJobs
+            summary: List accessible cron jobs
+            security: [{ cookieAuth: [] }]
+            responses:
+                "200":
+                    description: Cron jobs.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/CronJobListResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        post:
+            operationId: createCronJob
+            summary: Create and synchronize a cron job
+            security: [{ cookieAuth: [] }]
+            parameters: [{ $ref: "#/components/parameters/CSRFToken" }]
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/WriteCronJobRequest" }
+            responses:
+                "202":
+                    description: Cron synchronization queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/CronJobResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/cron-jobs/{cronJobId}:
+        patch:
+            operationId: setCronJob
+            summary: Update or enable/disable a cron job
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/CronJobID"
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/WriteCronJobRequest" }
+            responses:
+                "202":
+                    description: Cron synchronization queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/CronJobResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        delete:
+            operationId: deleteCronJob
+            summary: Delete and synchronize a cron job
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/CronJobID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: Cron synchronization queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/Job" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/backup-plans:
+        get:
+            operationId: listBackupPlans
+            summary: List accessible backup plans
+            security: [{ cookieAuth: [] }]
+            responses:
+                "200":
+                    description: Backup plans.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/BackupPlanListResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        post:
+            operationId: createBackupPlan
+            summary: Create a local backup plan
+            security: [{ cookieAuth: [] }]
+            parameters: [{ $ref: "#/components/parameters/CSRFToken" }]
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/WriteBackupPlanRequest" }
+            responses:
+                "201":
+                    description: Backup plan created.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/BackupPlan" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/backup-plans/{backupPlanId}:
+        patch:
+            operationId: setBackupPlan
+            summary: Update a local backup plan
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/BackupPlanID"
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/WriteBackupPlanRequest" }
+            responses:
+                "200":
+                    description: Updated backup plan.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/BackupPlan" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        delete:
+            operationId: deleteBackupPlan
+            summary: Delete a backup plan but retain its artifacts
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/BackupPlanID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "204": { description: Backup plan deleted. }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/backup-plans/{backupPlanId}/runs:
+        post:
+            operationId: runBackupPlan
+            summary: Run a backup plan now
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/BackupPlanID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: Backup queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/BackupRunResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/backup-runs:
+        get:
+            operationId: listBackupRuns
+            summary: List accessible backup runs
+            security: [{ cookieAuth: [] }]
+            responses:
+                "200":
+                    description: Backup runs.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/BackupRunListResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/backup-artifacts:
+        get:
+            operationId: listBackupArtifacts
+            summary: List accessible verified artifacts
+            security: [{ cookieAuth: [] }]
+            responses:
+                "200":
+                    description: Backup artifacts.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/BackupArtifactListResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/backup-artifacts/{backupArtifactId}/restore:
+        get:
+            operationId: previewBackupRestore
+            summary: Verify and preview a restore
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/BackupArtifactID"
+            responses:
+                "200":
+                    description: Restore preview.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/BackupManifest" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        post:
+            operationId: restoreBackup
+            summary: Restore selected scopes from a verified artifact
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/BackupArtifactID"
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/RestoreBackupRequest" }
+            responses:
+                "202":
+                    description: Restore queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/Job" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/backup-artifacts/{backupArtifactId}:
+        delete:
+            operationId: deleteBackupArtifact
+            summary: Delete one local backup artifact
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/BackupArtifactID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "204": { description: Backup artifact deleted. }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/nodes:
+        get:
+            operationId: listNodes
+            summary: List managed nodes
+            security:
+                - cookieAuth: []
+            responses:
+                "200":
+                    description: Managed nodes.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/NodeListResponse"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+    /api/v1/nodes/{nodeId}/probe:
+        post:
+            operationId: probeNode
+            summary: Queue a node connectivity probe
+            security:
+                - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/NodeID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: Probe queued.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Job"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "403":
+                    $ref: "#/components/responses/ForbiddenError"
+                "404":
+                    $ref: "#/components/responses/NotFoundError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+    /api/v1/jobs:
+        get:
+            operationId: listJobs
+            summary: List recent jobs
+            security:
+                - cookieAuth: []
+            responses:
+                "200":
+                    description: Recent jobs.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/JobListResponse"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+    /api/v1/jobs/{jobId}:
+        get:
+            operationId: getJob
+            summary: Get a job and its steps
+            security:
+                - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/JobID"
+            responses:
+                "200":
+                    description: Job details.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/JobDetail"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "404":
+                    $ref: "#/components/responses/NotFoundError"
+                "500":
+                    $ref: "#/components/responses/InternalError"
+components:
+    securitySchemes:
+        cookieAuth:
+            type: apiKey
+            in: cookie
+            name: webycp_session
+    parameters:
+        CSRFToken:
+            name: X-CSRF-Token
+            in: header
+            required: true
+            schema:
+                type: string
+        NodeID:
+            name: nodeId
+            in: path
+            required: true
+            schema:
+                type: string
+        JobID:
+            name: jobId
+            in: path
+            required: true
+            schema:
+                type: string
+        DomainID:
+            name: domainId
+            in: path
+            required: true
+            schema:
+                type: string
+        AliasID:
+            name: aliasId
+            in: path
+            required: true
+            schema:
+                type: string
+        AccountID:
+            name: accountId
+            in: path
+            required: true
+            schema: { type: string }
+        CertificateID:
+            name: certificateId
+            in: path
+            required: true
+            schema: { type: string }
+        DatabaseID:
+            name: databaseId
+            in: path
+            required: true
+            schema: { type: string }
+        DatabaseUserID:
+            name: databaseUserId
+            in: path
+            required: true
+            schema: { type: string }
+        CronJobID:
+            name: cronJobId
+            in: path
+            required: true
+            schema: { type: string }
+        BackupPlanID:
+            name: backupPlanId
+            in: path
+            required: true
+            schema: { type: string }
+        BackupArtifactID:
+            name: backupArtifactId
+            in: path
+            required: true
+            schema: { type: string }
+    responses:
+        BadRequestError:
+            description: The request body is malformed.
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/ErrorResponse"
+        UnauthorizedError:
+            description: Authentication is required.
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/ErrorResponse"
+        ForbiddenError:
+            description: The request is not allowed.
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/ErrorResponse"
+        NotFoundError:
+            description: The resource does not exist.
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/ErrorResponse"
+        ConflictError:
+            description: The request conflicts with current state.
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/ErrorResponse"
+        ValidationError:
+            description: The request is invalid.
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/ErrorResponse"
+        InternalError:
+            description: An internal error occurred.
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/ErrorResponse"
+    schemas:
+        HealthResponse:
+            type: object
+            additionalProperties: false
+            required: [service, status, version]
+            properties:
+                service:
+                    type: string
+                    example: webycp-server
+                status:
+                    type: string
+                    enum: [ok]
+                version:
+                    type: string
+                    example: dev
+        BootstrapResponse:
+            type: object
+            additionalProperties: false
+            required: [required]
+            properties:
+                required:
+                    type: boolean
+        BootstrapRequest:
+            type: object
+            additionalProperties: false
+            required: [name, email, password]
+            properties:
+                name:
+                    type: string
+                    minLength: 2
+                    maxLength: 80
+                email:
+                    type: string
+                    format: email
+                password:
+                    type: string
+                    minLength: 12
+                    maxLength: 128
+        LoginRequest:
+            type: object
+            additionalProperties: false
+            required: [email, password]
+            properties:
+                email:
+                    type: string
+                    format: email
+                password:
+                    type: string
+        AuthResponse:
+            type: object
+            additionalProperties: false
+            required: [user, csrfToken, expiresAt]
+            properties:
+                user:
+                    $ref: "#/components/schemas/User"
+                csrfToken:
+                    type: string
+                expiresAt:
+                    type: string
+                    format: date-time
+        User:
+            type: object
+            additionalProperties: false
+            required: [id, email, name, role, createdAt]
+            properties:
+                id:
+                    type: string
+                email:
+                    type: string
+                    format: email
+                name:
+                    type: string
+                role:
+                    type: string
+                    enum: [admin, user]
+                createdAt:
+                    type: string
+                    format: date-time
+        Node:
+            type: object
+            additionalProperties: false
+            required: [id, name, kind, endpoint, status, createdAt, updatedAt]
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                kind:
+                    type: string
+                    enum: [local, remote]
+                endpoint:
+                    type: string
+                status:
+                    type: string
+                    enum: [unknown, online, offline]
+                lastSeenAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+        Account:
+            type: object
+            additionalProperties: false
+            required: [id, nodeId, name, systemUser, status, enabled, createdAt, updatedAt]
+            properties:
+                id:
+                    type: string
+                nodeId:
+                    type: string
+                name:
+                    type: string
+                systemUser:
+                    type: string
+                status:
+                    type: string
+                    enum: [pending, active, disabled, error]
+                enabled:
+                    type: boolean
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+        CreateAccountRequest:
+            type: object
+            additionalProperties: false
+            required: [name, nodeId]
+            properties:
+                name:
+                    type: string
+                    minLength: 2
+                    maxLength: 80
+                nodeId:
+                    type: string
+        AccountListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Account"
+        AccountJobResponse:
+            type: object
+            additionalProperties: false
+            required: [account, job]
+            properties:
+                account:
+                    $ref: "#/components/schemas/Account"
+                job:
+                    $ref: "#/components/schemas/Job"
+        UpdateEnabledRequest:
+            type: object
+            additionalProperties: false
+            required: [enabled]
+            properties:
+                enabled: { type: boolean }
+        Domain:
+            type: object
+            additionalProperties: false
+            required:
+                [id, accountId, nodeId, name, status, phpVersion, enabled, createdAt, updatedAt]
+            properties:
+                id:
+                    type: string
+                accountId:
+                    type: string
+                nodeId:
+                    type: string
+                name:
+                    type: string
+                status:
+                    type: string
+                    enum: [pending, active, disabled, error]
+                phpVersion:
+                    type: string
+                enabled:
+                    type: boolean
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+        CreateDomainRequest:
+            type: object
+            additionalProperties: false
+            required: [accountId, name]
+            properties:
+                accountId:
+                    type: string
+                name:
+                    type: string
+                    minLength: 4
+                    maxLength: 253
+        DomainListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Domain"
+        DomainJobResponse:
+            type: object
+            additionalProperties: false
+            required: [domain, job]
+            properties:
+                domain:
+                    $ref: "#/components/schemas/Domain"
+                job:
+                    $ref: "#/components/schemas/Job"
+        DomainAlias:
+            type: object
+            additionalProperties: false
+            required: [id, domainId, name, status, enabled, createdAt, updatedAt]
+            properties:
+                id:
+                    type: string
+                domainId:
+                    type: string
+                name:
+                    type: string
+                status:
+                    type: string
+                    enum: [pending, active, disabled, error]
+                enabled:
+                    type: boolean
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+        CreateDomainAliasRequest:
+            type: object
+            additionalProperties: false
+            required: [name]
+            properties:
+                name:
+                    type: string
+                    minLength: 4
+                    maxLength: 253
+        UpdateDomainRequest:
+            type: object
+            additionalProperties: false
+            minProperties: 1
+            maxProperties: 1
+            properties:
+                enabled:
+                    type: boolean
+                name:
+                    type: string
+                    minLength: 4
+                    maxLength: 253
+        DomainAliasListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/DomainAlias"
+        DomainAliasJobResponse:
+            type: object
+            additionalProperties: false
+            required: [alias, job]
+            properties:
+                alias:
+                    $ref: "#/components/schemas/DomainAlias"
+                job:
+                    $ref: "#/components/schemas/Job"
+        NodeListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Node"
+        Job:
+            type: object
+            additionalProperties: false
+            required: [id, kind, status, payload, attempts, maxAttempts, createdAt]
+            properties:
+                id:
+                    type: string
+                nodeId:
+                    type: string
+                    nullable: true
+                userId:
+                    type: string
+                    nullable: true
+                kind:
+                    type: string
+                status:
+                    type: string
+                    enum: [queued, running, succeeded, failed]
+                payload:
+                    type: object
+                    additionalProperties: true
+                attempts:
+                    type: integer
+                    format: int64
+                maxAttempts:
+                    type: integer
+                    format: int64
+                error:
+                    type: string
+                    nullable: true
+                createdAt:
+                    type: string
+                    format: date-time
+                startedAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+                finishedAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+        JobStep:
+            type: object
+            additionalProperties: false
+            required: [id, name, status, message, startedAt]
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                status:
+                    type: string
+                    enum: [running, succeeded, failed]
+                message:
+                    type: string
+                startedAt:
+                    type: string
+                    format: date-time
+                finishedAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+        JobDetail:
+            type: object
+            additionalProperties: false
+            required: [job, steps]
+            properties:
+                job:
+                    $ref: "#/components/schemas/Job"
+                steps:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/JobStep"
+        JobListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Job"
+        Certificate:
+            type: object
+            additionalProperties: false
+            required:
+                [
+                    id,
+                    nodeId,
+                    kind,
+                    name,
+                    names,
+                    email,
+                    status,
+                    redirectHttps,
+                    error,
+                    createdAt,
+                    updatedAt,
+                ]
+            properties:
+                id: { type: string }
+                domainId: { type: string, nullable: true }
+                nodeId: { type: string }
+                kind: { type: string, enum: [domain, panel] }
+                name: { type: string }
+                names:
+                    type: array
+                    items: { type: string }
+                email: { type: string, format: email }
+                status: { type: string, enum: [pending, active, error] }
+                redirectHttps: { type: boolean }
+                expiresAt: { type: string, format: date-time, nullable: true }
+                error: { type: string }
+                createdAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+        IssueCertificateRequest:
+            type: object
+            additionalProperties: false
+            required: [email]
+            properties:
+                email: { type: string, format: email }
+        IssuePanelCertificateRequest:
+            type: object
+            additionalProperties: false
+            required: [hostname, email]
+            properties:
+                hostname: { type: string }
+                email: { type: string, format: email }
+        UpdateCertificateRequest:
+            type: object
+            additionalProperties: false
+            required: [redirectHttps]
+            properties:
+                redirectHttps: { type: boolean }
+        CertificateListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Certificate" }
+        CertificateJobResponse:
+            type: object
+            additionalProperties: false
+            required: [certificate, job]
+            properties:
+                certificate: { $ref: "#/components/schemas/Certificate" }
+                job: { $ref: "#/components/schemas/Job" }
+        Database:
+            type: object
+            additionalProperties: false
+            required: [id, accountId, nodeId, name, systemName, status, createdAt, updatedAt]
+            properties:
+                id: { type: string }
+                accountId: { type: string }
+                nodeId: { type: string }
+                name: { type: string }
+                systemName: { type: string }
+                status: { type: string, enum: [pending, active, error] }
+                createdAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+        DatabaseUser:
+            type: object
+            additionalProperties: false
+            required: [id, accountId, nodeId, name, systemName, status, createdAt, updatedAt]
+            properties:
+                id: { type: string }
+                accountId: { type: string }
+                nodeId: { type: string }
+                name: { type: string }
+                systemName: { type: string }
+                status: { type: string, enum: [pending, active, error] }
+                createdAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+        DatabaseGrant:
+            type: object
+            additionalProperties: false
+            required: [databaseId, databaseUserId, status, createdAt, updatedAt]
+            properties:
+                databaseId: { type: string }
+                databaseUserId: { type: string }
+                status: { type: string, enum: [pending, active, error] }
+                createdAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+        CreateDatabaseRequest:
+            type: object
+            additionalProperties: false
+            required: [accountId, name]
+            properties:
+                accountId: { type: string }
+                name: { type: string, minLength: 1, maxLength: 32 }
+        CreateDatabaseUserRequest:
+            type: object
+            additionalProperties: false
+            required: [accountId, name]
+            properties:
+                accountId: { type: string }
+                name: { type: string, minLength: 1, maxLength: 32 }
+        DatabaseListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items: { type: array, items: { $ref: "#/components/schemas/Database" } }
+        DatabaseUserListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items: { type: array, items: { $ref: "#/components/schemas/DatabaseUser" } }
+        DatabaseGrantListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items: { type: array, items: { $ref: "#/components/schemas/DatabaseGrant" } }
+        DatabaseJobResponse:
+            type: object
+            additionalProperties: false
+            required: [database, job]
+            properties:
+                database: { $ref: "#/components/schemas/Database" }
+                job: { $ref: "#/components/schemas/Job" }
+        DatabaseUserJobResponse:
+            type: object
+            additionalProperties: false
+            required: [databaseUser, job]
+            properties:
+                databaseUser: { $ref: "#/components/schemas/DatabaseUser" }
+                job: { $ref: "#/components/schemas/Job" }
+                password:
+                    type: string
+                    description: Returned only when a database user is created.
+        DatabaseGrantJobResponse:
+            type: object
+            additionalProperties: false
+            required: [grant, job]
+            properties:
+                grant: { $ref: "#/components/schemas/DatabaseGrant" }
+                job: { $ref: "#/components/schemas/Job" }
+        CronJob:
+            type: object
+            additionalProperties: false
+            required:
+                [
+                    id,
+                    accountId,
+                    nodeId,
+                    name,
+                    schedule,
+                    command,
+                    enabled,
+                    status,
+                    createdAt,
+                    updatedAt,
+                ]
+            properties:
+                id: { type: string }
+                accountId: { type: string }
+                nodeId: { type: string }
+                name: { type: string }
+                schedule: { type: string }
+                command: { type: string }
+                enabled: { type: boolean }
+                status: { type: string, enum: [pending, active, disabled, error] }
+                createdAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+        WriteCronJobRequest:
+            type: object
+            additionalProperties: false
+            required: [accountId, name, schedule, command, enabled]
+            properties:
+                accountId: { type: string }
+                name: { type: string, minLength: 1, maxLength: 80 }
+                schedule: { type: string, maxLength: 100 }
+                command: { type: string, minLength: 1, maxLength: 1000 }
+                enabled: { type: boolean }
+        CronJobListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items: { type: array, items: { $ref: "#/components/schemas/CronJob" } }
+        CronJobResponse:
+            type: object
+            additionalProperties: false
+            required: [cronJob, job]
+            properties:
+                cronJob: { $ref: "#/components/schemas/CronJob" }
+                job: { $ref: "#/components/schemas/Job" }
+        BackupPlan:
+            type: object
+            additionalProperties: false
+            required:
+                [
+                    id,
+                    accountId,
+                    nodeId,
+                    name,
+                    schedule,
+                    retentionCount,
+                    includeFiles,
+                    includeDatabases,
+                    enabled,
+                    createdAt,
+                    updatedAt,
+                ]
+            properties:
+                id: { type: string }
+                accountId: { type: string }
+                nodeId: { type: string }
+                name: { type: string }
+                schedule: { type: string }
+                retentionCount: { type: integer }
+                includeFiles: { type: boolean }
+                includeDatabases: { type: boolean }
+                enabled: { type: boolean }
+                lastRunAt: { type: string, format: date-time, nullable: true }
+                nextRunAt: { type: string, format: date-time, nullable: true }
+                createdAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+        WriteBackupPlanRequest:
+            type: object
+            additionalProperties: false
+            required:
+                [accountId, name, schedule, retentionCount, includeFiles, includeDatabases, enabled]
+            properties:
+                accountId: { type: string }
+                name: { type: string, minLength: 1, maxLength: 80 }
+                schedule: { type: string, maxLength: 100 }
+                retentionCount: { type: integer, minimum: 1, maximum: 100 }
+                includeFiles: { type: boolean }
+                includeDatabases: { type: boolean }
+                enabled: { type: boolean }
+        BackupRun:
+            type: object
+            additionalProperties: false
+            required: [id, planId, accountId, nodeId, status, error, createdAt]
+            properties:
+                id: { type: string }
+                planId: { type: string }
+                accountId: { type: string }
+                nodeId: { type: string }
+                status: { type: string, enum: [queued, running, succeeded, failed] }
+                error: { type: string }
+                createdAt: { type: string, format: date-time }
+                startedAt: { type: string, format: date-time, nullable: true }
+                finishedAt: { type: string, format: date-time, nullable: true }
+        BackupEntry:
+            type: object
+            additionalProperties: false
+            required: [path, size, checksum]
+            properties:
+                path: { type: string }
+                size: { type: integer, format: int64 }
+                checksum: { type: string }
+        BackupManifest:
+            type: object
+            additionalProperties: false
+            required: [version, runId, accountId, createdAt, files, databases, metadata, entries]
+            properties:
+                version: { type: integer }
+                runId: { type: string }
+                accountId: { type: string }
+                createdAt: { type: string, format: date-time }
+                files: { type: boolean }
+                databases: { type: boolean }
+                metadata: { type: boolean }
+                entries: { type: array, items: { $ref: "#/components/schemas/BackupEntry" } }
+        BackupArtifact:
+            type: object
+            additionalProperties: false
+            required: [id, runId, accountId, nodeId, checksum, size, manifest, createdAt]
+            properties:
+                id: { type: string }
+                runId: { type: string }
+                accountId: { type: string }
+                nodeId: { type: string }
+                checksum: { type: string }
+                size: { type: integer, format: int64 }
+                manifest: { $ref: "#/components/schemas/BackupManifest" }
+                createdAt: { type: string, format: date-time }
+        BackupPlanListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items: { type: array, items: { $ref: "#/components/schemas/BackupPlan" } }
+        BackupRunListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items: { type: array, items: { $ref: "#/components/schemas/BackupRun" } }
+        BackupArtifactListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items: { type: array, items: { $ref: "#/components/schemas/BackupArtifact" } }
+        BackupRunResponse:
+            type: object
+            additionalProperties: false
+            required: [run, job]
+            properties:
+                run: { $ref: "#/components/schemas/BackupRun" }
+                job: { $ref: "#/components/schemas/Job" }
+        RestoreBackupRequest:
+            type: object
+            additionalProperties: false
+            required: [files, databases, metadata]
+            properties:
+                files: { type: boolean }
+                databases: { type: boolean }
+                metadata: { type: boolean }
+        ErrorResponse:
+            type: object
+            additionalProperties: false
+            required: [code, message]
+            properties:
+                code:
+                    type: string
+                message:
+                    type: string
+                fields:
+                    type: object
+                    additionalProperties:
+                        type: string

@@ -1,0 +1,4 @@
+package: publicapi
+output: internal/httpapi/spec/public.gen.go
+generate:
+    models: true

@@ -1,0 +1,5 @@
+ALTER TABLE domains
+ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1));
+
+ALTER TABLE domain_aliases
+ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1));

@@ -1,0 +1,697 @@
+openapi: 3.0.3
+info:
+    title: WEBYCP Agent API
+    version: 0.4.0
+    description: Internal API exposed only through the protected Agent Unix socket.
+paths:
+    /agent/v1/health:
+        get:
+            operationId: getAgentHealth
+            summary: Get Agent health and protocol version
+            responses:
+                "200":
+                    description: The Agent is healthy.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/HealthResponse"
+    /agent/v1/accounts:
+        post:
+            operationId: ensureAccount
+            summary: Ensure a hosting system user exists
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/EnsureAccountRequest"
+            responses:
+                "204":
+                    description: The hosting system user exists with the expected identity.
+                "400":
+                    description: The request body is malformed.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+                "422":
+                    description: The requested account identity is invalid.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+                "500":
+                    description: The account could not be reconciled.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+    /agent/v1/domains:
+        post:
+            operationId: ensureDomain
+            summary: Ensure a domain directory and web server site exist
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/EnsureDomainRequest"
+            responses:
+                "204":
+                    description: The domain filesystem and web server site are reconciled.
+                "400":
+                    description: The request body is malformed.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+                "422":
+                    description: The requested domain identity is invalid.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+                "500":
+                    description: The domain could not be reconciled.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+    /agent/v1/domains/disable:
+        post:
+            operationId: disableDomain
+            summary: Disable a domain web server site
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DisableDomainRequest"
+            responses:
+                "204":
+                    description: The domain web server site is disabled.
+                "400":
+                    description: The request body is malformed.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+                "422":
+                    description: The requested domain identity is invalid.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+                "500":
+                    description: The domain could not be disabled.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+    /agent/v1/domains/delete:
+        post:
+            operationId: deleteDomain
+            summary: Delete a domain site and quarantine its document root
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DeleteDomainRequest"
+            responses:
+                "204":
+                    description: The domain is deleted and its document root is quarantined.
+                "400":
+                    description: The request body is malformed.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+                "422":
+                    description: The requested domain identity is invalid.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+                "500":
+                    description: The domain could not be deleted.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+    /agent/v1/domains/rename:
+        post:
+            operationId: renameDomain
+            summary: Rename a domain document root and web server site
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/RenameDomainRequest"
+            responses:
+                "204":
+                    description: The domain document root and site use the new name.
+                "400":
+                    description: The request body is malformed.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+                "422":
+                    description: The requested domain identity is invalid.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+                "500":
+                    description: The domain could not be renamed.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+    /agent/v1/accounts/disable:
+        post:
+            operationId: disableAccount
+            summary: Disable a hosting system user and its home
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/AccountActionRequest"
+            responses:
+                "204": { description: The account is disabled. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The account identity is invalid. }
+                "500": { description: The account could not be disabled. }
+    /agent/v1/accounts/enable:
+        post:
+            operationId: enableAccount
+            summary: Enable a hosting system user and its home
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/AccountActionRequest"
+            responses:
+                "204": { description: The account is enabled. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The account identity is invalid. }
+                "500": { description: The account could not be enabled. }
+    /agent/v1/accounts/delete:
+        post:
+            operationId: deleteAccount
+            summary: Delete a hosting identity and quarantine its home
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/AccountActionRequest"
+            responses:
+                "204": { description: The account is deleted. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The account identity is invalid. }
+                "500": { description: The account could not be deleted. }
+    /agent/v1/certificates:
+        post:
+            operationId: issueCertificate
+            summary: Issue or renew and install an ACME certificate
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/IssueCertificateRequest"
+            responses:
+                "200":
+                    description: Certificate details.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CertificateResult"
+                "400": { description: The request body is malformed. }
+                "422": { description: The certificate request is invalid. }
+                "500": { description: The certificate could not be issued. }
+    /agent/v1/databases:
+        post:
+            operationId: ensureDatabase
+            summary: Ensure a MySQL database exists
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DatabaseRequest"
+            responses:
+                "204": { description: The database exists. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The database request is invalid. }
+                "500": { description: The database operation failed. }
+        delete:
+            operationId: deleteDatabase
+            summary: Delete a MySQL database
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DatabaseRequest"
+            responses:
+                "204": { description: The database is absent. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The database request is invalid. }
+                "500": { description: The database operation failed. }
+    /agent/v1/database-users:
+        post:
+            operationId: ensureDatabaseUser
+            summary: Ensure a local MySQL user exists
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DatabaseUserRequest"
+            responses:
+                "204": { description: The database user exists. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The database user request is invalid. }
+                "500": { description: The database user operation failed. }
+        delete:
+            operationId: deleteDatabaseUser
+            summary: Delete a local MySQL user
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DatabaseUserRequest"
+            responses:
+                "204": { description: The database user is absent. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The database user request is invalid. }
+                "500": { description: The database user operation failed. }
+    /agent/v1/database-grants:
+        post:
+            operationId: ensureDatabaseGrant
+            summary: Grant a local MySQL user access to a database
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DatabaseGrantRequest"
+            responses:
+                "204": { description: The grant exists. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The grant request is invalid. }
+                "500": { description: The grant operation failed. }
+        delete:
+            operationId: deleteDatabaseGrant
+            summary: Revoke a local MySQL user's access to a database
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DatabaseGrantRequest"
+            responses:
+                "204": { description: The grant is absent. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The grant request is invalid. }
+                "500": { description: The grant operation failed. }
+    /agent/v1/cron:
+        put:
+            operationId: syncCron
+            summary: Atomically replace an account's WEBYCP cron entries
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/SyncCronRequest"
+            responses:
+                "204": { description: The crontab is synchronized. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The cron request is invalid. }
+                "500": { description: The cron operation failed. }
+    /agent/v1/backups:
+        post:
+            operationId: createBackup
+            summary: Create and verify a local backup artifact
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CreateBackupRequest"
+            responses:
+                "200":
+                    description: Created artifact.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/BackupArtifactResult"
+                "400": { description: The request body is malformed. }
+                "422": { description: The backup request is invalid. }
+                "500": { description: The backup operation failed. }
+        delete:
+            operationId: deleteBackup
+            summary: Delete one exact local backup artifact
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/BackupArtifactRequest"
+            responses:
+                "204": { description: The artifact is absent. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The artifact request is invalid. }
+                "500": { description: The artifact operation failed. }
+    /agent/v1/backups/preview:
+        post:
+            operationId: previewBackup
+            summary: Verify an artifact and return its manifest
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/BackupArtifactRequest"
+            responses:
+                "200":
+                    description: Verified backup manifest.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/BackupManifest"
+                "400": { description: The request body is malformed. }
+                "422": { description: The artifact request is invalid. }
+                "500": { description: The artifact could not be verified. }
+    /agent/v1/backups/restore:
+        post:
+            operationId: restoreBackup
+            summary: Restore selected backup scopes
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/RestoreBackupRequest"
+            responses:
+                "200":
+                    description: Restored WEBYCP metadata.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RestoreBackupResult"
+                "400": { description: The request body is malformed. }
+                "422": { description: The restore request is invalid. }
+                "500": { description: The restore operation failed. }
+components:
+    schemas:
+        HealthResponse:
+            type: object
+            additionalProperties: false
+            required:
+                - protocolVersion
+                - service
+                - status
+                - version
+            properties:
+                protocolVersion:
+                    type: string
+                    example: v1
+                service:
+                    type: string
+                    example: webycp-agent
+                status:
+                    type: string
+                    enum:
+                        - ok
+                version:
+                    type: string
+                    example: dev
+        EnsureAccountRequest:
+            type: object
+            additionalProperties: false
+            required:
+                - accountId
+                - systemUser
+            properties:
+                accountId:
+                    type: string
+                systemUser:
+                    type: string
+        AccountActionRequest:
+            type: object
+            additionalProperties: false
+            required: [accountId, systemUser]
+            properties:
+                accountId: { type: string }
+                systemUser: { type: string }
+        EnsureDomainRequest:
+            type: object
+            additionalProperties: false
+            required:
+                - accountId
+                - systemUser
+                - domainId
+                - name
+                - phpVersion
+                - aliases
+            properties:
+                accountId:
+                    type: string
+                systemUser:
+                    type: string
+                domainId:
+                    type: string
+                name:
+                    type: string
+                phpVersion:
+                    type: string
+                    enum:
+                        - "8.3"
+                aliases:
+                    type: array
+                    maxItems: 100
+                    items:
+                        type: string
+        DisableDomainRequest:
+            type: object
+            additionalProperties: false
+            required:
+                - accountId
+                - systemUser
+                - domainId
+            properties:
+                accountId:
+                    type: string
+                systemUser:
+                    type: string
+                domainId:
+                    type: string
+        DeleteDomainRequest:
+            type: object
+            additionalProperties: false
+            required:
+                - accountId
+                - systemUser
+                - domainId
+                - name
+            properties:
+                accountId:
+                    type: string
+                systemUser:
+                    type: string
+                domainId:
+                    type: string
+                name:
+                    type: string
+        RenameDomainRequest:
+            type: object
+            additionalProperties: false
+            required:
+                - accountId
+                - systemUser
+                - domainId
+                - currentName
+                - name
+                - phpVersion
+                - aliases
+            properties:
+                accountId:
+                    type: string
+                systemUser:
+                    type: string
+                domainId:
+                    type: string
+                currentName:
+                    type: string
+                name:
+                    type: string
+                phpVersion:
+                    type: string
+                    enum:
+                        - "8.3"
+                aliases:
+                    type: array
+                    maxItems: 100
+                    items:
+                        type: string
+        IssueCertificateRequest:
+            type: object
+            additionalProperties: false
+            required: [certificateId, kind, name, names, email, redirectHttps]
+            properties:
+                certificateId: { type: string }
+                kind: { type: string, enum: [domain, panel] }
+                domainId: { type: string }
+                accountId: { type: string }
+                systemUser: { type: string }
+                name: { type: string }
+                names:
+                    type: array
+                    minItems: 1
+                    maxItems: 101
+                    items: { type: string }
+                email: { type: string, format: email }
+                phpVersion: { type: string, enum: ["8.3"] }
+                redirectHttps: { type: boolean }
+        CertificateResult:
+            type: object
+            additionalProperties: false
+            required: [names, expiresAt]
+            properties:
+                names:
+                    type: array
+                    items: { type: string }
+                expiresAt: { type: string, format: date-time }
+        DatabaseRequest:
+            type: object
+            additionalProperties: false
+            required: [name]
+            properties:
+                name: { type: string }
+        DatabaseUserRequest:
+            type: object
+            additionalProperties: false
+            required: [name]
+            properties:
+                name: { type: string }
+                password: { type: string }
+        DatabaseGrantRequest:
+            type: object
+            additionalProperties: false
+            required: [database, user]
+            properties:
+                database: { type: string }
+                user: { type: string }
+        CronEntry:
+            type: object
+            additionalProperties: false
+            required: [id, schedule, command]
+            properties:
+                id: { type: string }
+                schedule: { type: string }
+                command: { type: string }
+        SyncCronRequest:
+            type: object
+            additionalProperties: false
+            required: [accountId, systemUser, entries]
+            properties:
+                accountId: { type: string }
+                systemUser: { type: string }
+                entries:
+                    type: array
+                    maxItems: 100
+                    items:
+                        $ref: "#/components/schemas/CronEntry"
+        CreateBackupRequest:
+            type: object
+            additionalProperties: false
+            required: [runId, accountId, systemUser, includeFiles, databases, metadata]
+            properties:
+                runId: { type: string }
+                accountId: { type: string }
+                systemUser: { type: string }
+                includeFiles: { type: boolean }
+                databases:
+                    type: array
+                    maxItems: 100
+                    items: { type: string }
+                metadata: { type: string }
+        BackupArtifactRequest:
+            type: object
+            additionalProperties: false
+            required: [accountId, path, checksum]
+            properties:
+                accountId: { type: string }
+                path: { type: string }
+                checksum: { type: string }
+        RestoreBackupRequest:
+            allOf:
+                - $ref: "#/components/schemas/BackupArtifactRequest"
+                - type: object
+                  additionalProperties: false
+                  required: [systemUser, files, databases, metadata]
+                  properties:
+                      systemUser: { type: string }
+                      files: { type: boolean }
+                      databases: { type: boolean }
+                      metadata: { type: boolean }
+        BackupEntry:
+            type: object
+            additionalProperties: false
+            required: [path, size, checksum]
+            properties:
+                path: { type: string }
+                size: { type: integer, format: int64 }
+                checksum: { type: string }
+        BackupManifest:
+            type: object
+            additionalProperties: false
+            required: [version, runId, accountId, createdAt, files, databases, metadata, entries]
+            properties:
+                version: { type: integer }
+                runId: { type: string }
+                accountId: { type: string }
+                createdAt: { type: string, format: date-time }
+                files: { type: boolean }
+                databases: { type: boolean }
+                metadata: { type: boolean }
+                entries:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/BackupEntry"
+        BackupArtifactResult:
+            type: object
+            additionalProperties: false
+            required: [path, checksum, size, manifest]
+            properties:
+                path: { type: string }
+                checksum: { type: string }
+                size: { type: integer, format: int64 }
+                manifest:
+                    $ref: "#/components/schemas/BackupManifest"
+        RestoreBackupResult:
+            type: object
+            additionalProperties: false
+            required: [metadata]
+            properties:
+                metadata: { type: string }
+        ErrorResponse:
+            type: object
+            additionalProperties: false
+            required:
+                - code
+                - message
+            properties:
+                code:
+                    type: string
+                message:
+                    type: string

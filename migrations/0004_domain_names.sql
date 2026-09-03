@@ -1,0 +1,5 @@
+ALTER TABLE domains
+ADD COLUMN previous_name TEXT COLLATE NOCASE;
+
+ALTER TABLE domain_aliases
+ADD COLUMN previous_name TEXT COLLATE NOCASE;

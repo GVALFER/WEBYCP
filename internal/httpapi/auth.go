@@ -1,0 +1,171 @@
+package httpapi
+
+import (
+	"errors"
+	"net/http"
+	"time"
+
+	"github.com/GVALFER/WEBYCP/internal/audit"
+	"github.com/GVALFER/WEBYCP/internal/auth"
+	"github.com/GVALFER/WEBYCP/internal/httpapi/spec"
+	"github.com/GVALFER/WEBYCP/internal/httpx"
+	"github.com/GVALFER/WEBYCP/internal/idgen"
+	"github.com/GVALFER/WEBYCP/internal/validate"
+	openapi_types "github.com/oapi-codegen/runtime/types"
+)
+
+func (h *handler) bootstrapState(w http.ResponseWriter, r *http.Request) {
+	required, err := h.options.Auth.BootstrapRequired(r.Context())
+	if err != nil {
+		h.internalError(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, publicapi.BootstrapResponse{Required: required})
+}
+
+func (h *handler) bootstrap(w http.ResponseWriter, r *http.Request) {
+	var request publicapi.BootstrapRequest
+	if err := httpx.DecodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
+		return
+	}
+
+	session, err := h.options.Auth.Bootstrap(
+		r.Context(), request.Name, string(request.Email), request.Password,
+	)
+	if err != nil {
+		h.record(r, audit.Event{Action: "auth.bootstrap", ResourceType: "user", Result: "failure"})
+		if errors.Is(err, auth.ErrBootstrapComplete) {
+			writeError(w, http.StatusConflict, "bootstrap_complete", "Bootstrap is already complete")
+			return
+		}
+		if writeValidationError(w, err) {
+			return
+		}
+		h.internalError(w, r, err)
+		return
+	}
+
+	h.setSessionCookie(w, session)
+	h.record(r, audit.Event{
+		UserID: session.User.ID, Action: "auth.bootstrap", ResourceType: "user",
+		ResourceID: session.User.ID, Result: "success",
+	})
+	w.Header().Set("Cache-Control", "no-store")
+	httpx.WriteJSON(w, http.StatusCreated, authResponse(session))
+}
+
+func (h *handler) login(w http.ResponseWriter, r *http.Request) {
+	var request publicapi.LoginRequest
+	if err := httpx.DecodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
+		return
+	}
+
+	session, err := h.options.Auth.Login(r.Context(), string(request.Email), request.Password)
+	if err != nil {
+		h.record(r, audit.Event{Action: "auth.login", ResourceType: "session", Result: "failure"})
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			writeError(w, http.StatusUnauthorized, "invalid_credentials", "Email or password is incorrect")
+			return
+		}
+		h.internalError(w, r, err)
+		return
+	}
+
+	h.setSessionCookie(w, session)
+	h.record(r, audit.Event{
+		UserID: session.User.ID, Action: "auth.login", ResourceType: "session",
+		ResourceID: session.ID, Result: "success",
+	})
+	w.Header().Set("Cache-Control", "no-store")
+	httpx.WriteJSON(w, http.StatusOK, authResponse(session))
+}
+
+func (h *handler) logout(w http.ResponseWriter, r *http.Request, session auth.Session) {
+	cookie, _ := r.Cookie(sessionCookie)
+	if err := h.options.Auth.Logout(r.Context(), cookie.Value); err != nil {
+		h.internalError(w, r, err)
+		return
+	}
+	h.record(r, audit.Event{
+		UserID: session.User.ID, Action: "auth.logout", ResourceType: "session",
+		ResourceID: session.ID, Result: "success",
+	})
+	h.clearSessionCookie(w)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *handler) me(w http.ResponseWriter, _ *http.Request, session auth.Session) {
+	w.Header().Set("Cache-Control", "no-store")
+	httpx.WriteJSON(w, http.StatusOK, authResponse(session))
+}
+
+func (h *handler) setSessionCookie(w http.ResponseWriter, session auth.Session) {
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookie, Value: session.Token, Path: "/", Expires: session.ExpiresAt,
+		MaxAge: int(time.Until(session.ExpiresAt).Seconds()), HttpOnly: true,
+		Secure: h.options.SecureCookie, SameSite: http.SameSiteStrictMode,
+	})
+}
+
+func (h *handler) clearSessionCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookie, Path: "/", MaxAge: -1, HttpOnly: true,
+		Secure: h.options.SecureCookie, SameSite: http.SameSiteStrictMode,
+	})
+}
+
+func (h *handler) record(r *http.Request, event audit.Event) {
+	if h.options.Audit == nil {
+		return
+	}
+	id, err := idgen.ID()
+	if err != nil {
+		h.logger.Error("failed to generate audit id", "error", err)
+		return
+	}
+	event.ID = id
+	event.Metadata = "{}"
+	event.CreatedAt = time.Now().UTC()
+	if err := h.options.Audit.Record(r.Context(), event); err != nil {
+		h.logger.Error("failed to record audit event", "error", err, "action", event.Action)
+	}
+}
+
+func (h *handler) recordMutation(
+	r *http.Request, userID, action, resourceType, resourceID string, err error,
+) {
+	result := "success"
+	if err != nil {
+		result = "failure"
+	}
+	h.record(r, audit.Event{
+		UserID: userID, Action: action, ResourceType: resourceType,
+		ResourceID: resourceID, Result: result,
+	})
+}
+
+func writeValidationError(w http.ResponseWriter, err error) bool {
+	var validationError *validate.Error
+	if !errors.As(err, &validationError) {
+		return false
+	}
+	fields := map[string]string{validationError.Field: validationError.Message}
+	httpx.WriteJSON(w, http.StatusUnprocessableEntity, publicapi.ErrorResponse{
+		Code: "validation_error", Message: "Check the highlighted fields", Fields: &fields,
+	})
+	return true
+}
+
+func authResponse(session auth.Session) publicapi.AuthResponse {
+	return publicapi.AuthResponse{
+		CsrfToken: session.CSRFToken,
+		ExpiresAt: session.ExpiresAt,
+		User: publicapi.User{
+			Id: session.User.ID, Email: openapi_types.Email(session.User.Email),
+			Name: session.User.Name, Role: publicapi.UserRole(session.User.Role),
+			CreatedAt: session.User.CreatedAt,
+		},
+	}
+}
