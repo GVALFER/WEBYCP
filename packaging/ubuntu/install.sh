@@ -139,7 +139,7 @@ prepare_directories() {
     install -d -o root -g root -m 0700 /etc/webycp/bootstrap
     install -d -o root -g root -m 0755 /var/lib/webycp
     install -d -o webycp -g webycp -m 0700 /var/lib/webycp/server
-    install -d -o root -g webycp -m 0700 /var/lib/webycp/account-trash
+    install -d -o root -g root -m 0700 /home/.webycp-trash
     install -d -o root -g webycp -m 0755 /var/lib/webycp/acme
     install -d -o root -g root -m 0700 /var/backups/webycp
     install -d -o root -g root -m 0755 /etc/nginx/webycp/sites-available

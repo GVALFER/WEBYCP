@@ -26,7 +26,7 @@
 8. **[2026-09-03] Preserve live panel TLS while renewing certificates**
    Do instead: keep the last valid panel listener active while preparing HTTP-01, and replace its Nginx configuration only after Certbot has produced a valid certificate.
 9. **[2026-09-03] Separate durable state by privilege boundary**
-   Do instead: keep Server-owned SQLite files under `/var/lib/webycp/server` and Agent-owned recovery, ACME, certificate, and backup data outside directories writable by the unprivileged Server.
+   Do instead: keep Server-owned SQLite files under `/var/lib/webycp/server`; keep account quarantine on the `/home` filesystem and other Agent-owned recovery, ACME, certificate, and backup data outside directories writable by the unprivileged Server.
 10. **[2026-09-03] Build releases from an explicit allowlist with normalized metadata**
    Do instead: require a clean worktree, locked frontend dependencies, static trimmed Go binaries, a fixed archive timestamp and ownership, and an adjacent SHA-256 checksum.
 

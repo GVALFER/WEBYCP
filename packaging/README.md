@@ -57,7 +57,7 @@ symlinks, or configuration owned by another application.
 | `/etc/webycp` | `root:webycp` | `0750` | Service environment files |
 | `/etc/webycp/bootstrap` | `root:root` | `0700` | Temporary bootstrap TLS material |
 | `/var/lib/webycp/server` | `webycp:webycp` | `0700` | SQLite database and WAL files |
-| `/var/lib/webycp/account-trash` | `root:webycp` | `0700` | Recoverable deleted accounts |
+| `/home/.webycp-trash` | `root:root` | `0700` | Recoverable deleted accounts on the hosting filesystem |
 | `/var/lib/webycp/acme` | `root:webycp` | `0755` | HTTP-01 challenge webroot |
 | `/var/backups/webycp` | `root:root` | `0700` | Local backup artifacts |
 | `/run/webycp` | `root:webycp` | `0750` | Agent socket directory |

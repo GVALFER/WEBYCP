@@ -32,7 +32,7 @@ func NewLinux() *Linux {
 	return &Linux{
 		lookup: user.Lookup, lookupGroup: user.LookupGroup,
 		run: execx.Run, home: "/home",
-		trash: "/var/lib/webycp/account-trash",
+		trash: "/home/.webycp-trash",
 	}
 }
 

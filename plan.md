@@ -467,7 +467,7 @@ Initial target paths:
 ```text
 /etc/webycp/                         application configuration
 /var/lib/webycp/server/              SQLite and unprivileged durable state
-/var/lib/webycp/account-trash/       root-controlled deleted account data
+/home/.webycp-trash/                 root-controlled deleted account data
 /var/lib/webycp/acme/                root-controlled HTTP-01 challenge data
 /etc/letsencrypt/live/webycp-*/      root-controlled certificate material
 /var/backups/webycp/                 local backup artifacts
