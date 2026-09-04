@@ -5,7 +5,7 @@ import type {
     BackupRunListResponse,
 } from "@/contracts/types";
 import { api } from "@/lib/api";
-import { getPageQuery, syncPages, type PageProps } from "@/utils/paginationServer";
+import { getPageQuery, syncPages, type PageProps } from "@/components/table/paginationServer";
 import Backups from "./backups";
 
 const BackupsPage = async ({ searchParams }: PageProps) => {

@@ -5,7 +5,7 @@ import type {
     DatabaseUserListResponse,
 } from "@/contracts/types";
 import { api } from "@/lib/api";
-import { getPageQuery, syncPages, type PageProps } from "@/utils/paginationServer";
+import { getPageQuery, syncPages, type PageProps } from "@/components/table/paginationServer";
 import Databases from "./databases";
 
 const DatabasesPage = async ({ searchParams }: PageProps) => {
@@ -20,9 +20,7 @@ const DatabasesPage = async ({ searchParams }: PageProps) => {
         api.get("databases", { searchParams: databasesQuery }).json<DatabaseListResponse>(),
         api.get("database-users", { searchParams: usersQuery }).json<DatabaseUserListResponse>(),
         api.get("database-grants", { searchParams: grantsQuery }).json<DatabaseGrantListResponse>(),
-        api
-            .get("databases", { searchParams: { page: 1, size: 100 } })
-            .json<DatabaseListResponse>(),
+        api.get("databases", { searchParams: { page: 1, size: 100 } }).json<DatabaseListResponse>(),
         api
             .get("database-users", { searchParams: { page: 1, size: 100 } })
             .json<DatabaseUserListResponse>(),

@@ -4,7 +4,7 @@ import type {
     DomainListResponse,
 } from "@/contracts/types";
 import { api } from "@/lib/api";
-import { getPageQuery, syncPages, type PageProps } from "@/utils/paginationServer";
+import { getPageQuery, syncPages, type PageProps } from "@/components/table/paginationServer";
 import Domains from "./domains";
 
 const DomainsPage = async ({ searchParams }: PageProps) => {
@@ -16,12 +16,11 @@ const DomainsPage = async ({ searchParams }: PageProps) => {
     const [accounts, domains, domainOptions] = await Promise.all([
         api.get("accounts", { searchParams: { page: 1, size: 100 } }).json<AccountListResponse>(),
         api.get("domains", { searchParams: domainsQuery }).json<DomainListResponse>(),
-        api
-            .get("domains", { searchParams: { page: 1, size: 100 } })
-            .json<DomainListResponse>(),
+        api.get("domains", { searchParams: { page: 1, size: 100 } }).json<DomainListResponse>(),
     ]);
 
-    const aliasDomainId = domainOptions.items.find((domain) => domain.status === "active")?.id ?? "";
+    const aliasDomainId =
+        domainOptions.items.find((domain) => domain.status === "active")?.id ?? "";
 
     const aliases = aliasDomainId
         ? await api

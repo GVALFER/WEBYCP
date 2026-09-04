@@ -1,6 +1,6 @@
 import type { AccountListResponse, CronJobListResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
-import { getPageQuery, syncPage, type PageProps } from "@/utils/paginationServer";
+import { getPageQuery, syncPage, type PageProps } from "@/components/table/paginationServer";
 import Cron from "./cron";
 
 const CronPage = async ({ searchParams }: PageProps) => {

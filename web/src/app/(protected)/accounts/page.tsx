@@ -1,6 +1,6 @@
 import type { AccountListResponse, NodeListResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
-import { getPageQuery, syncPage, type PageProps } from "@/utils/paginationServer";
+import { getPageQuery, syncPage, type PageProps } from "@/components/table/paginationServer";
 import Accounts from "./accounts";
 
 const AccountsPage = async ({ searchParams }: PageProps) => {

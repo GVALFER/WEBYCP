@@ -1,6 +1,6 @@
 import type { JobListResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
-import { getPageQuery, syncPage, type PageProps } from "@/utils/paginationServer";
+import { getPageQuery, syncPage, type PageProps } from "@/components/table/paginationServer";
 import Jobs from "./jobs";
 
 const JobsPage = async ({ searchParams }: PageProps) => {
