@@ -172,7 +172,7 @@ const Backups = ({ accounts, plans, runs, artifacts }: BackupsProps) => {
     return (
         <div className="space-y-6">
             <section className="panel-card overflow-hidden">
-                <div className="flex items-start justify-between gap-4 border-b border-divider px-6 py-5">
+                <div className="flex items-start justify-between gap-4 px-6 py-5">
                     <div>
                         <h2 className="text-base font-semibold">Backup plans</h2>
                         <div className="mt-1 text-sm text-foreground-500">
@@ -185,14 +185,14 @@ const Backups = ({ accounts, plans, runs, artifacts }: BackupsProps) => {
             </section>
 
             <section className="panel-card overflow-hidden">
-                <div className="border-b border-divider px-6 py-5">
+                <div className="px-6 py-5">
                     <h2 className="text-base font-semibold">Verified artifacts</h2>
                 </div>
                 <Table table={artifactsTable} columns={artifactColumns} data={artifactData} />
             </section>
 
             <section className="panel-card overflow-hidden">
-                <div className="border-b border-divider px-6 py-5">
+                <div className="px-6 py-5">
                     <h2 className="text-base font-semibold">Recent runs</h2>
                 </div>
                 <Table table={runsTable} columns={runColumns} data={runData} />

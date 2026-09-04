@@ -174,7 +174,7 @@ const Domains = ({
     return (
         <div className="space-y-6">
             <section className="panel-card overflow-hidden">
-                <div className="flex items-start justify-between gap-4 border-b border-divider px-6 py-5">
+                <div className="flex items-start justify-between gap-4 px-6 py-5">
                     <div>
                         <h2 className="text-base font-semibold">Domains</h2>
                         <div className="mt-1 text-sm text-foreground-500">
@@ -187,7 +187,7 @@ const Domains = ({
             </section>
 
             <section className="panel-card overflow-hidden">
-                <div className="flex items-start justify-between gap-4 border-b border-divider px-6 py-5">
+                <div className="flex items-start justify-between gap-4 px-6 py-5">
                     <div>
                         <h2 className="text-base font-semibold">Aliases</h2>
                         <div className="mt-1 text-sm text-foreground-500">

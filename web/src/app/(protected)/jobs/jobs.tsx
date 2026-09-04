@@ -66,7 +66,7 @@ const Jobs = ({ jobs }: JobsProps) => {
 
     return (
         <section className="panel-card overflow-hidden">
-            <div className="border-b border-divider px-6 py-5">
+            <div className="px-6 py-5">
                 <h2 className="text-base font-semibold">Recent jobs</h2>
                 <div className="mt-1 text-sm text-foreground-500">
                     Durable operations executed by the local agent.

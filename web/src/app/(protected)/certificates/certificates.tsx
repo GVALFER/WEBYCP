@@ -90,7 +90,7 @@ const Certificates = ({ certificates, domains }: CertificatesProps) => {
 
     return (
         <section className="panel-card overflow-hidden">
-            <div className="flex items-start justify-between gap-4 border-b border-divider px-6 py-5">
+            <div className="flex items-start justify-between gap-4 px-6 py-5">
                 <div>
                     <h2 className="text-base font-semibold">TLS certificates</h2>
                     <div className="mt-1 text-sm text-foreground-500">

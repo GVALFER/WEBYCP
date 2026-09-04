@@ -3,6 +3,7 @@
 import { Spinner, Table as HeroTable } from "@heroui/react";
 import type { ReactNode } from "react";
 import type { Pagination } from "@/contracts/types";
+import { cn } from "@/utils/classnames";
 import { Paginate } from "./paginate";
 import type { TableState } from "./useTable";
 
@@ -42,7 +43,7 @@ export const Table = <T extends object,>({ columns, data, getKey, table }: Props
         } satisfies TableData<T>);
 
     return (
-        <HeroTable variant="secondary">
+        <HeroTable className="px-5" variant="secondary">
             <HeroTable.ScrollContainer>
                 <HeroTable.Content aria-label="Data table">
                     <HeroTable.Header>
@@ -64,14 +65,15 @@ export const Table = <T extends object,>({ columns, data, getKey, table }: Props
                             </div>
                         )}
                     >
-                        {tableData.items.map((item) => {
+                        {tableData.items.map((item, index) => {
                             const key = itemKey(item);
+                            const last = index === tableData.items.length - 1;
                             return (
                                 <HeroTable.Row key={key} id={key}>
                                     {columns.map((column) => (
                                         <HeroTable.Cell
                                             key={column.id}
-                                            className={column.cellClassName}
+                                            className={cn(column.cellClassName, last && "border-b-0")}
                                         >
                                             {column.render(item)}
                                         </HeroTable.Cell>
@@ -82,7 +84,7 @@ export const Table = <T extends object,>({ columns, data, getKey, table }: Props
                     </HeroTable.Body>
                 </HeroTable.Content>
             </HeroTable.ScrollContainer>
-            <HeroTable.Footer>
+            <HeroTable.Footer className="px-0 py-4">
                 <Paginate
                     pagination={tableData.pagination}
                     page={table.page.page}

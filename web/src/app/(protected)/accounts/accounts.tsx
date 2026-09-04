@@ -83,7 +83,7 @@ const Accounts = ({ accounts, nodes }: AccountsProps) => {
 
     return (
         <section className="panel-card overflow-hidden">
-            <div className="flex items-start justify-between gap-4 border-b border-divider px-6 py-5">
+            <div className="flex items-start justify-between gap-4 px-6 py-5">
                 <div>
                     <h2 className="text-base font-semibold">Hosting accounts</h2>
                     <div className="mt-1 text-sm text-foreground-500">

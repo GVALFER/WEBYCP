@@ -22,7 +22,7 @@ export const Paginate = ({ pagination, page, onPageChange, onSizeChange }: Props
     }, [currentPage, onPageChange, page]);
 
     return (
-        <HeroPagination className="border-t border-divider px-5 py-4" size="sm">
+        <HeroPagination size="sm">
             <HeroPagination.Summary className="flex-wrap">
                 <span>
                     Showing {first}–{last} of {totalItems}
