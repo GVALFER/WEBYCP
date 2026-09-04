@@ -86,6 +86,8 @@
    Do instead: remove and validate/reload the account PHP-FPM pool with rollback first; only then delete the managed user so future PHP-FPM reloads cannot fail on an orphaned pool.
 9. **[2026-09-04] Initialize panel credentials under the Server identity**
    Do instead: generate one-time admin credentials in the Go command, write only their hash as `webycp`, force profile completion, and invalidate sessions after root-assisted resets.
+10. **[2026-09-04] Separate observed capabilities from configured resource drivers**
+    Do instead: let the Agent report honest per-service health, snapshot it on the Server, use global defaults only to preselect create forms, and persist the selected driver on every resource.
 
 ## User Directives
 

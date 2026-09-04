@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
     title: WEBYCP Public API
-    version: 0.7.0
+    version: 0.8.0
     description: Public REST API used by the WEBYCP web application.
 paths:
     /api/v1/health:
@@ -1160,6 +1160,41 @@ paths:
                     $ref: "#/components/responses/UnauthorizedError"
                 "500":
                     $ref: "#/components/responses/InternalError"
+    /api/v1/service-settings:
+        get:
+            operationId: getServiceSettings
+            summary: Get panel service defaults
+            security: [{ cookieAuth: [] }]
+            responses:
+                "200":
+                    description: Current service defaults.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/ServiceSettings" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        put:
+            operationId: updateServiceSettings
+            summary: Update panel service defaults
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/ServiceDefaults" }
+            responses:
+                "200":
+                    description: Updated service defaults.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/ServiceSettings" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
     /api/v1/nodes/{nodeId}/probe:
         post:
             operationId: probeNode
@@ -1453,7 +1488,8 @@ components:
         Node:
             type: object
             additionalProperties: false
-            required: [id, name, kind, endpoint, status, createdAt, updatedAt]
+            required:
+                [id, name, kind, endpoint, status, capabilities, capabilitiesAt, createdAt, updatedAt]
             properties:
                 id:
                     type: string
@@ -1471,12 +1507,67 @@ components:
                     type: string
                     format: date-time
                     nullable: true
+                capabilities:
+                    nullable: true
+                    allOf:
+                        - $ref: "#/components/schemas/ServiceCapabilities"
+                capabilitiesAt:
+                    type: string
+                    format: date-time
+                    nullable: true
                 createdAt:
                     type: string
                     format: date-time
                 updatedAt:
                     type: string
                     format: date-time
+        ServiceCapability:
+            type: object
+            additionalProperties: false
+            required: [driver, version, status]
+            properties:
+                driver: { type: string }
+                version: { type: string }
+                status: { type: string, enum: [healthy, unavailable] }
+        ServiceCapabilities:
+            type: object
+            additionalProperties: false
+            required: [webservers, runtimes, databases, schedulers, backups]
+            properties:
+                webservers:
+                    type: array
+                    items: { $ref: "#/components/schemas/ServiceCapability" }
+                runtimes:
+                    type: array
+                    items: { $ref: "#/components/schemas/ServiceCapability" }
+                databases:
+                    type: array
+                    items: { $ref: "#/components/schemas/ServiceCapability" }
+                schedulers:
+                    type: array
+                    items: { $ref: "#/components/schemas/ServiceCapability" }
+                backups:
+                    type: array
+                    items: { $ref: "#/components/schemas/ServiceCapability" }
+        ServiceDefaults:
+            type: object
+            additionalProperties: false
+            required:
+                [webDriver, runtimeDriver, runtimeVersion, databaseDriver, schedulerDriver, backupDriver]
+            properties:
+                webDriver: { type: string, enum: [nginx] }
+                runtimeDriver: { type: string, enum: [phpfpm] }
+                runtimeVersion: { type: string, enum: ["8.3"] }
+                databaseDriver: { type: string, enum: [mysql] }
+                schedulerDriver: { type: string, enum: [crontab] }
+                backupDriver: { type: string, enum: [local] }
+        ServiceSettings:
+            type: object
+            additionalProperties: false
+            required: [defaults, updatedAt]
+            properties:
+                defaults: { $ref: "#/components/schemas/ServiceDefaults" }
+                updatedAt: { type: string, format: date-time }
         Account:
             type: object
             additionalProperties: false
@@ -1944,26 +2035,28 @@ components:
         Database:
             type: object
             additionalProperties: false
-            required: [id, accountId, nodeId, name, systemName, status, createdAt, updatedAt]
+            required: [id, accountId, nodeId, name, systemName, driver, status, createdAt, updatedAt]
             properties:
                 id: { type: string }
                 accountId: { type: string }
                 nodeId: { type: string }
                 name: { type: string }
                 systemName: { type: string }
+                driver: { type: string, enum: [mysql] }
                 status: { type: string, enum: [pending, active, error] }
                 createdAt: { type: string, format: date-time }
                 updatedAt: { type: string, format: date-time }
         DatabaseUser:
             type: object
             additionalProperties: false
-            required: [id, accountId, nodeId, name, systemName, status, createdAt, updatedAt]
+            required: [id, accountId, nodeId, name, systemName, driver, status, createdAt, updatedAt]
             properties:
                 id: { type: string }
                 accountId: { type: string }
                 nodeId: { type: string }
                 name: { type: string }
                 systemName: { type: string }
+                driver: { type: string, enum: [mysql] }
                 status: { type: string, enum: [pending, active, error] }
                 createdAt: { type: string, format: date-time }
                 updatedAt: { type: string, format: date-time }
@@ -1980,17 +2073,19 @@ components:
         CreateDatabaseRequest:
             type: object
             additionalProperties: false
-            required: [accountId, name]
+            required: [accountId, name, driver]
             properties:
                 accountId: { type: string }
                 name: { type: string, minLength: 1, maxLength: 32 }
+                driver: { type: string, enum: [mysql] }
         CreateDatabaseUserRequest:
             type: object
             additionalProperties: false
-            required: [accountId, name]
+            required: [accountId, name, driver]
             properties:
                 accountId: { type: string }
                 name: { type: string, minLength: 1, maxLength: 32 }
+                driver: { type: string, enum: [mysql] }
         DatabaseListResponse:
             type: object
             additionalProperties: false
@@ -2050,6 +2145,7 @@ components:
                     name,
                     schedule,
                     command,
+                    schedulerDriver,
                     enabled,
                     status,
                     createdAt,
@@ -2062,6 +2158,7 @@ components:
                 name: { type: string }
                 schedule: { type: string }
                 command: { type: string }
+                schedulerDriver: { type: string, enum: [crontab] }
                 enabled: { type: boolean }
                 status: { type: string, enum: [pending, active, disabled, error] }
                 createdAt: { type: string, format: date-time }
@@ -2069,12 +2166,13 @@ components:
         WriteCronJobRequest:
             type: object
             additionalProperties: false
-            required: [accountId, name, schedule, command, enabled]
+            required: [accountId, name, schedule, command, schedulerDriver, enabled]
             properties:
                 accountId: { type: string }
                 name: { type: string, minLength: 1, maxLength: 80 }
                 schedule: { type: string, maxLength: 100 }
                 command: { type: string, minLength: 1, maxLength: 1000 }
+                schedulerDriver: { type: string, enum: [crontab] }
                 enabled: { type: boolean }
         CronJobListResponse:
             type: object
@@ -2102,6 +2200,7 @@ components:
                     name,
                     schedule,
                     retentionCount,
+                    storageDriver,
                     includeFiles,
                     includeDatabases,
                     enabled,
@@ -2115,6 +2214,7 @@ components:
                 name: { type: string }
                 schedule: { type: string }
                 retentionCount: { type: integer }
+                storageDriver: { type: string, enum: [local] }
                 includeFiles: { type: boolean }
                 includeDatabases: { type: boolean }
                 enabled: { type: boolean }
@@ -2126,24 +2226,26 @@ components:
             type: object
             additionalProperties: false
             required:
-                [accountId, name, schedule, retentionCount, includeFiles, includeDatabases, enabled]
+                [accountId, name, schedule, retentionCount, storageDriver, includeFiles, includeDatabases, enabled]
             properties:
                 accountId: { type: string }
                 name: { type: string, minLength: 1, maxLength: 80 }
                 schedule: { type: string, maxLength: 100 }
                 retentionCount: { type: integer, minimum: 1, maximum: 100 }
+                storageDriver: { type: string, enum: [local] }
                 includeFiles: { type: boolean }
                 includeDatabases: { type: boolean }
                 enabled: { type: boolean }
         BackupRun:
             type: object
             additionalProperties: false
-            required: [id, planId, accountId, nodeId, status, error, createdAt]
+            required: [id, planId, accountId, nodeId, storageDriver, status, error, createdAt]
             properties:
                 id: { type: string }
                 planId: { type: string }
                 accountId: { type: string }
                 nodeId: { type: string }
+                storageDriver: { type: string, enum: [local] }
                 status: { type: string, enum: [queued, running, succeeded, failed] }
                 error: { type: string }
                 createdAt: { type: string, format: date-time }
@@ -2173,12 +2275,14 @@ components:
         BackupArtifact:
             type: object
             additionalProperties: false
-            required: [id, runId, accountId, nodeId, checksum, size, manifest, createdAt]
+            required:
+                [id, runId, accountId, nodeId, storageDriver, checksum, size, manifest, createdAt]
             properties:
                 id: { type: string }
                 runId: { type: string }
                 accountId: { type: string }
                 nodeId: { type: string }
+                storageDriver: { type: string, enum: [local] }
                 checksum: { type: string }
                 size: { type: integer, format: int64 }
                 manifest: { $ref: "#/components/schemas/BackupManifest" }

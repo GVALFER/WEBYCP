@@ -8,6 +8,7 @@ import (
 
 	agentaccount "github.com/GVALFER/WEBYCP/internal/agent/account"
 	backuplocal "github.com/GVALFER/WEBYCP/internal/agent/backup/local"
+	"github.com/GVALFER/WEBYCP/internal/agent/capability"
 	"github.com/GVALFER/WEBYCP/internal/agent/certificate/certbot"
 	"github.com/GVALFER/WEBYCP/internal/agent/database/mysql"
 	"github.com/GVALFER/WEBYCP/internal/agent/runtime/phpfpm"
@@ -44,7 +45,8 @@ func main() {
 	accountManager := agentaccount.New(agentaccount.NewLinux(), runtimeDriver)
 	server := &http.Server{
 		Handler: agentserver.New(agentserver.Options{
-			Version: buildinfo.Version, Accounts: accountManager, AccountActions: accountManager,
+			Version: buildinfo.Version, Capabilities: capability.New(),
+			Accounts: accountManager, AccountActions: accountManager,
 			Websites: websiteManager, Databases: mysql.New(), Cron: crontab.New(),
 			Certificates: certbot.New(nginxDriver), Logger: logger,
 			Backups: backuplocal.New(),

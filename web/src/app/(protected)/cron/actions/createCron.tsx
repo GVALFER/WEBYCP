@@ -10,10 +10,15 @@ import { Form } from "@/components/form/form";
 import { FormInput } from "@/components/form/formInput";
 import { FormModal } from "@/components/form/formModal";
 import { FormSelect } from "@/components/form/formSelect";
-import type { AccountListResponse, CronJobResponse } from "@/contracts/types";
+import type {
+    AccountListResponse,
+    CronJobResponse,
+    ServiceDefaults,
+} from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
 import { isPageKey, pageKey } from "@/utils/pagination";
+import { SERVICE_OPTIONS } from "@/utils/services";
 import { commandField, nameField, scheduleField } from "@/utils/validation";
 
 const formSchema = v.object({
@@ -21,15 +26,17 @@ const formSchema = v.object({
     name: nameField,
     schedule: v.pipe(scheduleField, v.nonEmpty("Enter a schedule.")),
     command: commandField,
+    schedulerDriver: v.literal("crontab"),
 });
 
 type FormValues = v.InferOutput<typeof formSchema>;
 
 type CreateCronProps = {
     accounts: AccountListResponse;
+    driver: ServiceDefaults["schedulerDriver"];
 };
 
-const CreateCron = ({ accounts }: CreateCronProps) => {
+const CreateCron = ({ accounts, driver }: CreateCronProps) => {
     const [open, setOpen] = useState(false);
     const [pending, startTransition] = useTransition();
     const { mutate } = useSWRConfig();
@@ -48,6 +55,7 @@ const CreateCron = ({ accounts }: CreateCronProps) => {
             name: "",
             schedule: "0 * * * *",
             command: "",
+            schedulerDriver: driver,
         },
     });
 
@@ -65,6 +73,7 @@ const CreateCron = ({ accounts }: CreateCronProps) => {
                         name: "",
                         schedule: values.schedule,
                         command: "",
+                        schedulerDriver: values.schedulerDriver,
                     });
                     await mutate((key) => isPageKey(key, "cron-jobs", "accounts", "jobs"));
                     setOpen(false);
@@ -105,6 +114,12 @@ const CreateCron = ({ accounts }: CreateCronProps) => {
                     name="schedule"
                     label="Schedule"
                     maxLength={100}
+                    required
+                />
+                <FormSelect
+                    name="schedulerDriver"
+                    label="Scheduler"
+                    options={SERVICE_OPTIONS.schedulerDriver}
                     required
                 />
                 <FormInput

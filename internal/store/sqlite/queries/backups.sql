@@ -24,14 +24,14 @@ SELECT * FROM backup_plans WHERE id = ? LIMIT 1;
 -- name: CreateBackupPlan :one
 INSERT INTO backup_plans (
     id, account_id, node_id, name, schedule, retention_count,
-    include_files, include_databases, enabled, next_run_at, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    storage_driver, include_files, include_databases, enabled, next_run_at, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: UpdateBackupPlan :one
 UPDATE backup_plans SET
     name = ?, schedule = ?, retention_count = ?, include_files = ?,
-    include_databases = ?, enabled = ?, next_run_at = ?, updated_at = ?
+    include_databases = ?, storage_driver = ?, enabled = ?, next_run_at = ?, updated_at = ?
 WHERE id = ?
 RETURNING *;
 
@@ -51,8 +51,8 @@ UPDATE backup_plans SET last_run_at = ?, next_run_at = ?, updated_at = ? WHERE i
 
 -- name: CreateBackupRun :one
 INSERT INTO backup_runs (
-    id, plan_id, account_id, node_id, status, created_at
-) VALUES (?, ?, ?, ?, 'queued', ?)
+    id, plan_id, account_id, node_id, storage_driver, status, created_at
+) VALUES (?, ?, ?, ?, ?, 'queued', ?)
 RETURNING *;
 
 -- name: UpdateBackupRun :exec
@@ -85,8 +85,8 @@ LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
 
 -- name: CreateBackupArtifact :one
 INSERT INTO backup_artifacts (
-    id, run_id, account_id, node_id, path, checksum, size_bytes, manifest, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    id, run_id, account_id, node_id, storage_driver, path, checksum, size_bytes, manifest, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetBackupArtifact :one
@@ -142,15 +142,15 @@ ON CONFLICT(id) DO UPDATE SET hostname = excluded.hostname, kind = excluded.kind
     status = excluded.status, enabled = excluded.enabled, updated_at = excluded.updated_at;
 
 -- name: UpsertRestoredDatabase :exec
-INSERT INTO databases (id, account_id, node_id, name, system_name, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, 'active', ?, ?)
+INSERT INTO databases (id, account_id, node_id, name, system_name, driver, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, system_name = excluded.system_name,
-    status = 'active', updated_at = excluded.updated_at;
+    driver = excluded.driver, status = 'active', updated_at = excluded.updated_at;
 
 -- name: UpsertRestoredCronJob :exec
-INSERT INTO cron_jobs (id, account_id, node_id, name, schedule, command, enabled, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?)
+INSERT INTO cron_jobs (id, account_id, node_id, name, schedule, command, scheduler_driver, enabled, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?)
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, schedule = excluded.schedule,
-    command = excluded.command, enabled = excluded.enabled,
+    command = excluded.command, scheduler_driver = excluded.scheduler_driver, enabled = excluded.enabled,
     status = CASE WHEN excluded.enabled = 1 THEN 'active' ELSE 'disabled' END,
     updated_at = excluded.updated_at;

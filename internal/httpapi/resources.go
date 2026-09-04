@@ -13,6 +13,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/httpx"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
+	"github.com/GVALFER/WEBYCP/internal/services"
 )
 
 func (h *handler) listAccounts(w http.ResponseWriter, r *http.Request, session auth.Session) {
@@ -210,11 +211,38 @@ func (h *handler) getJob(w http.ResponseWriter, r *http.Request, _ auth.Session)
 }
 
 func nodeResponse(node nodes.Node) publicapi.Node {
-	return publicapi.Node{
+	response := publicapi.Node{
 		Id: node.ID, Name: node.Name, Kind: publicapi.NodeKind(node.Kind),
 		Endpoint: node.Endpoint, Status: publicapi.NodeStatus(node.Status),
-		LastSeenAt: node.LastSeenAt, CreatedAt: node.CreatedAt, UpdatedAt: node.UpdatedAt,
+		LastSeenAt: node.LastSeenAt, CapabilitiesAt: node.CapabilitiesAt,
+		CreatedAt: node.CreatedAt, UpdatedAt: node.UpdatedAt,
 	}
+	if node.Capabilities != nil {
+		value := serviceCapabilitiesResponse(*node.Capabilities)
+		response.Capabilities = &value
+	}
+	return response
+}
+
+func serviceCapabilitiesResponse(value services.Capabilities) publicapi.ServiceCapabilities {
+	return publicapi.ServiceCapabilities{
+		Webservers: publicCapabilityValues(value.Webservers),
+		Runtimes:   publicCapabilityValues(value.Runtimes),
+		Databases:  publicCapabilityValues(value.Databases),
+		Schedulers: publicCapabilityValues(value.Schedulers),
+		Backups:    publicCapabilityValues(value.Backups),
+	}
+}
+
+func publicCapabilityValues(values []services.Capability) []publicapi.ServiceCapability {
+	result := make([]publicapi.ServiceCapability, 0, len(values))
+	for _, value := range values {
+		result = append(result, publicapi.ServiceCapability{
+			Driver: value.Driver, Version: value.Version,
+			Status: publicapi.ServiceCapabilityStatus(value.Status),
+		})
+	}
+	return result
 }
 
 func accountResponse(account accounts.Account) publicapi.Account {

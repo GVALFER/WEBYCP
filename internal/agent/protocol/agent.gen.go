@@ -57,6 +57,24 @@ func (e IssueCertificateRequestRuntimeVersion) Valid() bool {
 	}
 }
 
+// Defines values for ServiceCapabilityStatus.
+const (
+	Healthy     ServiceCapabilityStatus = "healthy"
+	Unavailable ServiceCapabilityStatus = "unavailable"
+)
+
+// Valid indicates whether the value is a known member of the ServiceCapabilityStatus enum.
+func (e ServiceCapabilityStatus) Valid() bool {
+	switch e {
+	case Healthy:
+		return true
+	case Unavailable:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebsiteRequestKind.
 const (
 	Php WebsiteRequestKind = "php"
@@ -211,6 +229,8 @@ type ErrorResponse struct {
 
 // HealthResponse defines model for HealthResponse.
 type HealthResponse struct {
+	Capabilities ServiceCapabilities `json:"capabilities"`
+
 	// ProtocolVersion Example: v1
 	ProtocolVersion string `json:"protocolVersion"`
 
@@ -261,6 +281,25 @@ type RestoreBackupRequest struct {
 type RestoreBackupResult struct {
 	Metadata string `json:"metadata"`
 }
+
+// ServiceCapabilities defines model for ServiceCapabilities.
+type ServiceCapabilities struct {
+	Backups    []ServiceCapability `json:"backups"`
+	Databases  []ServiceCapability `json:"databases"`
+	Runtimes   []ServiceCapability `json:"runtimes"`
+	Schedulers []ServiceCapability `json:"schedulers"`
+	Webservers []ServiceCapability `json:"webservers"`
+}
+
+// ServiceCapability defines model for ServiceCapability.
+type ServiceCapability struct {
+	Driver  string                  `json:"driver"`
+	Status  ServiceCapabilityStatus `json:"status"`
+	Version string                  `json:"version"`
+}
+
+// ServiceCapabilityStatus defines model for ServiceCapability.Status.
+type ServiceCapabilityStatus string
 
 // SyncCronRequest defines model for SyncCronRequest.
 type SyncCronRequest struct {

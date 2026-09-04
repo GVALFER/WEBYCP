@@ -23,6 +23,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
 	"github.com/GVALFER/WEBYCP/internal/packages"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/signalx"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite"
 	"github.com/GVALFER/WEBYCP/internal/websites"
@@ -78,15 +79,20 @@ func main() {
 	if err != nil || hostname == "" {
 		hostname = "localhost"
 	}
-	if _, err := store.EnsureLocal(ctx, hostname, settings.AgentSocket); err != nil {
+	node, err := store.EnsureLocal(ctx, hostname, settings.AgentSocket)
+	if err != nil {
 		logger.Error("failed to register local node", "error", err)
 		os.Exit(1)
 	}
 
 	agent := agentclient.New(2 * time.Minute)
 	nodeService := nodes.NewService(store, agent)
+	if err := nodeService.Probe(ctx, node.ID); err != nil {
+		logger.Warn("initial agent probe failed", "error", err, "nodeId", node.ID)
+	}
 	worker := jobs.NewWorker(store, store, logger)
 	packageService := packages.NewService(store)
+	serviceService := services.NewService(store)
 	accountService := accounts.NewService(store, store, agent, packageService, worker.Notify)
 	websiteService := websites.NewService(store, accountService, store, agent, worker.Notify)
 	databaseService := databases.NewService(store, accountService, store, agent, worker.Notify)
@@ -171,7 +177,8 @@ func main() {
 		Handler: httpapi.New(httpapi.Options{
 			Version:      buildinfo.Version,
 			SecureCookie: settings.SecureCookie, Auth: authService,
-			Accounts: accountService, Packages: packageService, Websites: websiteService, Databases: databaseService, Cron: cronService,
+			Accounts: accountService, Packages: packageService, Services: serviceService,
+			Websites: websiteService, Databases: databaseService, Cron: cronService,
 			Certificates: certificateService,
 			Backups:      backupService,
 			Nodes:        nodeService, Jobs: jobService,

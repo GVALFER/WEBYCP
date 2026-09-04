@@ -15,6 +15,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/certificates"
 	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -29,33 +30,53 @@ func New(timeout time.Duration) *Client {
 	return &Client{timeout: timeout}
 }
 
-func (c *Client) Probe(ctx context.Context, socket string) error {
+func (c *Client) Probe(ctx context.Context, socket string) (services.Capabilities, error) {
 	response, cleanup, err := c.do(ctx, socket, http.MethodGet, "/agent/v1/health", nil)
 	if err != nil {
-		return fmt.Errorf("request agent health: %w", err)
+		return services.Capabilities{}, fmt.Errorf("request agent health: %w", err)
 	}
 	defer cleanup()
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4<<10))
-		return fmt.Errorf("agent health returned status %d", response.StatusCode)
+		return services.Capabilities{}, fmt.Errorf("agent health returned status %d", response.StatusCode)
 	}
 
 	var health agentapi.HealthResponse
 	decoder := json.NewDecoder(io.LimitReader(response.Body, 64<<10))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&health); err != nil {
-		return fmt.Errorf("decode agent health: %w", err)
+		return services.Capabilities{}, fmt.Errorf("decode agent health: %w", err)
 	}
 	if health.Service != "webycp-agent" || health.Status != agentapi.Ok {
-		return fmt.Errorf("agent health response is invalid")
+		return services.Capabilities{}, fmt.Errorf("agent health response is invalid")
 	}
 	if health.ProtocolVersion != protocolVersion {
-		return fmt.Errorf("agent protocol %q is not supported", health.ProtocolVersion)
+		return services.Capabilities{}, fmt.Errorf("agent protocol %q is not supported", health.ProtocolVersion)
 	}
 
-	return nil
+	return capabilitiesValue(health.Capabilities), nil
+}
+
+func capabilitiesValue(value agentapi.ServiceCapabilities) services.Capabilities {
+	return services.Capabilities{
+		Webservers: capabilityValues(value.Webservers),
+		Runtimes:   capabilityValues(value.Runtimes),
+		Databases:  capabilityValues(value.Databases),
+		Schedulers: capabilityValues(value.Schedulers),
+		Backups:    capabilityValues(value.Backups),
+	}
+}
+
+func capabilityValues(values []agentapi.ServiceCapability) []services.Capability {
+	result := make([]services.Capability, 0, len(values))
+	for _, value := range values {
+		result = append(result, services.Capability{
+			Driver: value.Driver, Version: value.Version, Status: string(value.Status),
+		})
+	}
+	return result
 }
 
 func (c *Client) EnsureAccount(ctx context.Context, socket, accountID, systemUser string) error {

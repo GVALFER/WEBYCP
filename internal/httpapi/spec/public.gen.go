@@ -57,6 +57,36 @@ func (e AccountOverviewStatus) Valid() bool {
 	}
 }
 
+// Defines values for BackupArtifactStorageDriver.
+const (
+	BackupArtifactStorageDriverLocal BackupArtifactStorageDriver = "local"
+)
+
+// Valid indicates whether the value is a known member of the BackupArtifactStorageDriver enum.
+func (e BackupArtifactStorageDriver) Valid() bool {
+	switch e {
+	case BackupArtifactStorageDriverLocal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BackupPlanStorageDriver.
+const (
+	BackupPlanStorageDriverLocal BackupPlanStorageDriver = "local"
+)
+
+// Valid indicates whether the value is a known member of the BackupPlanStorageDriver enum.
+func (e BackupPlanStorageDriver) Valid() bool {
+	switch e {
+	case BackupPlanStorageDriverLocal:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for BackupRunStatus.
 const (
 	BackupRunStatusFailed    BackupRunStatus = "failed"
@@ -75,6 +105,21 @@ func (e BackupRunStatus) Valid() bool {
 	case BackupRunStatusRunning:
 		return true
 	case BackupRunStatusSucceeded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BackupRunStorageDriver.
+const (
+	BackupRunStorageDriverLocal BackupRunStorageDriver = "local"
+)
+
+// Valid indicates whether the value is a known member of the BackupRunStorageDriver enum.
+func (e BackupRunStorageDriver) Valid() bool {
+	switch e {
+	case BackupRunStorageDriverLocal:
 		return true
 	default:
 		return false
@@ -114,6 +159,36 @@ func (e CertificateStatus) Valid() bool {
 	case CertificateStatusError:
 		return true
 	case CertificateStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDatabaseRequestDriver.
+const (
+	CreateDatabaseRequestDriverMysql CreateDatabaseRequestDriver = "mysql"
+)
+
+// Valid indicates whether the value is a known member of the CreateDatabaseRequestDriver enum.
+func (e CreateDatabaseRequestDriver) Valid() bool {
+	switch e {
+	case CreateDatabaseRequestDriverMysql:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDatabaseUserRequestDriver.
+const (
+	CreateDatabaseUserRequestDriverMysql CreateDatabaseUserRequestDriver = "mysql"
+)
+
+// Valid indicates whether the value is a known member of the CreateDatabaseUserRequestDriver enum.
+func (e CreateDatabaseUserRequestDriver) Valid() bool {
+	switch e {
+	case CreateDatabaseUserRequestDriverMysql:
 		return true
 	default:
 		return false
@@ -180,6 +255,21 @@ func (e CreateWebsiteRequestWebDriver) Valid() bool {
 	}
 }
 
+// Defines values for CronJobSchedulerDriver.
+const (
+	CronJobSchedulerDriverCrontab CronJobSchedulerDriver = "crontab"
+)
+
+// Valid indicates whether the value is a known member of the CronJobSchedulerDriver enum.
+func (e CronJobSchedulerDriver) Valid() bool {
+	switch e {
+	case CronJobSchedulerDriverCrontab:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CronJobStatus.
 const (
 	CronJobStatusActive   CronJobStatus = "active"
@@ -198,6 +288,21 @@ func (e CronJobStatus) Valid() bool {
 	case CronJobStatusError:
 		return true
 	case CronJobStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseDriver.
+const (
+	DatabaseDriverMysql DatabaseDriver = "mysql"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseDriver enum.
+func (e DatabaseDriver) Valid() bool {
+	switch e {
+	case DatabaseDriverMysql:
 		return true
 	default:
 		return false
@@ -240,6 +345,21 @@ func (e DatabaseGrantStatus) Valid() bool {
 	case DatabaseGrantStatusError:
 		return true
 	case DatabaseGrantStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseUserDriver.
+const (
+	DatabaseUserDriverMysql DatabaseUserDriver = "mysql"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseUserDriver enum.
+func (e DatabaseUserDriver) Valid() bool {
+	switch e {
+	case DatabaseUserDriverMysql:
 		return true
 	default:
 		return false
@@ -329,16 +449,16 @@ func (e JobStepStatus) Valid() bool {
 
 // Defines values for NodeKind.
 const (
-	Local  NodeKind = "local"
-	Remote NodeKind = "remote"
+	NodeKindLocal  NodeKind = "local"
+	NodeKindRemote NodeKind = "remote"
 )
 
 // Valid indicates whether the value is a known member of the NodeKind enum.
 func (e NodeKind) Valid() bool {
 	switch e {
-	case Local:
+	case NodeKindLocal:
 		return true
-	case Remote:
+	case NodeKindRemote:
 		return true
 	default:
 		return false
@@ -360,6 +480,114 @@ func (e NodeStatus) Valid() bool {
 	case Online:
 		return true
 	case Unknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ServiceCapabilityStatus.
+const (
+	Healthy     ServiceCapabilityStatus = "healthy"
+	Unavailable ServiceCapabilityStatus = "unavailable"
+)
+
+// Valid indicates whether the value is a known member of the ServiceCapabilityStatus enum.
+func (e ServiceCapabilityStatus) Valid() bool {
+	switch e {
+	case Healthy:
+		return true
+	case Unavailable:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ServiceDefaultsBackupDriver.
+const (
+	ServiceDefaultsBackupDriverLocal ServiceDefaultsBackupDriver = "local"
+)
+
+// Valid indicates whether the value is a known member of the ServiceDefaultsBackupDriver enum.
+func (e ServiceDefaultsBackupDriver) Valid() bool {
+	switch e {
+	case ServiceDefaultsBackupDriverLocal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ServiceDefaultsDatabaseDriver.
+const (
+	ServiceDefaultsDatabaseDriverMysql ServiceDefaultsDatabaseDriver = "mysql"
+)
+
+// Valid indicates whether the value is a known member of the ServiceDefaultsDatabaseDriver enum.
+func (e ServiceDefaultsDatabaseDriver) Valid() bool {
+	switch e {
+	case ServiceDefaultsDatabaseDriverMysql:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ServiceDefaultsRuntimeDriver.
+const (
+	ServiceDefaultsRuntimeDriverPhpfpm ServiceDefaultsRuntimeDriver = "phpfpm"
+)
+
+// Valid indicates whether the value is a known member of the ServiceDefaultsRuntimeDriver enum.
+func (e ServiceDefaultsRuntimeDriver) Valid() bool {
+	switch e {
+	case ServiceDefaultsRuntimeDriverPhpfpm:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ServiceDefaultsRuntimeVersion.
+const (
+	ServiceDefaultsRuntimeVersionN83 ServiceDefaultsRuntimeVersion = "8.3"
+)
+
+// Valid indicates whether the value is a known member of the ServiceDefaultsRuntimeVersion enum.
+func (e ServiceDefaultsRuntimeVersion) Valid() bool {
+	switch e {
+	case ServiceDefaultsRuntimeVersionN83:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ServiceDefaultsSchedulerDriver.
+const (
+	ServiceDefaultsSchedulerDriverCrontab ServiceDefaultsSchedulerDriver = "crontab"
+)
+
+// Valid indicates whether the value is a known member of the ServiceDefaultsSchedulerDriver enum.
+func (e ServiceDefaultsSchedulerDriver) Valid() bool {
+	switch e {
+	case ServiceDefaultsSchedulerDriverCrontab:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ServiceDefaultsWebDriver.
+const (
+	ServiceDefaultsWebDriverNginx ServiceDefaultsWebDriver = "nginx"
+)
+
+// Valid indicates whether the value is a known member of the ServiceDefaultsWebDriver enum.
+func (e ServiceDefaultsWebDriver) Valid() bool {
+	switch e {
+	case ServiceDefaultsWebDriverNginx:
 		return true
 	default:
 		return false
@@ -510,6 +738,36 @@ func (e WebsiteDomainStatus) Valid() bool {
 	}
 }
 
+// Defines values for WriteBackupPlanRequestStorageDriver.
+const (
+	WriteBackupPlanRequestStorageDriverLocal WriteBackupPlanRequestStorageDriver = "local"
+)
+
+// Valid indicates whether the value is a known member of the WriteBackupPlanRequestStorageDriver enum.
+func (e WriteBackupPlanRequestStorageDriver) Valid() bool {
+	switch e {
+	case WriteBackupPlanRequestStorageDriverLocal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WriteCronJobRequestSchedulerDriver.
+const (
+	WriteCronJobRequestSchedulerDriverCrontab WriteCronJobRequestSchedulerDriver = "crontab"
+)
+
+// Valid indicates whether the value is a known member of the WriteCronJobRequestSchedulerDriver enum.
+func (e WriteCronJobRequestSchedulerDriver) Valid() bool {
+	switch e {
+	case WriteCronJobRequestSchedulerDriverCrontab:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListCertificatesParamsKind.
 const (
 	ListCertificatesParamsKindPanel   ListCertificatesParamsKind = "panel"
@@ -605,15 +863,19 @@ type AuthResponse struct {
 
 // BackupArtifact defines model for BackupArtifact.
 type BackupArtifact struct {
-	AccountId string         `json:"accountId"`
-	Checksum  string         `json:"checksum"`
-	CreatedAt time.Time      `json:"createdAt"`
-	Id        string         `json:"id"`
-	Manifest  BackupManifest `json:"manifest"`
-	NodeId    string         `json:"nodeId"`
-	RunId     string         `json:"runId"`
-	Size      int64          `json:"size"`
+	AccountId     string                      `json:"accountId"`
+	Checksum      string                      `json:"checksum"`
+	CreatedAt     time.Time                   `json:"createdAt"`
+	Id            string                      `json:"id"`
+	Manifest      BackupManifest              `json:"manifest"`
+	NodeId        string                      `json:"nodeId"`
+	RunId         string                      `json:"runId"`
+	Size          int64                       `json:"size"`
+	StorageDriver BackupArtifactStorageDriver `json:"storageDriver"`
 }
+
+// BackupArtifactStorageDriver defines model for BackupArtifact.StorageDriver.
+type BackupArtifactStorageDriver string
 
 // BackupArtifactListResponse defines model for BackupArtifactListResponse.
 type BackupArtifactListResponse struct {
@@ -642,20 +904,24 @@ type BackupManifest struct {
 
 // BackupPlan defines model for BackupPlan.
 type BackupPlan struct {
-	AccountId        string     `json:"accountId"`
-	CreatedAt        time.Time  `json:"createdAt"`
-	Enabled          bool       `json:"enabled"`
-	Id               string     `json:"id"`
-	IncludeDatabases bool       `json:"includeDatabases"`
-	IncludeFiles     bool       `json:"includeFiles"`
-	LastRunAt        *time.Time `json:"lastRunAt,omitempty"`
-	Name             string     `json:"name"`
-	NextRunAt        *time.Time `json:"nextRunAt,omitempty"`
-	NodeId           string     `json:"nodeId"`
-	RetentionCount   int        `json:"retentionCount"`
-	Schedule         string     `json:"schedule"`
-	UpdatedAt        time.Time  `json:"updatedAt"`
+	AccountId        string                  `json:"accountId"`
+	CreatedAt        time.Time               `json:"createdAt"`
+	Enabled          bool                    `json:"enabled"`
+	Id               string                  `json:"id"`
+	IncludeDatabases bool                    `json:"includeDatabases"`
+	IncludeFiles     bool                    `json:"includeFiles"`
+	LastRunAt        *time.Time              `json:"lastRunAt,omitempty"`
+	Name             string                  `json:"name"`
+	NextRunAt        *time.Time              `json:"nextRunAt,omitempty"`
+	NodeId           string                  `json:"nodeId"`
+	RetentionCount   int                     `json:"retentionCount"`
+	Schedule         string                  `json:"schedule"`
+	StorageDriver    BackupPlanStorageDriver `json:"storageDriver"`
+	UpdatedAt        time.Time               `json:"updatedAt"`
 }
+
+// BackupPlanStorageDriver defines model for BackupPlan.StorageDriver.
+type BackupPlanStorageDriver string
 
 // BackupPlanListResponse defines model for BackupPlanListResponse.
 type BackupPlanListResponse struct {
@@ -665,19 +931,23 @@ type BackupPlanListResponse struct {
 
 // BackupRun defines model for BackupRun.
 type BackupRun struct {
-	AccountId  string          `json:"accountId"`
-	CreatedAt  time.Time       `json:"createdAt"`
-	Error      string          `json:"error"`
-	FinishedAt *time.Time      `json:"finishedAt,omitempty"`
-	Id         string          `json:"id"`
-	NodeId     string          `json:"nodeId"`
-	PlanId     string          `json:"planId"`
-	StartedAt  *time.Time      `json:"startedAt,omitempty"`
-	Status     BackupRunStatus `json:"status"`
+	AccountId     string                 `json:"accountId"`
+	CreatedAt     time.Time              `json:"createdAt"`
+	Error         string                 `json:"error"`
+	FinishedAt    *time.Time             `json:"finishedAt,omitempty"`
+	Id            string                 `json:"id"`
+	NodeId        string                 `json:"nodeId"`
+	PlanId        string                 `json:"planId"`
+	StartedAt     *time.Time             `json:"startedAt,omitempty"`
+	Status        BackupRunStatus        `json:"status"`
+	StorageDriver BackupRunStorageDriver `json:"storageDriver"`
 }
 
 // BackupRunStatus defines model for BackupRun.Status.
 type BackupRunStatus string
+
+// BackupRunStorageDriver defines model for BackupRun.StorageDriver.
+type BackupRunStorageDriver string
 
 // BackupRunListResponse defines model for BackupRunListResponse.
 type BackupRunListResponse struct {
@@ -735,15 +1005,23 @@ type CreateAccountRequest struct {
 
 // CreateDatabaseRequest defines model for CreateDatabaseRequest.
 type CreateDatabaseRequest struct {
-	AccountId string `json:"accountId"`
-	Name      string `json:"name"`
+	AccountId string                      `json:"accountId"`
+	Driver    CreateDatabaseRequestDriver `json:"driver"`
+	Name      string                      `json:"name"`
 }
+
+// CreateDatabaseRequestDriver defines model for CreateDatabaseRequest.Driver.
+type CreateDatabaseRequestDriver string
 
 // CreateDatabaseUserRequest defines model for CreateDatabaseUserRequest.
 type CreateDatabaseUserRequest struct {
-	AccountId string `json:"accountId"`
-	Name      string `json:"name"`
+	AccountId string                          `json:"accountId"`
+	Driver    CreateDatabaseUserRequestDriver `json:"driver"`
+	Name      string                          `json:"name"`
 }
+
+// CreateDatabaseUserRequestDriver defines model for CreateDatabaseUserRequest.Driver.
+type CreateDatabaseUserRequestDriver string
 
 // CreateWebsiteDomainRequest defines model for CreateWebsiteDomainRequest.
 type CreateWebsiteDomainRequest struct {
@@ -775,17 +1053,21 @@ type CreateWebsiteRequestWebDriver string
 
 // CronJob defines model for CronJob.
 type CronJob struct {
-	AccountId string        `json:"accountId"`
-	Command   string        `json:"command"`
-	CreatedAt time.Time     `json:"createdAt"`
-	Enabled   bool          `json:"enabled"`
-	Id        string        `json:"id"`
-	Name      string        `json:"name"`
-	NodeId    string        `json:"nodeId"`
-	Schedule  string        `json:"schedule"`
-	Status    CronJobStatus `json:"status"`
-	UpdatedAt time.Time     `json:"updatedAt"`
+	AccountId       string                 `json:"accountId"`
+	Command         string                 `json:"command"`
+	CreatedAt       time.Time              `json:"createdAt"`
+	Enabled         bool                   `json:"enabled"`
+	Id              string                 `json:"id"`
+	Name            string                 `json:"name"`
+	NodeId          string                 `json:"nodeId"`
+	Schedule        string                 `json:"schedule"`
+	SchedulerDriver CronJobSchedulerDriver `json:"schedulerDriver"`
+	Status          CronJobStatus          `json:"status"`
+	UpdatedAt       time.Time              `json:"updatedAt"`
 }
+
+// CronJobSchedulerDriver defines model for CronJob.SchedulerDriver.
+type CronJobSchedulerDriver string
 
 // CronJobStatus defines model for CronJob.Status.
 type CronJobStatus string
@@ -806,6 +1088,7 @@ type CronJobResponse struct {
 type Database struct {
 	AccountId  string         `json:"accountId"`
 	CreatedAt  time.Time      `json:"createdAt"`
+	Driver     DatabaseDriver `json:"driver"`
 	Id         string         `json:"id"`
 	Name       string         `json:"name"`
 	NodeId     string         `json:"nodeId"`
@@ -813,6 +1096,9 @@ type Database struct {
 	SystemName string         `json:"systemName"`
 	UpdatedAt  time.Time      `json:"updatedAt"`
 }
+
+// DatabaseDriver defines model for Database.Driver.
+type DatabaseDriver string
 
 // DatabaseStatus defines model for Database.Status.
 type DatabaseStatus string
@@ -857,6 +1143,7 @@ type DatabaseListResponse struct {
 type DatabaseUser struct {
 	AccountId  string             `json:"accountId"`
 	CreatedAt  time.Time          `json:"createdAt"`
+	Driver     DatabaseUserDriver `json:"driver"`
 	Id         string             `json:"id"`
 	Name       string             `json:"name"`
 	NodeId     string             `json:"nodeId"`
@@ -864,6 +1151,9 @@ type DatabaseUser struct {
 	SystemName string             `json:"systemName"`
 	UpdatedAt  time.Time          `json:"updatedAt"`
 }
+
+// DatabaseUserDriver defines model for DatabaseUser.Driver.
+type DatabaseUserDriver string
 
 // DatabaseUserStatus defines model for DatabaseUser.Status.
 type DatabaseUserStatus string
@@ -966,14 +1256,16 @@ type LoginRequest struct {
 
 // Node defines model for Node.
 type Node struct {
-	CreatedAt  time.Time  `json:"createdAt"`
-	Endpoint   string     `json:"endpoint"`
-	Id         string     `json:"id"`
-	Kind       NodeKind   `json:"kind"`
-	LastSeenAt *time.Time `json:"lastSeenAt,omitempty"`
-	Name       string     `json:"name"`
-	Status     NodeStatus `json:"status"`
-	UpdatedAt  time.Time  `json:"updatedAt"`
+	Capabilities   *ServiceCapabilities `json:"capabilities"`
+	CapabilitiesAt *time.Time           `json:"capabilitiesAt"`
+	CreatedAt      time.Time            `json:"createdAt"`
+	Endpoint       string               `json:"endpoint"`
+	Id             string               `json:"id"`
+	Kind           NodeKind             `json:"kind"`
+	LastSeenAt     *time.Time           `json:"lastSeenAt,omitempty"`
+	Name           string               `json:"name"`
+	Status         NodeStatus           `json:"status"`
+	UpdatedAt      time.Time            `json:"updatedAt"`
 }
 
 // NodeKind defines model for Node.Kind.
@@ -1039,6 +1331,59 @@ type RestoreBackupRequest struct {
 	Databases bool `json:"databases"`
 	Files     bool `json:"files"`
 	Metadata  bool `json:"metadata"`
+}
+
+// ServiceCapabilities defines model for ServiceCapabilities.
+type ServiceCapabilities struct {
+	Backups    []ServiceCapability `json:"backups"`
+	Databases  []ServiceCapability `json:"databases"`
+	Runtimes   []ServiceCapability `json:"runtimes"`
+	Schedulers []ServiceCapability `json:"schedulers"`
+	Webservers []ServiceCapability `json:"webservers"`
+}
+
+// ServiceCapability defines model for ServiceCapability.
+type ServiceCapability struct {
+	Driver  string                  `json:"driver"`
+	Status  ServiceCapabilityStatus `json:"status"`
+	Version string                  `json:"version"`
+}
+
+// ServiceCapabilityStatus defines model for ServiceCapability.Status.
+type ServiceCapabilityStatus string
+
+// ServiceDefaults defines model for ServiceDefaults.
+type ServiceDefaults struct {
+	BackupDriver    ServiceDefaultsBackupDriver    `json:"backupDriver"`
+	DatabaseDriver  ServiceDefaultsDatabaseDriver  `json:"databaseDriver"`
+	RuntimeDriver   ServiceDefaultsRuntimeDriver   `json:"runtimeDriver"`
+	RuntimeVersion  ServiceDefaultsRuntimeVersion  `json:"runtimeVersion"`
+	SchedulerDriver ServiceDefaultsSchedulerDriver `json:"schedulerDriver"`
+	WebDriver       ServiceDefaultsWebDriver       `json:"webDriver"`
+}
+
+// ServiceDefaultsBackupDriver defines model for ServiceDefaults.BackupDriver.
+type ServiceDefaultsBackupDriver string
+
+// ServiceDefaultsDatabaseDriver defines model for ServiceDefaults.DatabaseDriver.
+type ServiceDefaultsDatabaseDriver string
+
+// ServiceDefaultsRuntimeDriver defines model for ServiceDefaults.RuntimeDriver.
+type ServiceDefaultsRuntimeDriver string
+
+// ServiceDefaultsRuntimeVersion defines model for ServiceDefaults.RuntimeVersion.
+type ServiceDefaultsRuntimeVersion string
+
+// ServiceDefaultsSchedulerDriver defines model for ServiceDefaults.SchedulerDriver.
+type ServiceDefaultsSchedulerDriver string
+
+// ServiceDefaultsWebDriver defines model for ServiceDefaults.WebDriver.
+type ServiceDefaultsWebDriver string
+
+// ServiceSettings defines model for ServiceSettings.
+type ServiceSettings struct {
+	Defaults  ServiceDefaults `json:"defaults"`
+	UpdatedAt time.Time       `json:"updatedAt"`
 }
 
 // UpdateCertificateRequest defines model for UpdateCertificateRequest.
@@ -1167,23 +1512,31 @@ type WebsiteListResponse struct {
 
 // WriteBackupPlanRequest defines model for WriteBackupPlanRequest.
 type WriteBackupPlanRequest struct {
-	AccountId        string `json:"accountId"`
-	Enabled          bool   `json:"enabled"`
-	IncludeDatabases bool   `json:"includeDatabases"`
-	IncludeFiles     bool   `json:"includeFiles"`
-	Name             string `json:"name"`
-	RetentionCount   int    `json:"retentionCount"`
-	Schedule         string `json:"schedule"`
+	AccountId        string                              `json:"accountId"`
+	Enabled          bool                                `json:"enabled"`
+	IncludeDatabases bool                                `json:"includeDatabases"`
+	IncludeFiles     bool                                `json:"includeFiles"`
+	Name             string                              `json:"name"`
+	RetentionCount   int                                 `json:"retentionCount"`
+	Schedule         string                              `json:"schedule"`
+	StorageDriver    WriteBackupPlanRequestStorageDriver `json:"storageDriver"`
 }
+
+// WriteBackupPlanRequestStorageDriver defines model for WriteBackupPlanRequest.StorageDriver.
+type WriteBackupPlanRequestStorageDriver string
 
 // WriteCronJobRequest defines model for WriteCronJobRequest.
 type WriteCronJobRequest struct {
-	AccountId string `json:"accountId"`
-	Command   string `json:"command"`
-	Enabled   bool   `json:"enabled"`
-	Name      string `json:"name"`
-	Schedule  string `json:"schedule"`
+	AccountId       string                             `json:"accountId"`
+	Command         string                             `json:"command"`
+	Enabled         bool                               `json:"enabled"`
+	Name            string                             `json:"name"`
+	Schedule        string                             `json:"schedule"`
+	SchedulerDriver WriteCronJobRequestSchedulerDriver `json:"schedulerDriver"`
 }
+
+// WriteCronJobRequestSchedulerDriver defines model for WriteCronJobRequest.SchedulerDriver.
+type WriteCronJobRequestSchedulerDriver string
 
 // WritePackageRequest defines model for WritePackageRequest.
 type WritePackageRequest struct {
@@ -1467,6 +1820,11 @@ type UpdatePackageParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
+// UpdateServiceSettingsParams defines parameters for UpdateServiceSettings.
+type UpdateServiceSettingsParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
 // ListWebsiteDomainsParams defines parameters for ListWebsiteDomains.
 type ListWebsiteDomainsParams struct {
 	Kind ListWebsiteDomainsParamsKind `form:"kind" json:"kind"`
@@ -1565,6 +1923,9 @@ type CreatePackageJSONRequestBody = WritePackageRequest
 
 // UpdatePackageJSONRequestBody defines body for UpdatePackage for application/json ContentType.
 type UpdatePackageJSONRequestBody = WritePackageRequest
+
+// UpdateServiceSettingsJSONRequestBody defines body for UpdateServiceSettings for application/json ContentType.
+type UpdateServiceSettingsJSONRequestBody = ServiceDefaults
 
 // SetWebsiteDomainJSONRequestBody defines body for SetWebsiteDomain for application/json ContentType.
 type SetWebsiteDomainJSONRequestBody = UpdateWebsiteDomainRequest

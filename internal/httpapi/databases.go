@@ -41,7 +41,7 @@ func (h *handler) createDatabase(w http.ResponseWriter, r *http.Request, session
 		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
 		return
 	}
-	value, job, err := h.options.Databases.CreateDatabase(r.Context(), request.AccountId, request.Name, session.User.ID, session.User.Role == "admin")
+	value, job, err := h.options.Databases.CreateDatabase(r.Context(), request.AccountId, request.Name, string(request.Driver), session.User.ID, session.User.Role == "admin")
 	h.recordMutation(r, session.User.ID, "database.create", "database", value.ID, err)
 	if err != nil {
 		h.writeDatabaseError(w, r, err)
@@ -88,7 +88,7 @@ func (h *handler) createDatabaseUser(w http.ResponseWriter, r *http.Request, ses
 		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
 		return
 	}
-	value, job, password, err := h.options.Databases.CreateUser(r.Context(), request.AccountId, request.Name, session.User.ID, session.User.Role == "admin")
+	value, job, password, err := h.options.Databases.CreateUser(r.Context(), request.AccountId, request.Name, string(request.Driver), session.User.ID, session.User.Role == "admin")
 	h.recordMutation(r, session.User.ID, "database_user.create", "database_user", value.ID, err)
 	if err != nil {
 		h.writeDatabaseError(w, r, err)
@@ -175,11 +175,11 @@ func (h *handler) writeDatabaseError(w http.ResponseWriter, r *http.Request, err
 }
 
 func databaseResponse(value databases.Database) publicapi.Database {
-	return publicapi.Database{Id: value.ID, AccountId: value.AccountID, NodeId: value.NodeID, Name: value.Name, SystemName: value.SystemName, Status: publicapi.DatabaseStatus(value.Status), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+	return publicapi.Database{Id: value.ID, AccountId: value.AccountID, NodeId: value.NodeID, Name: value.Name, SystemName: value.SystemName, Driver: publicapi.DatabaseDriver(value.Driver), Status: publicapi.DatabaseStatus(value.Status), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 
 func databaseUserResponse(value databases.User) publicapi.DatabaseUser {
-	return publicapi.DatabaseUser{Id: value.ID, AccountId: value.AccountID, NodeId: value.NodeID, Name: value.Name, SystemName: value.SystemName, Status: publicapi.DatabaseUserStatus(value.Status), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+	return publicapi.DatabaseUser{Id: value.ID, AccountId: value.AccountID, NodeId: value.NodeID, Name: value.Name, SystemName: value.SystemName, Driver: publicapi.DatabaseUserDriver(value.Driver), Status: publicapi.DatabaseUserStatus(value.Status), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 
 func databaseGrantResponse(value databases.Grant) publicapi.DatabaseGrant {

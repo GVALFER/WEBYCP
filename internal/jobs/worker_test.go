@@ -10,12 +10,15 @@ import (
 
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite"
 )
 
 type prober struct{}
 
-func (prober) Probe(context.Context, string) error { return nil }
+func (prober) Probe(context.Context, string) (services.Capabilities, error) {
+	return services.Capabilities{}, nil
+}
 
 func TestWorkerRunsNodeProbe(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())

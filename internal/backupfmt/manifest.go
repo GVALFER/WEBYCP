@@ -2,7 +2,7 @@ package backupfmt
 
 import "time"
 
-const Version = 2
+const Version = 3
 
 type Entry struct {
 	Path     string `json:"path"`
@@ -54,13 +54,15 @@ type Database struct {
 	NodeID     string `json:"nodeId"`
 	Name       string `json:"name"`
 	SystemName string `json:"systemName"`
+	Driver     string `json:"driver"`
 }
 
 type CronJob struct {
-	ID       string `json:"id"`
-	NodeID   string `json:"nodeId"`
-	Name     string `json:"name"`
-	Schedule string `json:"schedule"`
-	Command  string `json:"command"`
-	Enabled  bool   `json:"enabled"`
+	ID              string `json:"id"`
+	NodeID          string `json:"nodeId"`
+	Name            string `json:"name"`
+	Schedule        string `json:"schedule"`
+	Command         string `json:"command"`
+	SchedulerDriver string `json:"schedulerDriver"`
+	Enabled         bool   `json:"enabled"`
 }

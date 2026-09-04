@@ -9,6 +9,7 @@ import type {
     BackupArtifactListResponse,
     BackupPlanListResponse,
     BackupRunListResponse,
+    ServiceSettings,
 } from "@/contracts/types";
 import { useTimezone } from "@/hooks/useDate";
 import { cn } from "@/utils/classnames";
@@ -22,13 +23,14 @@ type BackupsProps = {
     plans: BackupPlanListResponse;
     runs: BackupRunListResponse;
     artifacts: BackupArtifactListResponse;
+    settings: ServiceSettings;
 };
 
 type Plan = BackupPlanListResponse["items"][number];
 type Run = BackupRunListResponse["items"][number];
 type Artifact = BackupArtifactListResponse["items"][number];
 
-const Backups = ({ accounts, plans, runs, artifacts }: BackupsProps) => {
+const Backups = ({ accounts, plans, runs, artifacts, settings: initialSettings }: BackupsProps) => {
     const { dt } = useTimezone();
 
     const plansTable = useTable(plans.pagination, "plans");
@@ -45,6 +47,9 @@ const Backups = ({ accounts, plans, runs, artifacts }: BackupsProps) => {
         `backup-artifacts${artifactsTable.query}`,
         { fallbackData: artifactsTable.isInitialQuery ? artifacts : undefined },
     );
+    const { data: settings = initialSettings } = useSWR<ServiceSettings>("service-settings", {
+        fallbackData: initialSettings,
+    });
 
     const planColumns: TableColumn<Plan>[] = [
         {
@@ -59,7 +64,7 @@ const Backups = ({ accounts, plans, runs, artifacts }: BackupsProps) => {
                     <div>
                         <div className="font-medium">{plan.name}</div>
                         <div className="mt-1 text-xs text-foreground-400">
-                            {plan.includeFiles && plan.includeDatabases
+                            {plan.storageDriver} · {plan.includeFiles && plan.includeDatabases
                                 ? "Files and databases"
                                 : plan.includeFiles
                                   ? "Files"
@@ -179,7 +184,7 @@ const Backups = ({ accounts, plans, runs, artifacts }: BackupsProps) => {
                             Scheduled and on-demand local backups with retention.
                         </div>
                     </div>
-                    <CreateBackup accounts={accounts} />
+                    <CreateBackup accounts={accounts} driver={settings.defaults.backupDriver} />
                 </div>
                 <Table table={plansTable} columns={planColumns} data={planData} />
             </section>

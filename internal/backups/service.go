@@ -17,6 +17,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
 	"github.com/GVALFER/WEBYCP/internal/pagination"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 	robfigcron "github.com/robfig/cron/v3"
@@ -158,6 +159,9 @@ func (s *Service) DeleteArtifact(ctx context.Context, id, userID string, admin b
 	if err != nil {
 		return err
 	}
+	if artifact.StorageDriver != services.Local {
+		return fmt.Errorf("unsupported backup driver %q", artifact.StorageDriver)
+	}
 	request := agentbackup.ArtifactRequest{
 		AccountID: artifact.AccountID, Path: artifact.Path, Checksum: artifact.Checksum,
 	}
@@ -171,6 +175,9 @@ func (s *Service) Preview(ctx context.Context, id, userID string, admin bool) (b
 	artifact, account, node, err := s.artifact(ctx, id, userID, admin)
 	if err != nil {
 		return backupfmt.Manifest{}, err
+	}
+	if artifact.StorageDriver != services.Local {
+		return backupfmt.Manifest{}, fmt.Errorf("unsupported backup driver %q", artifact.StorageDriver)
 	}
 	_ = account
 	return s.agent.PreviewBackup(ctx, node.Endpoint, agentbackup.ArtifactRequest{AccountID: artifact.AccountID, Path: artifact.Path, Checksum: artifact.Checksum})
@@ -209,6 +216,9 @@ func (s *Service) Create(ctx context.Context, job jobs.Job) error {
 	if err != nil {
 		return err
 	}
+	if run.StorageDriver != services.Local {
+		return s.failRun(ctx, run.ID, fmt.Errorf("unsupported backup driver %q", run.StorageDriver))
+	}
 	started := time.Now().UTC()
 	if err := s.repository.SetBackupRun(ctx, run.ID, "running", "", &started, nil); err != nil {
 		return err
@@ -237,7 +247,7 @@ func (s *Service) Create(ctx context.Context, job jobs.Job) error {
 	if err != nil {
 		return s.failRun(ctx, run.ID, err)
 	}
-	artifact := Artifact{ID: artifactID, RunID: run.ID, AccountID: run.AccountID, NodeID: run.NodeID, Path: result.Path, Checksum: result.Checksum, Size: result.Size, Manifest: result.Manifest, CreatedAt: time.Now().UTC()}
+	artifact := Artifact{ID: artifactID, RunID: run.ID, AccountID: run.AccountID, NodeID: run.NodeID, StorageDriver: run.StorageDriver, Path: result.Path, Checksum: result.Checksum, Size: result.Size, Manifest: result.Manifest, CreatedAt: time.Now().UTC()}
 	if _, err := s.repository.CompleteBackup(ctx, run, artifact); err != nil {
 		return s.failRun(ctx, run.ID, err)
 	}
@@ -252,6 +262,9 @@ func (s *Service) RestoreJob(ctx context.Context, job jobs.Job) error {
 	artifact, err := s.repository.BackupArtifact(ctx, payload.ArtifactID)
 	if err != nil {
 		return err
+	}
+	if artifact.StorageDriver != services.Local {
+		return fmt.Errorf("unsupported backup driver %q", artifact.StorageDriver)
 	}
 	account, err := s.accounts.Get(ctx, artifact.AccountID)
 	if err != nil {
@@ -320,7 +333,7 @@ func (s *Service) queue(ctx context.Context, plan Plan, userID string) (Run, job
 	}
 	data, _ := json.Marshal(runPayload{RunID: runID})
 	now := time.Now().UTC()
-	run := Run{ID: runID, PlanID: plan.ID, AccountID: plan.AccountID, NodeID: plan.NodeID, Status: "queued", CreatedAt: now}
+	run := Run{ID: runID, PlanID: plan.ID, AccountID: plan.AccountID, NodeID: plan.NodeID, StorageDriver: plan.StorageDriver, Status: "queued", CreatedAt: now}
 	job := jobs.Job{ID: jobID, NodeID: plan.NodeID, UserID: userID, Kind: jobs.KindBackupCreate, Status: "queued", Payload: string(data), MaxAttempts: 1, CreatedAt: now}
 	next := nextRun(plan.Schedule, plan.Enabled, now)
 	run, job, err = s.repository.QueueBackupRun(ctx, run, job, next)
@@ -357,7 +370,7 @@ func (s *Service) metadata(ctx context.Context, accountID string, includeDatabas
 	names := []string{}
 	for _, database := range databaseValues {
 		if database.AccountID == accountID && database.Status == "active" {
-			value.Databases = append(value.Databases, backupfmt.Database{ID: database.ID, NodeID: database.NodeID, Name: database.Name, SystemName: database.SystemName})
+			value.Databases = append(value.Databases, backupfmt.Database{ID: database.ID, NodeID: database.NodeID, Name: database.Name, SystemName: database.SystemName, Driver: database.Driver})
 			if includeDatabases {
 				names = append(names, database.SystemName)
 			}
@@ -369,7 +382,7 @@ func (s *Service) metadata(ctx context.Context, accountID string, includeDatabas
 	}
 	for _, item := range cronValues {
 		if item.AccountID == accountID {
-			value.CronJobs = append(value.CronJobs, backupfmt.CronJob{ID: item.ID, NodeID: item.NodeID, Name: item.Name, Schedule: item.Schedule, Command: item.Command, Enabled: item.Enabled})
+			value.CronJobs = append(value.CronJobs, backupfmt.CronJob{ID: item.ID, NodeID: item.NodeID, Name: item.Name, Schedule: item.Schedule, Command: item.Command, SchedulerDriver: item.SchedulerDriver, Enabled: item.Enabled})
 		}
 	}
 	data, err := json.Marshal(value)
@@ -382,6 +395,9 @@ func (s *Service) applyRetention(ctx context.Context, plan Plan, socket string) 
 		return err
 	}
 	for _, item := range items {
+		if item.StorageDriver != services.Local {
+			return fmt.Errorf("unsupported backup driver %q", item.StorageDriver)
+		}
 		request := agentbackup.ArtifactRequest{AccountID: item.AccountID, Path: item.Path, Checksum: item.Checksum}
 		if err := s.agent.DeleteBackup(ctx, socket, request); err != nil {
 			return err
@@ -446,6 +462,11 @@ func preparePlan(value *Plan) error {
 	}
 	if value.RetentionCount < 1 || value.RetentionCount > 100 {
 		return &validate.Error{Field: "retentionCount", Message: "Use a retention between 1 and 100"}
+	}
+	if value.StorageDriver != services.Local {
+		return &validate.Error{
+			Field: "storageDriver", Message: "The selected backup driver is not supported",
+		}
 	}
 	if !value.IncludeFiles && !value.IncludeDatabases {
 		return ErrScope

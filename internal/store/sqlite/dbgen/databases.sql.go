@@ -70,9 +70,9 @@ func (q *Queries) CountDatabases(ctx context.Context, arg CountDatabasesParams) 
 
 const createDatabase = `-- name: CreateDatabase :one
 INSERT INTO databases (
-    id, account_id, node_id, name, system_name, status, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
-RETURNING id, account_id, node_id, name, system_name, status, created_at, updated_at
+    id, account_id, node_id, name, system_name, driver, status, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+RETURNING id, account_id, node_id, name, system_name, status, created_at, updated_at, driver
 `
 
 type CreateDatabaseParams struct {
@@ -81,6 +81,7 @@ type CreateDatabaseParams struct {
 	NodeID     string `json:"node_id"`
 	Name       string `json:"name"`
 	SystemName string `json:"system_name"`
+	Driver     string `json:"driver"`
 	CreatedAt  int64  `json:"created_at"`
 	UpdatedAt  int64  `json:"updated_at"`
 }
@@ -92,6 +93,7 @@ func (q *Queries) CreateDatabase(ctx context.Context, arg CreateDatabaseParams) 
 		arg.NodeID,
 		arg.Name,
 		arg.SystemName,
+		arg.Driver,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -105,15 +107,16 @@ func (q *Queries) CreateDatabase(ctx context.Context, arg CreateDatabaseParams) 
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Driver,
 	)
 	return i, err
 }
 
 const createDatabaseUser = `-- name: CreateDatabaseUser :one
 INSERT INTO database_users (
-    id, account_id, node_id, name, system_name, status, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
-RETURNING id, account_id, node_id, name, system_name, status, created_at, updated_at
+    id, account_id, node_id, name, system_name, driver, status, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+RETURNING id, account_id, node_id, name, system_name, status, created_at, updated_at, driver
 `
 
 type CreateDatabaseUserParams struct {
@@ -122,6 +125,7 @@ type CreateDatabaseUserParams struct {
 	NodeID     string `json:"node_id"`
 	Name       string `json:"name"`
 	SystemName string `json:"system_name"`
+	Driver     string `json:"driver"`
 	CreatedAt  int64  `json:"created_at"`
 	UpdatedAt  int64  `json:"updated_at"`
 }
@@ -133,6 +137,7 @@ func (q *Queries) CreateDatabaseUser(ctx context.Context, arg CreateDatabaseUser
 		arg.NodeID,
 		arg.Name,
 		arg.SystemName,
+		arg.Driver,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -146,6 +151,7 @@ func (q *Queries) CreateDatabaseUser(ctx context.Context, arg CreateDatabaseUser
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Driver,
 	)
 	return i, err
 }
@@ -215,7 +221,7 @@ func (q *Queries) DeleteDatabaseUser(ctx context.Context, id string) error {
 }
 
 const getDatabase = `-- name: GetDatabase :one
-SELECT id, account_id, node_id, name, system_name, status, created_at, updated_at FROM databases WHERE id = ? LIMIT 1
+SELECT id, account_id, node_id, name, system_name, status, created_at, updated_at, driver FROM databases WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetDatabase(ctx context.Context, id string) (Database, error) {
@@ -230,6 +236,7 @@ func (q *Queries) GetDatabase(ctx context.Context, id string) (Database, error) 
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Driver,
 	)
 	return i, err
 }
@@ -257,7 +264,7 @@ func (q *Queries) GetDatabaseGrant(ctx context.Context, arg GetDatabaseGrantPara
 }
 
 const getDatabaseUser = `-- name: GetDatabaseUser :one
-SELECT id, account_id, node_id, name, system_name, status, created_at, updated_at FROM database_users WHERE id = ? LIMIT 1
+SELECT id, account_id, node_id, name, system_name, status, created_at, updated_at, driver FROM database_users WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetDatabaseUser(ctx context.Context, id string) (DatabaseUser, error) {
@@ -272,6 +279,7 @@ func (q *Queries) GetDatabaseUser(ctx context.Context, id string) (DatabaseUser,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Driver,
 	)
 	return i, err
 }
@@ -400,7 +408,7 @@ func (q *Queries) ListDatabaseGrantsPage(ctx context.Context, arg ListDatabaseGr
 }
 
 const listDatabaseUsers = `-- name: ListDatabaseUsers :many
-SELECT database_users.id, database_users.account_id, database_users.node_id, database_users.name, database_users.system_name, database_users.status, database_users.created_at, database_users.updated_at FROM database_users
+SELECT database_users.id, database_users.account_id, database_users.node_id, database_users.name, database_users.system_name, database_users.status, database_users.created_at, database_users.updated_at, database_users.driver FROM database_users
 JOIN account_members ON account_members.account_id = database_users.account_id
 WHERE ? OR account_members.user_id = ?
 GROUP BY database_users.id
@@ -430,6 +438,7 @@ func (q *Queries) ListDatabaseUsers(ctx context.Context, arg ListDatabaseUsersPa
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Driver,
 		); err != nil {
 			return nil, err
 		}
@@ -445,7 +454,7 @@ func (q *Queries) ListDatabaseUsers(ctx context.Context, arg ListDatabaseUsersPa
 }
 
 const listDatabaseUsersPage = `-- name: ListDatabaseUsersPage :many
-SELECT database_users.id, database_users.account_id, database_users.node_id, database_users.name, database_users.system_name, database_users.status, database_users.created_at, database_users.updated_at FROM database_users
+SELECT database_users.id, database_users.account_id, database_users.node_id, database_users.name, database_users.system_name, database_users.status, database_users.created_at, database_users.updated_at, database_users.driver FROM database_users
 JOIN account_members ON account_members.account_id = database_users.account_id
 WHERE ?1 OR account_members.user_id = ?2
 GROUP BY database_users.id
@@ -483,6 +492,7 @@ func (q *Queries) ListDatabaseUsersPage(ctx context.Context, arg ListDatabaseUse
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Driver,
 		); err != nil {
 			return nil, err
 		}
@@ -498,7 +508,7 @@ func (q *Queries) ListDatabaseUsersPage(ctx context.Context, arg ListDatabaseUse
 }
 
 const listDatabases = `-- name: ListDatabases :many
-SELECT databases.id, databases.account_id, databases.node_id, databases.name, databases.system_name, databases.status, databases.created_at, databases.updated_at FROM databases
+SELECT databases.id, databases.account_id, databases.node_id, databases.name, databases.system_name, databases.status, databases.created_at, databases.updated_at, databases.driver FROM databases
 JOIN account_members ON account_members.account_id = databases.account_id
 WHERE ? OR account_members.user_id = ?
 GROUP BY databases.id
@@ -528,6 +538,7 @@ func (q *Queries) ListDatabases(ctx context.Context, arg ListDatabasesParams) ([
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Driver,
 		); err != nil {
 			return nil, err
 		}
@@ -543,7 +554,7 @@ func (q *Queries) ListDatabases(ctx context.Context, arg ListDatabasesParams) ([
 }
 
 const listDatabasesPage = `-- name: ListDatabasesPage :many
-SELECT databases.id, databases.account_id, databases.node_id, databases.name, databases.system_name, databases.status, databases.created_at, databases.updated_at FROM databases
+SELECT databases.id, databases.account_id, databases.node_id, databases.name, databases.system_name, databases.status, databases.created_at, databases.updated_at, databases.driver FROM databases
 JOIN account_members ON account_members.account_id = databases.account_id
 WHERE ?1 OR account_members.user_id = ?2
 GROUP BY databases.id
@@ -581,6 +592,7 @@ func (q *Queries) ListDatabasesPage(ctx context.Context, arg ListDatabasesPagePa
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Driver,
 		); err != nil {
 			return nil, err
 		}
@@ -596,7 +608,7 @@ func (q *Queries) ListDatabasesPage(ctx context.Context, arg ListDatabasesPagePa
 }
 
 const queueDatabaseDelete = `-- name: QueueDatabaseDelete :one
-UPDATE databases SET status = 'pending', updated_at = ? WHERE id = ? RETURNING id, account_id, node_id, name, system_name, status, created_at, updated_at
+UPDATE databases SET status = 'pending', updated_at = ? WHERE id = ? RETURNING id, account_id, node_id, name, system_name, status, created_at, updated_at, driver
 `
 
 type QueueDatabaseDeleteParams struct {
@@ -616,6 +628,7 @@ func (q *Queries) QueueDatabaseDelete(ctx context.Context, arg QueueDatabaseDele
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Driver,
 	)
 	return i, err
 }
@@ -646,7 +659,7 @@ func (q *Queries) QueueDatabaseGrantDelete(ctx context.Context, arg QueueDatabas
 }
 
 const queueDatabaseUserDelete = `-- name: QueueDatabaseUserDelete :one
-UPDATE database_users SET status = 'pending', updated_at = ? WHERE id = ? RETURNING id, account_id, node_id, name, system_name, status, created_at, updated_at
+UPDATE database_users SET status = 'pending', updated_at = ? WHERE id = ? RETURNING id, account_id, node_id, name, system_name, status, created_at, updated_at, driver
 `
 
 type QueueDatabaseUserDeleteParams struct {
@@ -666,6 +679,7 @@ func (q *Queries) QueueDatabaseUserDelete(ctx context.Context, arg QueueDatabase
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Driver,
 	)
 	return i, err
 }

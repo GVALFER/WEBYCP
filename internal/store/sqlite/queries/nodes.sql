@@ -27,5 +27,9 @@ RETURNING *;
 
 -- name: UpdateNodeProbe :exec
 UPDATE nodes
-SET status = ?, last_seen_at = ?, updated_at = ?
-WHERE id = ?;
+SET status = sqlc.arg(status),
+    last_seen_at = COALESCE(sqlc.narg(last_seen_at), last_seen_at),
+    capabilities = COALESCE(sqlc.narg(capabilities), capabilities),
+    capabilities_at = COALESCE(sqlc.narg(capabilities_at), capabilities_at),
+    updated_at = sqlc.arg(updated_at)
+WHERE id = sqlc.arg(id);

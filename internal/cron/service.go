@@ -11,6 +11,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
 	"github.com/GVALFER/WEBYCP/internal/pagination"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
 
@@ -31,13 +32,17 @@ func NewService(repository Repository, accounts *accounts.Service, nodes nodes.R
 }
 
 func (s *Service) Create(
-	ctx context.Context, accountID, name, schedule, command, userID string, admin, enabled bool,
+	ctx context.Context, accountID, name, schedule, command, driver, userID string,
+	admin, enabled bool,
 ) (CronJob, jobs.Job, error) {
 	account, err := s.account(ctx, accountID, userID, admin)
 	if err != nil {
 		return CronJob{}, jobs.Job{}, err
 	}
-	value, err := build(CronJob{AccountID: account.ID, NodeID: account.NodeID}, name, schedule, command, enabled)
+	value, err := build(
+		CronJob{AccountID: account.ID, NodeID: account.NodeID},
+		name, schedule, command, driver, enabled,
+	)
 	if err != nil {
 		return CronJob{}, jobs.Job{}, err
 	}
@@ -59,7 +64,8 @@ func (s *Service) Create(
 }
 
 func (s *Service) Update(
-	ctx context.Context, id, accountID, name, schedule, command, userID string, admin, enabled bool,
+	ctx context.Context, id, accountID, name, schedule, command, driver, userID string,
+	admin, enabled bool,
 ) (CronJob, jobs.Job, error) {
 	current, err := s.get(ctx, id, userID, admin)
 	if err != nil {
@@ -68,7 +74,7 @@ func (s *Service) Update(
 	if current.AccountID != accountID {
 		return CronJob{}, jobs.Job{}, accounts.ErrForbidden
 	}
-	value, err := build(current, name, schedule, command, enabled)
+	value, err := build(current, name, schedule, command, driver, enabled)
 	if err != nil {
 		return CronJob{}, jobs.Job{}, err
 	}
@@ -133,6 +139,9 @@ func (s *Service) Reconcile(ctx context.Context, accountID string) error {
 	}
 	entries := make([]Entry, 0, len(values))
 	for _, value := range values {
+		if value.SchedulerDriver != services.Crontab {
+			return fmt.Errorf("unsupported scheduler driver %q", value.SchedulerDriver)
+		}
 		if value.Enabled && account.Enabled && account.Status == "active" {
 			entries = append(entries, Entry{ID: value.ID, Schedule: value.Schedule, Command: value.Command})
 		}
@@ -181,7 +190,9 @@ func (s *Service) job(nodeID, userID, accountID string) (jobs.Job, error) {
 	return jobs.Job{ID: id, NodeID: nodeID, UserID: userID, Kind: jobs.KindCronSync, Status: "queued", Payload: string(payload), MaxAttempts: 2, CreatedAt: time.Now().UTC()}, nil
 }
 
-func build(value CronJob, name, schedule, command string, enabled bool) (CronJob, error) {
+func build(
+	value CronJob, name, schedule, command, driver string, enabled bool,
+) (CronJob, error) {
 	var err error
 	value.Name, err = validate.ResourceName(name)
 	if err != nil {
@@ -195,6 +206,12 @@ func build(value CronJob, name, schedule, command string, enabled bool) (CronJob
 	if err != nil {
 		return CronJob{}, err
 	}
+	if driver != services.Crontab {
+		return CronJob{}, &validate.Error{
+			Field: "schedulerDriver", Message: "The selected scheduler driver is not supported",
+		}
+	}
+	value.SchedulerDriver = driver
 	value.Enabled = enabled
 	value.Status = "pending"
 	return value, nil

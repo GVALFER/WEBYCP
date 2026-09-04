@@ -76,15 +76,16 @@ type AuditEvent struct {
 }
 
 type BackupArtifact struct {
-	ID        string `json:"id"`
-	RunID     string `json:"run_id"`
-	AccountID string `json:"account_id"`
-	NodeID    string `json:"node_id"`
-	Path      string `json:"path"`
-	Checksum  string `json:"checksum"`
-	SizeBytes int64  `json:"size_bytes"`
-	Manifest  string `json:"manifest"`
-	CreatedAt int64  `json:"created_at"`
+	ID            string `json:"id"`
+	RunID         string `json:"run_id"`
+	AccountID     string `json:"account_id"`
+	NodeID        string `json:"node_id"`
+	Path          string `json:"path"`
+	Checksum      string `json:"checksum"`
+	SizeBytes     int64  `json:"size_bytes"`
+	Manifest      string `json:"manifest"`
+	CreatedAt     int64  `json:"created_at"`
+	StorageDriver string `json:"storage_driver"`
 }
 
 type BackupPlan struct {
@@ -101,18 +102,20 @@ type BackupPlan struct {
 	NextRunAt        sql.NullInt64 `json:"next_run_at"`
 	CreatedAt        int64         `json:"created_at"`
 	UpdatedAt        int64         `json:"updated_at"`
+	StorageDriver    string        `json:"storage_driver"`
 }
 
 type BackupRun struct {
-	ID         string         `json:"id"`
-	PlanID     sql.NullString `json:"plan_id"`
-	AccountID  string         `json:"account_id"`
-	NodeID     string         `json:"node_id"`
-	Status     string         `json:"status"`
-	Error      string         `json:"error"`
-	CreatedAt  int64          `json:"created_at"`
-	StartedAt  sql.NullInt64  `json:"started_at"`
-	FinishedAt sql.NullInt64  `json:"finished_at"`
+	ID            string         `json:"id"`
+	PlanID        sql.NullString `json:"plan_id"`
+	AccountID     string         `json:"account_id"`
+	NodeID        string         `json:"node_id"`
+	Status        string         `json:"status"`
+	Error         string         `json:"error"`
+	CreatedAt     int64          `json:"created_at"`
+	StartedAt     sql.NullInt64  `json:"started_at"`
+	FinishedAt    sql.NullInt64  `json:"finished_at"`
+	StorageDriver string         `json:"storage_driver"`
 }
 
 type Certificate struct {
@@ -137,16 +140,17 @@ type CertificateName struct {
 }
 
 type CronJob struct {
-	ID        string `json:"id"`
-	AccountID string `json:"account_id"`
-	NodeID    string `json:"node_id"`
-	Name      string `json:"name"`
-	Schedule  string `json:"schedule"`
-	Command   string `json:"command"`
-	Enabled   int64  `json:"enabled"`
-	Status    string `json:"status"`
-	CreatedAt int64  `json:"created_at"`
-	UpdatedAt int64  `json:"updated_at"`
+	ID              string `json:"id"`
+	AccountID       string `json:"account_id"`
+	NodeID          string `json:"node_id"`
+	Name            string `json:"name"`
+	Schedule        string `json:"schedule"`
+	Command         string `json:"command"`
+	Enabled         int64  `json:"enabled"`
+	Status          string `json:"status"`
+	CreatedAt       int64  `json:"created_at"`
+	UpdatedAt       int64  `json:"updated_at"`
+	SchedulerDriver string `json:"scheduler_driver"`
 }
 
 type Database struct {
@@ -158,6 +162,7 @@ type Database struct {
 	Status     string `json:"status"`
 	CreatedAt  int64  `json:"created_at"`
 	UpdatedAt  int64  `json:"updated_at"`
+	Driver     string `json:"driver"`
 }
 
 type DatabaseGrant struct {
@@ -177,6 +182,7 @@ type DatabaseUser struct {
 	Status     string `json:"status"`
 	CreatedAt  int64  `json:"created_at"`
 	UpdatedAt  int64  `json:"updated_at"`
+	Driver     string `json:"driver"`
 }
 
 type Job struct {
@@ -205,14 +211,16 @@ type JobStep struct {
 }
 
 type Node struct {
-	ID         string        `json:"id"`
-	Name       string        `json:"name"`
-	Kind       string        `json:"kind"`
-	Endpoint   string        `json:"endpoint"`
-	Status     string        `json:"status"`
-	LastSeenAt sql.NullInt64 `json:"last_seen_at"`
-	CreatedAt  int64         `json:"created_at"`
-	UpdatedAt  int64         `json:"updated_at"`
+	ID             string         `json:"id"`
+	Name           string         `json:"name"`
+	Kind           string         `json:"kind"`
+	Endpoint       string         `json:"endpoint"`
+	Status         string         `json:"status"`
+	LastSeenAt     sql.NullInt64  `json:"last_seen_at"`
+	CreatedAt      int64          `json:"created_at"`
+	UpdatedAt      int64          `json:"updated_at"`
+	Capabilities   sql.NullString `json:"capabilities"`
+	CapabilitiesAt sql.NullInt64  `json:"capabilities_at"`
 }
 
 type Package struct {
@@ -244,6 +252,17 @@ type PackageOverview struct {
 	CreatedAt          int64  `json:"created_at"`
 	UpdatedAt          int64  `json:"updated_at"`
 	AccountCount       int64  `json:"account_count"`
+}
+
+type ServiceSetting struct {
+	ID              int64  `json:"id"`
+	WebDriver       string `json:"web_driver"`
+	RuntimeDriver   string `json:"runtime_driver"`
+	RuntimeVersion  string `json:"runtime_version"`
+	DatabaseDriver  string `json:"database_driver"`
+	SchedulerDriver string `json:"scheduler_driver"`
+	BackupDriver    string `json:"backup_driver"`
+	UpdatedAt       int64  `json:"updated_at"`
 }
 
 type Session struct {

@@ -26,8 +26,8 @@ SELECT EXISTS(SELECT 1 FROM databases WHERE account_id = ? AND name = ? COLLATE 
 
 -- name: CreateDatabase :one
 INSERT INTO databases (
-    id, account_id, node_id, name, system_name, status, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
+    id, account_id, node_id, name, system_name, driver, status, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
 RETURNING *;
 
 -- name: UpdateDatabaseStatus :exec
@@ -67,8 +67,8 @@ SELECT EXISTS(SELECT 1 FROM database_users WHERE account_id = ? AND name = ? COL
 
 -- name: CreateDatabaseUser :one
 INSERT INTO database_users (
-    id, account_id, node_id, name, system_name, status, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
+    id, account_id, node_id, name, system_name, driver, status, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
 RETURNING *;
 
 -- name: UpdateDatabaseUserStatus :exec

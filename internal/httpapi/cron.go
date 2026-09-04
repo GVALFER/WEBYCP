@@ -41,7 +41,7 @@ func (h *handler) createCronJob(w http.ResponseWriter, r *http.Request, session 
 		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
 		return
 	}
-	value, job, err := h.options.Cron.Create(r.Context(), request.AccountId, request.Name, request.Schedule, request.Command, session.User.ID, session.User.Role == "admin", request.Enabled)
+	value, job, err := h.options.Cron.Create(r.Context(), request.AccountId, request.Name, request.Schedule, request.Command, string(request.SchedulerDriver), session.User.ID, session.User.Role == "admin", request.Enabled)
 	h.recordMutation(r, session.User.ID, "cron.create", "cron_job", value.ID, err)
 	if err != nil {
 		h.writeCronError(w, r, err)
@@ -56,7 +56,7 @@ func (h *handler) setCronJob(w http.ResponseWriter, r *http.Request, session aut
 		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
 		return
 	}
-	value, job, err := h.options.Cron.Update(r.Context(), r.PathValue("cronJobId"), request.AccountId, request.Name, request.Schedule, request.Command, session.User.ID, session.User.Role == "admin", request.Enabled)
+	value, job, err := h.options.Cron.Update(r.Context(), r.PathValue("cronJobId"), request.AccountId, request.Name, request.Schedule, request.Command, string(request.SchedulerDriver), session.User.ID, session.User.Role == "admin", request.Enabled)
 	h.recordMutation(r, session.User.ID, "cron.update", "cron_job", r.PathValue("cronJobId"), err)
 	if err != nil {
 		h.writeCronError(w, r, err)
@@ -95,7 +95,7 @@ func (h *handler) writeCronError(w http.ResponseWriter, r *http.Request, err err
 }
 
 func cronJobResponse(value cronjob.CronJob) publicapi.CronJob {
-	return publicapi.CronJob{Id: value.ID, AccountId: value.AccountID, NodeId: value.NodeID, Name: value.Name, Schedule: value.Schedule, Command: value.Command, Enabled: value.Enabled, Status: publicapi.CronJobStatus(value.Status), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+	return publicapi.CronJob{Id: value.ID, AccountId: value.AccountID, NodeId: value.NodeID, Name: value.Name, Schedule: value.Schedule, Command: value.Command, SchedulerDriver: publicapi.CronJobSchedulerDriver(value.SchedulerDriver), Enabled: value.Enabled, Status: publicapi.CronJobStatus(value.Status), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 
 func writeCronJob(w http.ResponseWriter, value cronjob.CronJob, job jobs.Job) {

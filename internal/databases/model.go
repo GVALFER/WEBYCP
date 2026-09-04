@@ -16,13 +16,13 @@ var (
 )
 
 type Database struct {
-	ID, AccountID, NodeID, Name, SystemName, Status string
-	CreatedAt, UpdatedAt                            time.Time
+	ID, AccountID, NodeID, Name, SystemName, Driver, Status string
+	CreatedAt, UpdatedAt                                    time.Time
 }
 
 type User struct {
-	ID, AccountID, NodeID, Name, SystemName, Status string
-	CreatedAt, UpdatedAt                            time.Time
+	ID, AccountID, NodeID, Name, SystemName, Driver, Status string
+	CreatedAt, UpdatedAt                                    time.Time
 }
 
 type Grant struct {

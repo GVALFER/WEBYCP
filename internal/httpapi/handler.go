@@ -18,6 +18,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
 	"github.com/GVALFER/WEBYCP/internal/packages"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 )
 
@@ -29,6 +30,7 @@ type Options struct {
 	Auth         *auth.Service
 	Accounts     *accounts.Service
 	Packages     *packages.Service
+	Services     *services.Service
 	Websites     *websites.Service
 	Databases    *databases.Service
 	Cron         *cronjob.Service
@@ -107,6 +109,8 @@ func New(options Options) http.Handler {
 	mux.HandleFunc("GET /api/v1/backup-artifacts/{backupArtifactId}/restore", h.withAuth(false, h.previewBackupRestore))
 	mux.HandleFunc("POST /api/v1/backup-artifacts/{backupArtifactId}/restore", h.withAuth(true, h.restoreBackup))
 	mux.HandleFunc("GET /api/v1/nodes", h.withAuth(false, h.listNodes))
+	mux.HandleFunc("GET /api/v1/service-settings", h.withAuth(false, h.getServiceSettings))
+	mux.HandleFunc("PUT /api/v1/service-settings", h.withAuth(true, h.updateServiceSettings))
 	mux.HandleFunc("POST /api/v1/nodes/{nodeId}/probe", h.withAuth(true, h.probeNode))
 	mux.HandleFunc("GET /api/v1/jobs", h.withAuth(false, h.listJobs))
 	mux.HandleFunc("GET /api/v1/jobs/{jobId}", h.withAuth(false, h.getJob))

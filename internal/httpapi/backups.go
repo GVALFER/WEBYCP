@@ -69,7 +69,7 @@ func decodeBackupPlan(w http.ResponseWriter, r *http.Request) (backups.Plan, boo
 		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
 		return backups.Plan{}, false
 	}
-	return backups.Plan{AccountID: request.AccountId, Name: request.Name, Schedule: request.Schedule, RetentionCount: int64(request.RetentionCount), IncludeFiles: request.IncludeFiles, IncludeDatabases: request.IncludeDatabases, Enabled: request.Enabled}, true
+	return backups.Plan{AccountID: request.AccountId, Name: request.Name, Schedule: request.Schedule, RetentionCount: int64(request.RetentionCount), StorageDriver: string(request.StorageDriver), IncludeFiles: request.IncludeFiles, IncludeDatabases: request.IncludeDatabases, Enabled: request.Enabled}, true
 }
 
 func (h *handler) deleteBackupPlan(w http.ResponseWriter, r *http.Request, session auth.Session) {
@@ -197,15 +197,15 @@ func (h *handler) writeBackupError(w http.ResponseWriter, r *http.Request, err e
 }
 
 func backupPlanResponse(value backups.Plan) publicapi.BackupPlan {
-	return publicapi.BackupPlan{Id: value.ID, AccountId: value.AccountID, NodeId: value.NodeID, Name: value.Name, Schedule: value.Schedule, RetentionCount: int(value.RetentionCount), IncludeFiles: value.IncludeFiles, IncludeDatabases: value.IncludeDatabases, Enabled: value.Enabled, LastRunAt: value.LastRunAt, NextRunAt: value.NextRunAt, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
+	return publicapi.BackupPlan{Id: value.ID, AccountId: value.AccountID, NodeId: value.NodeID, Name: value.Name, Schedule: value.Schedule, RetentionCount: int(value.RetentionCount), StorageDriver: publicapi.BackupPlanStorageDriver(value.StorageDriver), IncludeFiles: value.IncludeFiles, IncludeDatabases: value.IncludeDatabases, Enabled: value.Enabled, LastRunAt: value.LastRunAt, NextRunAt: value.NextRunAt, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 
 func backupRunResponse(value backups.Run) publicapi.BackupRun {
-	return publicapi.BackupRun{Id: value.ID, PlanId: value.PlanID, AccountId: value.AccountID, NodeId: value.NodeID, Status: publicapi.BackupRunStatus(value.Status), Error: value.Error, CreatedAt: value.CreatedAt, StartedAt: value.StartedAt, FinishedAt: value.FinishedAt}
+	return publicapi.BackupRun{Id: value.ID, PlanId: value.PlanID, AccountId: value.AccountID, NodeId: value.NodeID, StorageDriver: publicapi.BackupRunStorageDriver(value.StorageDriver), Status: publicapi.BackupRunStatus(value.Status), Error: value.Error, CreatedAt: value.CreatedAt, StartedAt: value.StartedAt, FinishedAt: value.FinishedAt}
 }
 
 func backupArtifactResponse(value backups.Artifact) publicapi.BackupArtifact {
-	return publicapi.BackupArtifact{Id: value.ID, RunId: value.RunID, AccountId: value.AccountID, NodeId: value.NodeID, Checksum: value.Checksum, Size: value.Size, Manifest: backupManifestResponse(value.Manifest), CreatedAt: value.CreatedAt}
+	return publicapi.BackupArtifact{Id: value.ID, RunId: value.RunID, AccountId: value.AccountID, NodeId: value.NodeID, StorageDriver: publicapi.BackupArtifactStorageDriver(value.StorageDriver), Checksum: value.Checksum, Size: value.Size, Manifest: backupManifestResponse(value.Manifest), CreatedAt: value.CreatedAt}
 }
 
 func backupManifestResponse(value backupfmt.Manifest) publicapi.BackupManifest {

@@ -26,14 +26,14 @@ SELECT * FROM cron_jobs WHERE account_id = ? ORDER BY created_at ASC;
 
 -- name: CreateCronJob :one
 INSERT INTO cron_jobs (
-    id, account_id, node_id, name, schedule, command, enabled, status,
+    id, account_id, node_id, name, schedule, command, scheduler_driver, enabled, status,
     created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
 RETURNING *;
 
 -- name: UpdateCronJob :one
 UPDATE cron_jobs
-SET name = ?, schedule = ?, command = ?, enabled = ?, status = 'pending', updated_at = ?
+SET name = ?, schedule = ?, command = ?, scheduler_driver = ?, enabled = ?, status = 'pending', updated_at = ?
 WHERE id = ?
 RETURNING *;
 

@@ -47,6 +47,7 @@ const CronActions = ({ item }: CronActionsProps) => {
                             name: item.name,
                             schedule: item.schedule,
                             command: item.command,
+                            schedulerDriver: item.schedulerDriver,
                             enabled: !item.enabled,
                         },
                     })

@@ -10,6 +10,7 @@ import type {
     DatabaseGrantListResponse,
     DatabaseListResponse,
     DatabaseUserListResponse,
+    ServiceSettings,
 } from "@/contracts/types";
 import { cn } from "@/utils/classnames";
 import { pageKey } from "@/utils/pagination";
@@ -27,6 +28,7 @@ type DatabasesProps = {
     grants: DatabaseGrantListResponse;
     databaseOptions: DatabaseListResponse;
     userOptions: DatabaseUserListResponse;
+    settings: ServiceSettings;
 };
 
 type Resource = DatabaseListResponse["items"][number] | DatabaseUserListResponse["items"][number];
@@ -39,6 +41,7 @@ const Databases = ({
     grants: initialGrants,
     databaseOptions,
     userOptions,
+    settings: initialSettings,
 }: DatabasesProps) => {
     const databasesTable = useTable(initialDatabases.pagination, "databases");
     const usersTable = useTable(initialUsers.pagination, "users");
@@ -62,6 +65,9 @@ const Databases = ({
         pageKey("database-users", { page: 1, size: 100 }),
         { fallbackData: userOptions },
     );
+    const { data: settings = initialSettings } = useSWR<ServiceSettings>("service-settings", {
+        fallbackData: initialSettings,
+    });
 
     const databaseNames = new Map(allDatabases?.items.map((item) => [item.id, item.name]));
     const userNames = new Map(allUsers?.items.map((item) => [item.id, item.name]));
@@ -124,7 +130,12 @@ const Databases = ({
                 table={databasesTable}
                 icon={DatabaseIcon}
                 kind="database"
-                action={<CreateDatabase accounts={accounts} />}
+                action={
+                    <CreateDatabase
+                        accounts={accounts}
+                        driver={settings.defaults.databaseDriver}
+                    />
+                }
             />
             <ResourceList
                 title="MySQL users"
@@ -132,7 +143,12 @@ const Databases = ({
                 table={usersTable}
                 icon={UserRound}
                 kind="user"
-                action={<CreateDatabaseUser accounts={accounts} />}
+                action={
+                    <CreateDatabaseUser
+                        accounts={accounts}
+                        driver={settings.defaults.databaseDriver}
+                    />
+                }
             />
             <section className="panel-card overflow-hidden">
                 <div className="flex items-center justify-between gap-4 px-6 py-5">
@@ -177,7 +193,7 @@ const ResourceList = ({ action, title, data, table, icon: Icon, kind }: Resource
                     <div className="min-w-0">
                         <div className="truncate font-medium">{item.name}</div>
                         <div className="truncate font-mono text-xs text-foreground-400">
-                            {item.systemName}
+                            {item.systemName} · {item.driver}
                         </div>
                     </div>
                 </div>

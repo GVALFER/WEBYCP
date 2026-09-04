@@ -29,22 +29,23 @@ func (q *Queries) CountCronJobs(ctx context.Context, arg CountCronJobsParams) (i
 
 const createCronJob = `-- name: CreateCronJob :one
 INSERT INTO cron_jobs (
-    id, account_id, node_id, name, schedule, command, enabled, status,
+    id, account_id, node_id, name, schedule, command, scheduler_driver, enabled, status,
     created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-RETURNING id, account_id, node_id, name, schedule, command, enabled, status, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+RETURNING id, account_id, node_id, name, schedule, command, enabled, status, created_at, updated_at, scheduler_driver
 `
 
 type CreateCronJobParams struct {
-	ID        string `json:"id"`
-	AccountID string `json:"account_id"`
-	NodeID    string `json:"node_id"`
-	Name      string `json:"name"`
-	Schedule  string `json:"schedule"`
-	Command   string `json:"command"`
-	Enabled   int64  `json:"enabled"`
-	CreatedAt int64  `json:"created_at"`
-	UpdatedAt int64  `json:"updated_at"`
+	ID              string `json:"id"`
+	AccountID       string `json:"account_id"`
+	NodeID          string `json:"node_id"`
+	Name            string `json:"name"`
+	Schedule        string `json:"schedule"`
+	Command         string `json:"command"`
+	SchedulerDriver string `json:"scheduler_driver"`
+	Enabled         int64  `json:"enabled"`
+	CreatedAt       int64  `json:"created_at"`
+	UpdatedAt       int64  `json:"updated_at"`
 }
 
 func (q *Queries) CreateCronJob(ctx context.Context, arg CreateCronJobParams) (CronJob, error) {
@@ -55,6 +56,7 @@ func (q *Queries) CreateCronJob(ctx context.Context, arg CreateCronJobParams) (C
 		arg.Name,
 		arg.Schedule,
 		arg.Command,
+		arg.SchedulerDriver,
 		arg.Enabled,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -71,6 +73,7 @@ func (q *Queries) CreateCronJob(ctx context.Context, arg CreateCronJobParams) (C
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SchedulerDriver,
 	)
 	return i, err
 }
@@ -85,7 +88,7 @@ func (q *Queries) DeleteCronJob(ctx context.Context, id string) error {
 }
 
 const getCronJob = `-- name: GetCronJob :one
-SELECT id, account_id, node_id, name, schedule, command, enabled, status, created_at, updated_at FROM cron_jobs WHERE id = ? LIMIT 1
+SELECT id, account_id, node_id, name, schedule, command, enabled, status, created_at, updated_at, scheduler_driver FROM cron_jobs WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetCronJob(ctx context.Context, id string) (CronJob, error) {
@@ -102,12 +105,13 @@ func (q *Queries) GetCronJob(ctx context.Context, id string) (CronJob, error) {
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SchedulerDriver,
 	)
 	return i, err
 }
 
 const listAccountCronJobs = `-- name: ListAccountCronJobs :many
-SELECT id, account_id, node_id, name, schedule, command, enabled, status, created_at, updated_at FROM cron_jobs WHERE account_id = ? ORDER BY created_at ASC
+SELECT id, account_id, node_id, name, schedule, command, enabled, status, created_at, updated_at, scheduler_driver FROM cron_jobs WHERE account_id = ? ORDER BY created_at ASC
 `
 
 func (q *Queries) ListAccountCronJobs(ctx context.Context, accountID string) ([]CronJob, error) {
@@ -130,6 +134,7 @@ func (q *Queries) ListAccountCronJobs(ctx context.Context, accountID string) ([]
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SchedulerDriver,
 		); err != nil {
 			return nil, err
 		}
@@ -145,7 +150,7 @@ func (q *Queries) ListAccountCronJobs(ctx context.Context, accountID string) ([]
 }
 
 const listCronJobs = `-- name: ListCronJobs :many
-SELECT cron_jobs.id, cron_jobs.account_id, cron_jobs.node_id, cron_jobs.name, cron_jobs.schedule, cron_jobs.command, cron_jobs.enabled, cron_jobs.status, cron_jobs.created_at, cron_jobs.updated_at FROM cron_jobs
+SELECT cron_jobs.id, cron_jobs.account_id, cron_jobs.node_id, cron_jobs.name, cron_jobs.schedule, cron_jobs.command, cron_jobs.enabled, cron_jobs.status, cron_jobs.created_at, cron_jobs.updated_at, cron_jobs.scheduler_driver FROM cron_jobs
 JOIN account_members ON account_members.account_id = cron_jobs.account_id
 WHERE ? OR account_members.user_id = ?
 GROUP BY cron_jobs.id
@@ -177,6 +182,7 @@ func (q *Queries) ListCronJobs(ctx context.Context, arg ListCronJobsParams) ([]C
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SchedulerDriver,
 		); err != nil {
 			return nil, err
 		}
@@ -192,7 +198,7 @@ func (q *Queries) ListCronJobs(ctx context.Context, arg ListCronJobsParams) ([]C
 }
 
 const listCronJobsPage = `-- name: ListCronJobsPage :many
-SELECT cron_jobs.id, cron_jobs.account_id, cron_jobs.node_id, cron_jobs.name, cron_jobs.schedule, cron_jobs.command, cron_jobs.enabled, cron_jobs.status, cron_jobs.created_at, cron_jobs.updated_at FROM cron_jobs
+SELECT cron_jobs.id, cron_jobs.account_id, cron_jobs.node_id, cron_jobs.name, cron_jobs.schedule, cron_jobs.command, cron_jobs.enabled, cron_jobs.status, cron_jobs.created_at, cron_jobs.updated_at, cron_jobs.scheduler_driver FROM cron_jobs
 JOIN account_members ON account_members.account_id = cron_jobs.account_id
 WHERE ?1 OR account_members.user_id = ?2
 GROUP BY cron_jobs.id
@@ -232,6 +238,7 @@ func (q *Queries) ListCronJobsPage(ctx context.Context, arg ListCronJobsPagePara
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SchedulerDriver,
 		); err != nil {
 			return nil, err
 		}
@@ -271,18 +278,19 @@ func (q *Queries) UpdateAccountCronStatuses(ctx context.Context, arg UpdateAccou
 
 const updateCronJob = `-- name: UpdateCronJob :one
 UPDATE cron_jobs
-SET name = ?, schedule = ?, command = ?, enabled = ?, status = 'pending', updated_at = ?
+SET name = ?, schedule = ?, command = ?, scheduler_driver = ?, enabled = ?, status = 'pending', updated_at = ?
 WHERE id = ?
-RETURNING id, account_id, node_id, name, schedule, command, enabled, status, created_at, updated_at
+RETURNING id, account_id, node_id, name, schedule, command, enabled, status, created_at, updated_at, scheduler_driver
 `
 
 type UpdateCronJobParams struct {
-	Name      string `json:"name"`
-	Schedule  string `json:"schedule"`
-	Command   string `json:"command"`
-	Enabled   int64  `json:"enabled"`
-	UpdatedAt int64  `json:"updated_at"`
-	ID        string `json:"id"`
+	Name            string `json:"name"`
+	Schedule        string `json:"schedule"`
+	Command         string `json:"command"`
+	SchedulerDriver string `json:"scheduler_driver"`
+	Enabled         int64  `json:"enabled"`
+	UpdatedAt       int64  `json:"updated_at"`
+	ID              string `json:"id"`
 }
 
 func (q *Queries) UpdateCronJob(ctx context.Context, arg UpdateCronJobParams) (CronJob, error) {
@@ -290,6 +298,7 @@ func (q *Queries) UpdateCronJob(ctx context.Context, arg UpdateCronJobParams) (C
 		arg.Name,
 		arg.Schedule,
 		arg.Command,
+		arg.SchedulerDriver,
 		arg.Enabled,
 		arg.UpdatedAt,
 		arg.ID,
@@ -306,6 +315,7 @@ func (q *Queries) UpdateCronJob(ctx context.Context, arg UpdateCronJobParams) (C
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SchedulerDriver,
 	)
 	return i, err
 }

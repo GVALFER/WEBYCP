@@ -16,7 +16,9 @@ import {
     Link2,
     LockKeyhole,
     PackageOpen,
+    Server,
     Settings2,
+    Wrench,
     Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -147,6 +149,20 @@ const groups: Group[] = [
         label: "System",
         icon: Settings2,
         children: [
+            {
+                href: "/servers",
+                label: "Servers",
+                title: "Servers",
+                description: "Managed nodes, Agent connectivity and installed capabilities.",
+                icon: Server,
+            },
+            {
+                href: "/services",
+                label: "Services",
+                title: "Services",
+                description: "Observed services and defaults for new resources.",
+                icon: Wrench,
+            },
             {
                 href: "/jobs",
                 label: "Jobs",

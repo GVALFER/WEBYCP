@@ -9,24 +9,31 @@ import { Form } from "@/components/form/form";
 import { FormInput } from "@/components/form/formInput";
 import { FormModal } from "@/components/form/formModal";
 import { FormSelect } from "@/components/form/formSelect";
-import type { AccountListResponse, DatabaseJobResponse } from "@/contracts/types";
+import type {
+    AccountListResponse,
+    DatabaseJobResponse,
+    ServiceDefaults,
+} from "@/contracts/types";
 import { api } from "@/lib/api";
 import { pageKey } from "@/utils/pagination";
+import { SERVICE_OPTIONS } from "@/utils/services";
 import { dbNameField } from "@/utils/validation";
 import { useDatabaseAction } from "./useDatabaseAction";
 
 type CreateDatabaseProps = {
     accounts: AccountListResponse;
+    driver: ServiceDefaults["databaseDriver"];
 };
 
 const formSchema = v.object({
     accountId: v.pipe(v.string(), v.nonEmpty("Choose a hosting account.")),
     name: dbNameField,
+    driver: v.literal("mysql"),
 });
 
 type FormValues = v.InferOutput<typeof formSchema>;
 
-const CreateDatabase = ({ accounts }: CreateDatabaseProps) => {
+const CreateDatabase = ({ accounts, driver }: CreateDatabaseProps) => {
     const [open, setOpen] = useState(false);
     const [pending, startTransition] = useTransition();
     const { run } = useDatabaseAction();
@@ -40,7 +47,7 @@ const CreateDatabase = ({ accounts }: CreateDatabaseProps) => {
 
     const form = useForm<FormValues>({
         resolver: valibotResolver(formSchema),
-        defaultValues: { accountId: options[0]?.id ?? "", name: "" },
+        defaultValues: { accountId: options[0]?.id ?? "", name: "", driver },
     });
 
     const accountId = useWatch({ control: form.control, name: "accountId" });
@@ -54,7 +61,7 @@ const CreateDatabase = ({ accounts }: CreateDatabaseProps) => {
                     true,
                 );
                 if (response) {
-                    form.reset({ accountId: values.accountId, name: "" });
+                    form.reset({ accountId: values.accountId, name: "", driver: values.driver });
                     setOpen(false);
                 }
             });
@@ -83,6 +90,12 @@ const CreateDatabase = ({ accounts }: CreateDatabaseProps) => {
                     required
                 />
                 <FormInput name="name" label="Database name" maxLength={32} required />
+                <FormSelect
+                    name="driver"
+                    label="Database service"
+                    options={SERVICE_OPTIONS.databaseDriver}
+                    required
+                />
             </FormModal>
         </Form>
     );

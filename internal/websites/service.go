@@ -14,6 +14,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
 	"github.com/GVALFER/WEBYCP/internal/pagination"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
 
@@ -55,7 +56,8 @@ func (s *Service) Create(ctx context.Context, value Website, primaryHostname, us
 	if err != nil {
 		return Website{}, WebsiteDomain{}, jobs.Job{}, err
 	}
-	if value.Kind != "php" || value.WebDriver != "nginx" || value.RuntimeDriver != "phpfpm" || value.RuntimeVersion != "8.3" {
+	if value.Kind != "php" || value.WebDriver != services.Nginx ||
+		value.RuntimeDriver != services.PHPFPM || value.RuntimeVersion != services.PHP83 {
 		return Website{}, WebsiteDomain{}, jobs.Job{}, &validate.Error{Field: "driver", Message: "The selected website stack is not supported"}
 	}
 	account, err := s.accounts.Account(ctx, value.AccountID, userID, admin)

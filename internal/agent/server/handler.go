@@ -15,6 +15,7 @@ import (
 	agentwebsite "github.com/GVALFER/WEBYCP/internal/agent/website"
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/httpx"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
 
@@ -34,8 +35,13 @@ type WebsiteManager interface {
 	Delete(context.Context, agentwebsite.Spec) error
 }
 
+type CapabilityObserver interface {
+	Observe(context.Context) services.Capabilities
+}
+
 type Options struct {
 	Version        string
+	Capabilities   CapabilityObserver
 	Accounts       AccountManager
 	AccountActions AccountLifecycle
 	Websites       WebsiteManager
@@ -53,8 +59,16 @@ func New(options Options) http.Handler {
 	}
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /agent/v1/health", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("GET /agent/v1/health", func(w http.ResponseWriter, r *http.Request) {
+		if options.Capabilities == nil {
+			logger.Error("capability observer is not configured")
+			httpx.WriteJSON(w, http.StatusInternalServerError, agentapi.ErrorResponse{
+				Code: "internal_error", Message: "An internal error occurred",
+			})
+			return
+		}
 		httpx.WriteJSON(w, http.StatusOK, agentapi.HealthResponse{
+			Capabilities:    capabilitiesResponse(options.Capabilities.Observe(r.Context())),
 			ProtocolVersion: "v1",
 			Service:         "webycp-agent",
 			Status:          agentapi.Ok,
@@ -392,6 +406,27 @@ func New(options Options) http.Handler {
 
 func hostAccountInvalid(accountID, systemUser string) bool {
 	return validate.ID("accountId", accountID) != nil || validate.SystemUser(systemUser) != nil
+}
+
+func capabilitiesResponse(value services.Capabilities) agentapi.ServiceCapabilities {
+	return agentapi.ServiceCapabilities{
+		Webservers: capabilityValues(value.Webservers),
+		Runtimes:   capabilityValues(value.Runtimes),
+		Databases:  capabilityValues(value.Databases),
+		Schedulers: capabilityValues(value.Schedulers),
+		Backups:    capabilityValues(value.Backups),
+	}
+}
+
+func capabilityValues(values []services.Capability) []agentapi.ServiceCapability {
+	result := make([]agentapi.ServiceCapability, 0, len(values))
+	for _, value := range values {
+		result = append(result, agentapi.ServiceCapability{
+			Driver: value.Driver, Version: value.Version,
+			Status: agentapi.ServiceCapabilityStatus(value.Status),
+		})
+	}
+	return result
 }
 
 func manifestResponse(value backupfmt.Manifest) agentapi.BackupManifest {

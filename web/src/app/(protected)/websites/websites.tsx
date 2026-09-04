@@ -6,6 +6,7 @@ import { Table, type TableColumn } from "@/components/table/table";
 import { useTable } from "@/components/table/useTable";
 import type {
     AccountListResponse,
+    ServiceSettings,
     WebsiteDomainListResponse,
     WebsiteListResponse,
 } from "@/contracts/types";
@@ -20,11 +21,12 @@ type Props = {
     accounts: AccountListResponse;
     websites: WebsiteListResponse;
     domains: WebsiteDomainListResponse;
+    settings: ServiceSettings;
 };
 
 type Website = WebsiteListResponse["items"][number];
 
-const Websites = ({ accounts, websites: initial, domains }: Props) => {
+const Websites = ({ accounts, websites: initial, domains, settings: initialSettings }: Props) => {
     const { dt } = useTimezone();
     const table = useTable(initial.pagination);
 
@@ -39,6 +41,9 @@ const Websites = ({ accounts, websites: initial, domains }: Props) => {
         "website-domains?kind=primary&page=1&size=100",
         { fallbackData: domains },
     );
+    const { data: settings = initialSettings } = useSWR<ServiceSettings>("service-settings", {
+        fallbackData: initialSettings,
+    });
 
     const accountNames = new Map(accountData?.items.map((item) => [item.id, item.name]));
     const primaryDomains = new Map(
@@ -113,7 +118,7 @@ const Websites = ({ accounts, websites: initial, domains }: Props) => {
                         Sites, document roots and runtime stacks.
                     </div>
                 </div>
-                <CreateWebsite accounts={accountData ?? accounts} />
+                <CreateWebsite accounts={accountData ?? accounts} defaults={settings.defaults} />
             </div>
             <Table table={table} columns={columns} data={data} />
         </section>

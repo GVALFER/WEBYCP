@@ -18,25 +18,25 @@ var (
 )
 
 type Plan struct {
-	ID, AccountID, NodeID, Name, Schedule string
-	RetentionCount                        int64
-	IncludeFiles, IncludeDatabases        bool
-	Enabled                               bool
-	LastRunAt, NextRunAt                  *time.Time
-	CreatedAt, UpdatedAt                  time.Time
+	ID, AccountID, NodeID, Name, Schedule, StorageDriver string
+	RetentionCount                                       int64
+	IncludeFiles, IncludeDatabases                       bool
+	Enabled                                              bool
+	LastRunAt, NextRunAt                                 *time.Time
+	CreatedAt, UpdatedAt                                 time.Time
 }
 
 type Run struct {
-	ID, PlanID, AccountID, NodeID, Status, Error string
-	CreatedAt                                    time.Time
-	StartedAt, FinishedAt                        *time.Time
+	ID, PlanID, AccountID, NodeID, StorageDriver, Status, Error string
+	CreatedAt                                                   time.Time
+	StartedAt, FinishedAt                                       *time.Time
 }
 
 type Artifact struct {
-	ID, RunID, AccountID, NodeID, Path, Checksum string
-	Size                                         int64
-	Manifest                                     backupfmt.Manifest
-	CreatedAt                                    time.Time
+	ID, RunID, AccountID, NodeID, StorageDriver, Path, Checksum string
+	Size                                                        int64
+	Manifest                                                    backupfmt.Manifest
+	CreatedAt                                                   time.Time
 }
 
 type RestoreScope struct {

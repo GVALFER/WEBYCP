@@ -14,7 +14,7 @@ type Props = {
     label: string;
     name: string;
     onValueChange?: (value: string) => void;
-    options: FormOption[];
+    options: readonly FormOption[];
     required?: boolean;
 };
 

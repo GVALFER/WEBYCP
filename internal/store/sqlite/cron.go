@@ -22,7 +22,8 @@ func (s *Store) CreateCronJob(ctx context.Context, value cronjob.CronJob, job jo
 	}
 	row, err := q.CreateCronJob(ctx, dbgen.CreateCronJobParams{
 		ID: value.ID, AccountID: value.AccountID, NodeID: value.NodeID, Name: value.Name,
-		Schedule: value.Schedule, Command: value.Command, Enabled: boolValue(value.Enabled),
+		Schedule: value.Schedule, Command: value.Command, SchedulerDriver: value.SchedulerDriver,
+		Enabled:   boolValue(value.Enabled),
 		CreatedAt: timeValue(value.CreatedAt), UpdatedAt: timeValue(value.UpdatedAt),
 	})
 	if err != nil {
@@ -47,7 +48,8 @@ func (s *Store) UpdateCronJob(ctx context.Context, value cronjob.CronJob, job jo
 	q := s.queries.WithTx(tx)
 	row, err := q.UpdateCronJob(ctx, dbgen.UpdateCronJobParams{
 		Name: value.Name, Schedule: value.Schedule, Command: value.Command,
-		Enabled: boolValue(value.Enabled), UpdatedAt: timeValue(value.UpdatedAt), ID: value.ID,
+		SchedulerDriver: value.SchedulerDriver, Enabled: boolValue(value.Enabled),
+		UpdatedAt: timeValue(value.UpdatedAt), ID: value.ID,
 	})
 	if err != nil {
 		return cronjob.CronJob{}, jobs.Job{}, err
@@ -142,7 +144,8 @@ func cronJobValues(rows []dbgen.CronJob) []cronjob.CronJob {
 func cronJobValue(row dbgen.CronJob) cronjob.CronJob {
 	return cronjob.CronJob{
 		ID: row.ID, AccountID: row.AccountID, NodeID: row.NodeID, Name: row.Name,
-		Schedule: row.Schedule, Command: row.Command, Enabled: row.Enabled != 0,
-		Status: row.Status, CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt),
+		Schedule: row.Schedule, Command: row.Command, SchedulerDriver: row.SchedulerDriver,
+		Enabled: row.Enabled != 0,
+		Status:  row.Status, CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt),
 	}
 }

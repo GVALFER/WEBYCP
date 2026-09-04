@@ -12,6 +12,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/nodes"
 	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/secret"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
 
@@ -37,7 +38,7 @@ func NewService(
 }
 
 func (s *Service) CreateDatabase(
-	ctx context.Context, accountID, name, userID string, admin bool,
+	ctx context.Context, accountID, name, driver, userID string, admin bool,
 ) (Database, jobs.Job, error) {
 	account, err := s.activeAccount(ctx, accountID, userID, admin)
 	if err != nil {
@@ -47,6 +48,11 @@ func (s *Service) CreateDatabase(
 	if err != nil {
 		return Database{}, jobs.Job{}, err
 	}
+	if driver != services.MySQL {
+		return Database{}, jobs.Job{}, &validate.Error{
+			Field: "driver", Message: "The selected database driver is not supported",
+		}
+	}
 	id, err := idgen.ID()
 	if err != nil {
 		return Database{}, jobs.Job{}, err
@@ -54,7 +60,7 @@ func (s *Service) CreateDatabase(
 	now := time.Now().UTC()
 	database := Database{
 		ID: id, AccountID: account.ID, NodeID: account.NodeID, Name: name,
-		SystemName: "wcp_" + account.ID[:8] + "_" + name, Status: "pending",
+		SystemName: "wcp_" + account.ID[:8] + "_" + name, Driver: driver, Status: "pending",
 		CreatedAt: now, UpdatedAt: now,
 	}
 	job, err := newJob(database.NodeID, userID, jobs.KindDatabaseCreate, payload{DatabaseID: id})
@@ -100,7 +106,7 @@ func (s *Service) DeleteDatabase(
 }
 
 func (s *Service) CreateUser(
-	ctx context.Context, accountID, name, userID string, admin bool,
+	ctx context.Context, accountID, name, driver, userID string, admin bool,
 ) (User, jobs.Job, string, error) {
 	account, err := s.activeAccount(ctx, accountID, userID, admin)
 	if err != nil {
@@ -109,6 +115,11 @@ func (s *Service) CreateUser(
 	name, err = validate.DatabaseName(name)
 	if err != nil {
 		return User{}, jobs.Job{}, "", err
+	}
+	if driver != services.MySQL {
+		return User{}, jobs.Job{}, "", &validate.Error{
+			Field: "driver", Message: "The selected database driver is not supported",
+		}
 	}
 	id, err := idgen.ID()
 	if err != nil {
@@ -121,7 +132,7 @@ func (s *Service) CreateUser(
 	now := time.Now().UTC()
 	user := User{
 		ID: id, AccountID: account.ID, NodeID: account.NodeID, Name: name,
-		SystemName: "wcp_" + account.ID[:8] + "_" + name, Status: "pending",
+		SystemName: "wcp_" + account.ID[:8] + "_" + name, Driver: driver, Status: "pending",
 		CreatedAt: now, UpdatedAt: now,
 	}
 	job, err := newJob(user.NodeID, userID, jobs.KindDatabaseUserCreate, payload{
@@ -182,6 +193,11 @@ func (s *Service) SetGrant(
 	if database.AccountID != user.AccountID {
 		return Grant{}, jobs.Job{}, ErrCrossAccount
 	}
+	if database.Driver != services.MySQL || user.Driver != services.MySQL {
+		return Grant{}, jobs.Job{}, &validate.Error{
+			Field: "driver", Message: "The selected database driver is not supported",
+		}
+	}
 	if database.Status != "active" || user.Status != "active" {
 		return Grant{}, jobs.Job{}, ErrBusy
 	}
@@ -226,6 +242,9 @@ func (s *Service) Provision(ctx context.Context, job jobs.Job) error {
 		if err != nil {
 			return err
 		}
+		if database.Driver != services.MySQL {
+			return fmt.Errorf("unsupported database driver %q", database.Driver)
+		}
 		if job.Kind == jobs.KindDatabaseCreate {
 			err = s.agent.EnsureDatabase(ctx, node.Endpoint, database.SystemName)
 		} else {
@@ -243,6 +262,9 @@ func (s *Service) Provision(ctx context.Context, job jobs.Job) error {
 		user, err := s.repository.User(ctx, value.UserID)
 		if err != nil {
 			return err
+		}
+		if user.Driver != services.MySQL {
+			return fmt.Errorf("unsupported database driver %q", user.Driver)
 		}
 		if job.Kind == jobs.KindDatabaseUserCreate {
 			err = s.agent.EnsureDatabaseUser(ctx, node.Endpoint, user.SystemName, value.Password)

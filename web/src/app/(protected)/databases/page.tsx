@@ -3,6 +3,7 @@ import type {
     DatabaseGrantListResponse,
     DatabaseListResponse,
     DatabaseUserListResponse,
+    ServiceSettings,
 } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { getPageQuery, syncPages, type PageProps } from "@/components/table/paginationServer";
@@ -15,7 +16,7 @@ const DatabasesPage = async ({ searchParams }: PageProps) => {
         getPageQuery("/databases", searchParams, "grants"),
     ]);
 
-    const [accounts, databases, users, grants, databaseOptions, userOptions] = await Promise.all([
+    const [accounts, databases, users, grants, databaseOptions, userOptions, settings] = await Promise.all([
         api.get("accounts", { searchParams: { page: 1, size: 100 } }).json<AccountListResponse>(),
         api.get("databases", { searchParams: databasesQuery }).json<DatabaseListResponse>(),
         api.get("database-users", { searchParams: usersQuery }).json<DatabaseUserListResponse>(),
@@ -24,6 +25,7 @@ const DatabasesPage = async ({ searchParams }: PageProps) => {
         api
             .get("database-users", { searchParams: { page: 1, size: 100 } })
             .json<DatabaseUserListResponse>(),
+        api.get("service-settings").json<ServiceSettings>(),
     ]);
 
     await syncPages("/databases", searchParams, [
@@ -40,6 +42,7 @@ const DatabasesPage = async ({ searchParams }: PageProps) => {
             grants={grants}
             databaseOptions={databaseOptions}
             userOptions={userOptions}
+            settings={settings}
         />
     );
 };

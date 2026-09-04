@@ -11,10 +11,11 @@ import { FormCheckbox } from "@/components/form/formCheckbox";
 import { FormInput } from "@/components/form/formInput";
 import { FormModal } from "@/components/form/formModal";
 import { FormSelect } from "@/components/form/formSelect";
-import type { AccountListResponse, BackupPlan } from "@/contracts/types";
+import type { AccountListResponse, BackupPlan, ServiceDefaults } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
 import { isPageKey, pageKey } from "@/utils/pagination";
+import { SERVICE_OPTIONS } from "@/utils/services";
 import { nameField, scheduleField } from "@/utils/validation";
 
 const formSchema = v.pipe(
@@ -32,6 +33,7 @@ const formSchema = v.pipe(
         ),
         includeFiles: v.boolean(),
         includeDatabases: v.boolean(),
+        storageDriver: v.literal("local"),
     }),
     v.forward(
         v.partialCheck(
@@ -48,9 +50,10 @@ type FormValues = v.InferOutput<typeof formSchema>;
 
 type CreateBackupProps = {
     accounts: AccountListResponse;
+    driver: ServiceDefaults["backupDriver"];
 };
 
-const CreateBackup = ({ accounts }: CreateBackupProps) => {
+const CreateBackup = ({ accounts, driver }: CreateBackupProps) => {
     const [open, setOpen] = useState(false);
 
     const [pending, startTransition] = useTransition();
@@ -72,6 +75,7 @@ const CreateBackup = ({ accounts }: CreateBackupProps) => {
             retentionCount: "7",
             includeFiles: true,
             includeDatabases: true,
+            storageDriver: driver,
         },
     });
 
@@ -144,6 +148,12 @@ const CreateBackup = ({ accounts }: CreateBackupProps) => {
                     type="number"
                     min="1"
                     max="100"
+                    required
+                />
+                <FormSelect
+                    name="storageDriver"
+                    label="Backup storage"
+                    options={SERVICE_OPTIONS.backupDriver}
                     required
                 />
                 <div className="space-y-3 pt-1">

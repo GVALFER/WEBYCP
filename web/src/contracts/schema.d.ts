@@ -632,6 +632,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/service-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get panel service defaults */
+        get: operations["getServiceSettings"];
+        /** Update panel service defaults */
+        put: operations["updateServiceSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nodes/{nodeId}/probe": {
         parameters: {
             query?: never;
@@ -737,8 +755,43 @@ export interface components {
             status: "unknown" | "online" | "offline";
             /** Format: date-time */
             lastSeenAt?: string | null;
+            capabilities: components["schemas"]["ServiceCapabilities"] | null;
+            /** Format: date-time */
+            capabilitiesAt: string | null;
             /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ServiceCapability: {
+            driver: string;
+            version: string;
+            /** @enum {string} */
+            status: "healthy" | "unavailable";
+        };
+        ServiceCapabilities: {
+            webservers: components["schemas"]["ServiceCapability"][];
+            runtimes: components["schemas"]["ServiceCapability"][];
+            databases: components["schemas"]["ServiceCapability"][];
+            schedulers: components["schemas"]["ServiceCapability"][];
+            backups: components["schemas"]["ServiceCapability"][];
+        };
+        ServiceDefaults: {
+            /** @enum {string} */
+            webDriver: "nginx";
+            /** @enum {string} */
+            runtimeDriver: "phpfpm";
+            /** @enum {string} */
+            runtimeVersion: "8.3";
+            /** @enum {string} */
+            databaseDriver: "mysql";
+            /** @enum {string} */
+            schedulerDriver: "crontab";
+            /** @enum {string} */
+            backupDriver: "local";
+        };
+        ServiceSettings: {
+            defaults: components["schemas"]["ServiceDefaults"];
             /** Format: date-time */
             updatedAt: string;
         };
@@ -1019,6 +1072,8 @@ export interface components {
             name: string;
             systemName: string;
             /** @enum {string} */
+            driver: "mysql";
+            /** @enum {string} */
             status: "pending" | "active" | "error";
             /** Format: date-time */
             createdAt: string;
@@ -1031,6 +1086,8 @@ export interface components {
             nodeId: string;
             name: string;
             systemName: string;
+            /** @enum {string} */
+            driver: "mysql";
             /** @enum {string} */
             status: "pending" | "active" | "error";
             /** Format: date-time */
@@ -1051,10 +1108,14 @@ export interface components {
         CreateDatabaseRequest: {
             accountId: string;
             name: string;
+            /** @enum {string} */
+            driver: "mysql";
         };
         CreateDatabaseUserRequest: {
             accountId: string;
             name: string;
+            /** @enum {string} */
+            driver: "mysql";
         };
         DatabaseListResponse: {
             items: components["schemas"]["Database"][];
@@ -1089,6 +1150,8 @@ export interface components {
             name: string;
             schedule: string;
             command: string;
+            /** @enum {string} */
+            schedulerDriver: "crontab";
             enabled: boolean;
             /** @enum {string} */
             status: "pending" | "active" | "disabled" | "error";
@@ -1102,6 +1165,8 @@ export interface components {
             name: string;
             schedule: string;
             command: string;
+            /** @enum {string} */
+            schedulerDriver: "crontab";
             enabled: boolean;
         };
         CronJobListResponse: {
@@ -1119,6 +1184,8 @@ export interface components {
             name: string;
             schedule: string;
             retentionCount: number;
+            /** @enum {string} */
+            storageDriver: "local";
             includeFiles: boolean;
             includeDatabases: boolean;
             enabled: boolean;
@@ -1136,6 +1203,8 @@ export interface components {
             name: string;
             schedule: string;
             retentionCount: number;
+            /** @enum {string} */
+            storageDriver: "local";
             includeFiles: boolean;
             includeDatabases: boolean;
             enabled: boolean;
@@ -1145,6 +1214,8 @@ export interface components {
             planId: string;
             accountId: string;
             nodeId: string;
+            /** @enum {string} */
+            storageDriver: "local";
             /** @enum {string} */
             status: "queued" | "running" | "succeeded" | "failed";
             error: string;
@@ -1177,6 +1248,8 @@ export interface components {
             runId: string;
             accountId: string;
             nodeId: string;
+            /** @enum {string} */
+            storageDriver: "local";
             checksum: string;
             /** Format: int64 */
             size: number;
@@ -2819,6 +2892,59 @@ export interface operations {
                 };
             };
             401: components["responses"]["UnauthorizedError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getServiceSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current service defaults. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceSettings"];
+                };
+            };
+            401: components["responses"]["UnauthorizedError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    updateServiceSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServiceDefaults"];
+            };
+        };
+        responses: {
+            /** @description Updated service defaults. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceSettings"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };

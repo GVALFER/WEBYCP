@@ -8,6 +8,7 @@ import (
 
 	agentserver "github.com/GVALFER/WEBYCP/internal/agent/server"
 	agentwebsite "github.com/GVALFER/WEBYCP/internal/agent/website"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 )
 
@@ -34,10 +35,16 @@ func (m *websiteManager) Delete(_ context.Context, spec agentwebsite.Spec) error
 }
 
 func TestProbe(t *testing.T) {
-	socket, server := testServer(t, agentserver.Options{Version: "test"})
+	socket, server := testServer(t, agentserver.Options{
+		Version: "test", Capabilities: capabilityObserver{},
+	})
 	defer server.Shutdown(context.Background())
-	if err := New(time.Second).Probe(context.Background(), socket); err != nil {
+	value, err := New(time.Second).Probe(context.Background(), socket)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if len(value.Webservers) != 1 || value.Webservers[0].Driver != services.Nginx {
+		t.Fatalf("capabilities = %+v", value)
 	}
 }
 
@@ -73,8 +80,16 @@ func TestWebsiteLifecycle(t *testing.T) {
 }
 
 func TestProbeUnavailable(t *testing.T) {
-	if err := New(100*time.Millisecond).Probe(context.Background(), t.TempDir()+"/missing.sock"); err == nil {
+	if _, err := New(100*time.Millisecond).Probe(context.Background(), t.TempDir()+"/missing.sock"); err == nil {
 		t.Fatal("expected probe error")
+	}
+}
+
+type capabilityObserver struct{}
+
+func (capabilityObserver) Observe(context.Context) services.Capabilities {
+	return services.Capabilities{
+		Webservers: []services.Capability{{Driver: services.Nginx, Status: services.Healthy}},
 	}
 }
 

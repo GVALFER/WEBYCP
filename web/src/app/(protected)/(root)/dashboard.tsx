@@ -1,12 +1,12 @@
 "use client";
 
 import { JobListResponse, NodeListResponse } from "@/contracts/types";
+import CheckNode from "@/components/actions/checkNode";
 import { useTimezone } from "@/hooks/useDate";
 import { cn } from "@/utils/classnames";
 import { statusClass } from "@/utils/status";
 import { Activity, CircleAlert, Clock3, ListChecks, Server } from "lucide-react";
 import useSWR from "swr";
-import CheckNode from "./actions/checkNode";
 
 type DashboardParms = {
     nodes: NodeListResponse;

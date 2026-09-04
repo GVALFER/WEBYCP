@@ -32,7 +32,8 @@ func (s *Store) CreateDatabase(
 	}
 	row, err := q.CreateDatabase(ctx, dbgen.CreateDatabaseParams{
 		ID: value.ID, AccountID: value.AccountID, NodeID: value.NodeID, Name: value.Name,
-		SystemName: value.SystemName, CreatedAt: timeValue(value.CreatedAt), UpdatedAt: timeValue(value.UpdatedAt),
+		SystemName: value.SystemName, Driver: value.Driver,
+		CreatedAt: timeValue(value.CreatedAt), UpdatedAt: timeValue(value.UpdatedAt),
 	})
 	if err != nil {
 		return databases.Database{}, jobs.Job{}, err
@@ -140,7 +141,8 @@ func (s *Store) CreateUser(
 	}
 	row, err := q.CreateDatabaseUser(ctx, dbgen.CreateDatabaseUserParams{
 		ID: value.ID, AccountID: value.AccountID, NodeID: value.NodeID, Name: value.Name,
-		SystemName: value.SystemName, CreatedAt: timeValue(value.CreatedAt), UpdatedAt: timeValue(value.UpdatedAt),
+		SystemName: value.SystemName, Driver: value.Driver,
+		CreatedAt: timeValue(value.CreatedAt), UpdatedAt: timeValue(value.UpdatedAt),
 	})
 	if err != nil {
 		return databases.User{}, jobs.Job{}, err
@@ -323,11 +325,11 @@ func createJob(ctx context.Context, q *dbgen.Queries, job jobs.Job) (jobs.Job, e
 }
 
 func databaseValue(row dbgen.Database) databases.Database {
-	return databases.Database{ID: row.ID, AccountID: row.AccountID, NodeID: row.NodeID, Name: row.Name, SystemName: row.SystemName, Status: row.Status, CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt)}
+	return databases.Database{ID: row.ID, AccountID: row.AccountID, NodeID: row.NodeID, Name: row.Name, SystemName: row.SystemName, Driver: row.Driver, Status: row.Status, CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt)}
 }
 
 func databaseUserValue(row dbgen.DatabaseUser) databases.User {
-	return databases.User{ID: row.ID, AccountID: row.AccountID, NodeID: row.NodeID, Name: row.Name, SystemName: row.SystemName, Status: row.Status, CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt)}
+	return databases.User{ID: row.ID, AccountID: row.AccountID, NodeID: row.NodeID, Name: row.Name, SystemName: row.SystemName, Driver: row.Driver, Status: row.Status, CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt)}
 }
 
 func databaseGrantValue(row dbgen.DatabaseGrant) databases.Grant {

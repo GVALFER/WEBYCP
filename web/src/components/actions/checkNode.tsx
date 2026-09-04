@@ -4,16 +4,16 @@ import { Button, Spinner, toast } from "@heroui/react";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
-import type { Job, NodeListResponse } from "@/contracts/types";
+import type { Job, Node } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
 import { isPageKey } from "@/utils/pagination";
 
-type CheckNodeProps = {
-    node: NodeListResponse["items"][number];
+type Props = {
+    node: Node;
 };
 
-const CheckNode = ({ node }: CheckNodeProps) => {
+const CheckNode = ({ node }: Props) => {
     const [pending, setPending] = useState(false);
     const { mutate } = useSWRConfig();
 
@@ -26,7 +26,7 @@ const CheckNode = ({ node }: CheckNodeProps) => {
                 mutate("nodes"),
                 mutate((key) => isPageKey(key, "jobs")),
             ]);
-            toast.success("Agent check completed");
+            toast.success("Agent check queued");
         } catch (error) {
             toast.danger("Agent check failed", {
                 description: await errorMessage(error),
@@ -37,17 +37,8 @@ const CheckNode = ({ node }: CheckNodeProps) => {
     };
 
     return (
-        <Button
-            size="sm"
-            variant="secondary"
-            isPending={pending}
-            onPress={() => void check()}
-        >
-            {pending ? (
-                <Spinner color="current" size="sm" />
-            ) : (
-                <RefreshCw className="size-4" />
-            )}
+        <Button size="sm" variant="secondary" isPending={pending} onPress={() => void check()}>
+            {pending ? <Spinner color="current" size="sm" /> : <RefreshCw className="size-4" />}
             Check agent
         </Button>
     );

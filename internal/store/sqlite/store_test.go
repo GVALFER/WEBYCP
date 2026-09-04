@@ -15,6 +15,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/databases"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/packages"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	migrationfiles "github.com/GVALFER/WEBYCP/migrations"
 )
 
@@ -147,7 +148,7 @@ func TestAdminCredentialMigrationPreservesExistingLogin(t *testing.T) {
 	for _, name := range []string{
 		"0001_control_plane.sql", "0002_domains.sql", "0003_domain_lifecycle.sql",
 		"0004_domain_names.sql", "0005_v1_resources.sql",
-		"0008_websites.sql", "0009_packages.sql",
+		"0008_websites.sql", "0009_packages.sql", "0010_service_capabilities.sql",
 	} {
 		if _, err := db.ExecContext(ctx, "INSERT INTO schema_migrations VALUES (?, unixepoch())", name); err != nil {
 			t.Fatal(err)
@@ -217,6 +218,58 @@ func TestOpenRunsMigrationsAndPersistsAdmin(t *testing.T) {
 	}
 	if count != 1 {
 		t.Fatalf("expected one user, got %d", count)
+	}
+}
+
+func TestNodeCapabilitiesAndServiceSettings(t *testing.T) {
+	ctx := context.Background()
+	store, err := Open(ctx, filepath.Join(t.TempDir(), "webycp.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	node, err := store.EnsureLocal(ctx, "test", "/tmp/agent.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	observed := time.Now().UTC()
+	capabilities := services.Capabilities{
+		Webservers: []services.Capability{{Driver: services.Nginx, Status: services.Healthy}},
+		Runtimes:   []services.Capability{{Driver: services.PHPFPM, Version: services.PHP83, Status: services.Healthy}},
+	}
+	if err := store.UpdateProbe(ctx, node.ID, "online", &observed, &capabilities); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.UpdateProbe(ctx, node.ID, "offline", nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := store.Node(ctx, node.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status != "offline" || stored.Capabilities == nil ||
+		stored.Capabilities.Webservers[0].Driver != services.Nginx ||
+		stored.CapabilitiesAt == nil || stored.LastSeenAt == nil {
+		t.Fatalf("node = %+v", stored)
+	}
+
+	settings, err := store.ServiceSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.Defaults.WebDriver != services.Nginx ||
+		settings.Defaults.DatabaseDriver != services.MySQL {
+		t.Fatalf("settings = %+v", settings)
+	}
+	settings.Defaults = services.Defaults{
+		WebDriver: services.Nginx, RuntimeDriver: services.PHPFPM,
+		RuntimeVersion: services.PHP83, DatabaseDriver: services.MySQL,
+		SchedulerDriver: services.Crontab, BackupDriver: services.Local,
+	}
+	settings.UpdatedAt = observed
+	updated, err := store.UpdateServiceSettings(ctx, settings)
+	if err != nil || updated.Defaults != settings.Defaults {
+		t.Fatalf("updated settings = %+v, error = %v", updated, err)
 	}
 }
 
@@ -330,15 +383,15 @@ func TestV1ResourceStoresCreateAtomically(t *testing.T) {
 	if err := store.UpdateStatus(ctx, account.ID, "active"); err != nil {
 		t.Fatal(err)
 	}
-	database, job, err := store.CreateDatabase(ctx, databases.Database{ID: "abcdef0123456789abcdef0123456789", AccountID: account.ID, NodeID: node.ID, Name: "app", SystemName: "wcp_01234567_app", Status: "pending", CreatedAt: now, UpdatedAt: now}, testJob("job-database", node.ID, "user-1", jobs.KindDatabaseCreate, now))
+	database, job, err := store.CreateDatabase(ctx, databases.Database{ID: "abcdef0123456789abcdef0123456789", AccountID: account.ID, NodeID: node.ID, Name: "app", SystemName: "wcp_01234567_app", Driver: services.MySQL, Status: "pending", CreatedAt: now, UpdatedAt: now}, testJob("job-database", node.ID, "user-1", jobs.KindDatabaseCreate, now))
 	if err != nil || database.Name != "app" || job.Status != "queued" {
 		t.Fatalf("database = %+v, job = %+v, error = %v", database, job, err)
 	}
-	cron, _, err := store.CreateCronJob(ctx, cronjob.CronJob{ID: "fedcba9876543210fedcba9876543210", AccountID: account.ID, NodeID: node.ID, Name: "Hourly", Schedule: "0 * * * *", Command: "php task.php", Enabled: true, Status: "pending", CreatedAt: now, UpdatedAt: now}, testJob("job-cron", node.ID, "user-1", jobs.KindCronSync, now))
+	cron, _, err := store.CreateCronJob(ctx, cronjob.CronJob{ID: "fedcba9876543210fedcba9876543210", AccountID: account.ID, NodeID: node.ID, Name: "Hourly", Schedule: "0 * * * *", Command: "php task.php", SchedulerDriver: services.Crontab, Enabled: true, Status: "pending", CreatedAt: now, UpdatedAt: now}, testJob("job-cron", node.ID, "user-1", jobs.KindCronSync, now))
 	if err != nil || !cron.Enabled {
 		t.Fatalf("cron = %+v, error = %v", cron, err)
 	}
-	plan, err := store.CreateBackupPlan(ctx, backups.Plan{ID: "11111111111111111111111111111111", AccountID: account.ID, NodeID: node.ID, Name: "Daily", Schedule: "0 3 * * *", RetentionCount: 7, IncludeFiles: true, IncludeDatabases: true, Enabled: true, CreatedAt: now, UpdatedAt: now})
+	plan, err := store.CreateBackupPlan(ctx, backups.Plan{ID: "11111111111111111111111111111111", AccountID: account.ID, NodeID: node.ID, Name: "Daily", Schedule: "0 3 * * *", RetentionCount: 7, StorageDriver: services.Local, IncludeFiles: true, IncludeDatabases: true, Enabled: true, CreatedAt: now, UpdatedAt: now})
 	if err != nil || plan.RetentionCount != 7 {
 		t.Fatalf("plan = %+v, error = %v", plan, err)
 	}
@@ -355,11 +408,12 @@ func TestV1ResourceStoresCreateAtomically(t *testing.T) {
 		}},
 		Databases: []backupfmt.Database{{
 			ID: "44444444444444444444444444444444", NodeID: node.ID,
-			Name: "restored", SystemName: "wcp_01234567_restored",
+			Name: "restored", SystemName: "wcp_01234567_restored", Driver: services.MySQL,
 		}},
 		CronJobs: []backupfmt.CronJob{{
 			ID: "55555555555555555555555555555555", NodeID: node.ID,
-			Name: "Restored", Schedule: "15 * * * *", Command: "php task.php", Enabled: true,
+			Name: "Restored", Schedule: "15 * * * *", Command: "php task.php",
+			SchedulerDriver: services.Crontab, Enabled: true,
 		}},
 	}
 	if err := store.RestoreMetadata(ctx, metadata); err != nil {

@@ -77,21 +77,22 @@ func (q *Queries) CountBackupRuns(ctx context.Context, arg CountBackupRunsParams
 
 const createBackupArtifact = `-- name: CreateBackupArtifact :one
 INSERT INTO backup_artifacts (
-    id, run_id, account_id, node_id, path, checksum, size_bytes, manifest, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, run_id, account_id, node_id, path, checksum, size_bytes, manifest, created_at
+    id, run_id, account_id, node_id, storage_driver, path, checksum, size_bytes, manifest, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, run_id, account_id, node_id, path, checksum, size_bytes, manifest, created_at, storage_driver
 `
 
 type CreateBackupArtifactParams struct {
-	ID        string `json:"id"`
-	RunID     string `json:"run_id"`
-	AccountID string `json:"account_id"`
-	NodeID    string `json:"node_id"`
-	Path      string `json:"path"`
-	Checksum  string `json:"checksum"`
-	SizeBytes int64  `json:"size_bytes"`
-	Manifest  string `json:"manifest"`
-	CreatedAt int64  `json:"created_at"`
+	ID            string `json:"id"`
+	RunID         string `json:"run_id"`
+	AccountID     string `json:"account_id"`
+	NodeID        string `json:"node_id"`
+	StorageDriver string `json:"storage_driver"`
+	Path          string `json:"path"`
+	Checksum      string `json:"checksum"`
+	SizeBytes     int64  `json:"size_bytes"`
+	Manifest      string `json:"manifest"`
+	CreatedAt     int64  `json:"created_at"`
 }
 
 func (q *Queries) CreateBackupArtifact(ctx context.Context, arg CreateBackupArtifactParams) (BackupArtifact, error) {
@@ -100,6 +101,7 @@ func (q *Queries) CreateBackupArtifact(ctx context.Context, arg CreateBackupArti
 		arg.RunID,
 		arg.AccountID,
 		arg.NodeID,
+		arg.StorageDriver,
 		arg.Path,
 		arg.Checksum,
 		arg.SizeBytes,
@@ -117,6 +119,7 @@ func (q *Queries) CreateBackupArtifact(ctx context.Context, arg CreateBackupArti
 		&i.SizeBytes,
 		&i.Manifest,
 		&i.CreatedAt,
+		&i.StorageDriver,
 	)
 	return i, err
 }
@@ -124,9 +127,9 @@ func (q *Queries) CreateBackupArtifact(ctx context.Context, arg CreateBackupArti
 const createBackupPlan = `-- name: CreateBackupPlan :one
 INSERT INTO backup_plans (
     id, account_id, node_id, name, schedule, retention_count,
-    include_files, include_databases, enabled, next_run_at, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, account_id, node_id, name, schedule, retention_count, include_files, include_databases, enabled, last_run_at, next_run_at, created_at, updated_at
+    storage_driver, include_files, include_databases, enabled, next_run_at, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, account_id, node_id, name, schedule, retention_count, include_files, include_databases, enabled, last_run_at, next_run_at, created_at, updated_at, storage_driver
 `
 
 type CreateBackupPlanParams struct {
@@ -136,6 +139,7 @@ type CreateBackupPlanParams struct {
 	Name             string        `json:"name"`
 	Schedule         string        `json:"schedule"`
 	RetentionCount   int64         `json:"retention_count"`
+	StorageDriver    string        `json:"storage_driver"`
 	IncludeFiles     int64         `json:"include_files"`
 	IncludeDatabases int64         `json:"include_databases"`
 	Enabled          int64         `json:"enabled"`
@@ -152,6 +156,7 @@ func (q *Queries) CreateBackupPlan(ctx context.Context, arg CreateBackupPlanPara
 		arg.Name,
 		arg.Schedule,
 		arg.RetentionCount,
+		arg.StorageDriver,
 		arg.IncludeFiles,
 		arg.IncludeDatabases,
 		arg.Enabled,
@@ -174,23 +179,25 @@ func (q *Queries) CreateBackupPlan(ctx context.Context, arg CreateBackupPlanPara
 		&i.NextRunAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.StorageDriver,
 	)
 	return i, err
 }
 
 const createBackupRun = `-- name: CreateBackupRun :one
 INSERT INTO backup_runs (
-    id, plan_id, account_id, node_id, status, created_at
-) VALUES (?, ?, ?, ?, 'queued', ?)
-RETURNING id, plan_id, account_id, node_id, status, error, created_at, started_at, finished_at
+    id, plan_id, account_id, node_id, storage_driver, status, created_at
+) VALUES (?, ?, ?, ?, ?, 'queued', ?)
+RETURNING id, plan_id, account_id, node_id, status, error, created_at, started_at, finished_at, storage_driver
 `
 
 type CreateBackupRunParams struct {
-	ID        string         `json:"id"`
-	PlanID    sql.NullString `json:"plan_id"`
-	AccountID string         `json:"account_id"`
-	NodeID    string         `json:"node_id"`
-	CreatedAt int64          `json:"created_at"`
+	ID            string         `json:"id"`
+	PlanID        sql.NullString `json:"plan_id"`
+	AccountID     string         `json:"account_id"`
+	NodeID        string         `json:"node_id"`
+	StorageDriver string         `json:"storage_driver"`
+	CreatedAt     int64          `json:"created_at"`
 }
 
 func (q *Queries) CreateBackupRun(ctx context.Context, arg CreateBackupRunParams) (BackupRun, error) {
@@ -199,6 +206,7 @@ func (q *Queries) CreateBackupRun(ctx context.Context, arg CreateBackupRunParams
 		arg.PlanID,
 		arg.AccountID,
 		arg.NodeID,
+		arg.StorageDriver,
 		arg.CreatedAt,
 	)
 	var i BackupRun
@@ -212,6 +220,7 @@ func (q *Queries) CreateBackupRun(ctx context.Context, arg CreateBackupRunParams
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.FinishedAt,
+		&i.StorageDriver,
 	)
 	return i, err
 }
@@ -235,7 +244,7 @@ func (q *Queries) DeleteBackupPlan(ctx context.Context, id string) error {
 }
 
 const getBackupArtifact = `-- name: GetBackupArtifact :one
-SELECT id, run_id, account_id, node_id, path, checksum, size_bytes, manifest, created_at FROM backup_artifacts WHERE id = ? LIMIT 1
+SELECT id, run_id, account_id, node_id, path, checksum, size_bytes, manifest, created_at, storage_driver FROM backup_artifacts WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetBackupArtifact(ctx context.Context, id string) (BackupArtifact, error) {
@@ -251,12 +260,13 @@ func (q *Queries) GetBackupArtifact(ctx context.Context, id string) (BackupArtif
 		&i.SizeBytes,
 		&i.Manifest,
 		&i.CreatedAt,
+		&i.StorageDriver,
 	)
 	return i, err
 }
 
 const getBackupPlan = `-- name: GetBackupPlan :one
-SELECT id, account_id, node_id, name, schedule, retention_count, include_files, include_databases, enabled, last_run_at, next_run_at, created_at, updated_at FROM backup_plans WHERE id = ? LIMIT 1
+SELECT id, account_id, node_id, name, schedule, retention_count, include_files, include_databases, enabled, last_run_at, next_run_at, created_at, updated_at, storage_driver FROM backup_plans WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetBackupPlan(ctx context.Context, id string) (BackupPlan, error) {
@@ -276,12 +286,13 @@ func (q *Queries) GetBackupPlan(ctx context.Context, id string) (BackupPlan, err
 		&i.NextRunAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.StorageDriver,
 	)
 	return i, err
 }
 
 const getBackupRun = `-- name: GetBackupRun :one
-SELECT id, plan_id, account_id, node_id, status, error, created_at, started_at, finished_at FROM backup_runs WHERE id = ? LIMIT 1
+SELECT id, plan_id, account_id, node_id, status, error, created_at, started_at, finished_at, storage_driver FROM backup_runs WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetBackupRun(ctx context.Context, id string) (BackupRun, error) {
@@ -297,12 +308,13 @@ func (q *Queries) GetBackupRun(ctx context.Context, id string) (BackupRun, error
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.FinishedAt,
+		&i.StorageDriver,
 	)
 	return i, err
 }
 
 const listBackupArtifacts = `-- name: ListBackupArtifacts :many
-SELECT backup_artifacts.id, backup_artifacts.run_id, backup_artifacts.account_id, backup_artifacts.node_id, backup_artifacts.path, backup_artifacts.checksum, backup_artifacts.size_bytes, backup_artifacts.manifest, backup_artifacts.created_at FROM backup_artifacts
+SELECT backup_artifacts.id, backup_artifacts.run_id, backup_artifacts.account_id, backup_artifacts.node_id, backup_artifacts.path, backup_artifacts.checksum, backup_artifacts.size_bytes, backup_artifacts.manifest, backup_artifacts.created_at, backup_artifacts.storage_driver FROM backup_artifacts
 JOIN account_members ON account_members.account_id = backup_artifacts.account_id
 WHERE ? OR account_members.user_id = ?
 GROUP BY backup_artifacts.id
@@ -333,6 +345,7 @@ func (q *Queries) ListBackupArtifacts(ctx context.Context, arg ListBackupArtifac
 			&i.SizeBytes,
 			&i.Manifest,
 			&i.CreatedAt,
+			&i.StorageDriver,
 		); err != nil {
 			return nil, err
 		}
@@ -348,7 +361,7 @@ func (q *Queries) ListBackupArtifacts(ctx context.Context, arg ListBackupArtifac
 }
 
 const listBackupArtifactsPage = `-- name: ListBackupArtifactsPage :many
-SELECT backup_artifacts.id, backup_artifacts.run_id, backup_artifacts.account_id, backup_artifacts.node_id, backup_artifacts.path, backup_artifacts.checksum, backup_artifacts.size_bytes, backup_artifacts.manifest, backup_artifacts.created_at FROM backup_artifacts
+SELECT backup_artifacts.id, backup_artifacts.run_id, backup_artifacts.account_id, backup_artifacts.node_id, backup_artifacts.path, backup_artifacts.checksum, backup_artifacts.size_bytes, backup_artifacts.manifest, backup_artifacts.created_at, backup_artifacts.storage_driver FROM backup_artifacts
 JOIN account_members ON account_members.account_id = backup_artifacts.account_id
 WHERE ?1 OR account_members.user_id = ?2
 GROUP BY backup_artifacts.id
@@ -387,6 +400,7 @@ func (q *Queries) ListBackupArtifactsPage(ctx context.Context, arg ListBackupArt
 			&i.SizeBytes,
 			&i.Manifest,
 			&i.CreatedAt,
+			&i.StorageDriver,
 		); err != nil {
 			return nil, err
 		}
@@ -402,7 +416,7 @@ func (q *Queries) ListBackupArtifactsPage(ctx context.Context, arg ListBackupArt
 }
 
 const listBackupPlans = `-- name: ListBackupPlans :many
-SELECT backup_plans.id, backup_plans.account_id, backup_plans.node_id, backup_plans.name, backup_plans.schedule, backup_plans.retention_count, backup_plans.include_files, backup_plans.include_databases, backup_plans.enabled, backup_plans.last_run_at, backup_plans.next_run_at, backup_plans.created_at, backup_plans.updated_at FROM backup_plans
+SELECT backup_plans.id, backup_plans.account_id, backup_plans.node_id, backup_plans.name, backup_plans.schedule, backup_plans.retention_count, backup_plans.include_files, backup_plans.include_databases, backup_plans.enabled, backup_plans.last_run_at, backup_plans.next_run_at, backup_plans.created_at, backup_plans.updated_at, backup_plans.storage_driver FROM backup_plans
 JOIN account_members ON account_members.account_id = backup_plans.account_id
 WHERE ? OR account_members.user_id = ?
 GROUP BY backup_plans.id
@@ -437,6 +451,7 @@ func (q *Queries) ListBackupPlans(ctx context.Context, arg ListBackupPlansParams
 			&i.NextRunAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.StorageDriver,
 		); err != nil {
 			return nil, err
 		}
@@ -452,7 +467,7 @@ func (q *Queries) ListBackupPlans(ctx context.Context, arg ListBackupPlansParams
 }
 
 const listBackupPlansPage = `-- name: ListBackupPlansPage :many
-SELECT backup_plans.id, backup_plans.account_id, backup_plans.node_id, backup_plans.name, backup_plans.schedule, backup_plans.retention_count, backup_plans.include_files, backup_plans.include_databases, backup_plans.enabled, backup_plans.last_run_at, backup_plans.next_run_at, backup_plans.created_at, backup_plans.updated_at FROM backup_plans
+SELECT backup_plans.id, backup_plans.account_id, backup_plans.node_id, backup_plans.name, backup_plans.schedule, backup_plans.retention_count, backup_plans.include_files, backup_plans.include_databases, backup_plans.enabled, backup_plans.last_run_at, backup_plans.next_run_at, backup_plans.created_at, backup_plans.updated_at, backup_plans.storage_driver FROM backup_plans
 JOIN account_members ON account_members.account_id = backup_plans.account_id
 WHERE ?1 OR account_members.user_id = ?2
 GROUP BY backup_plans.id
@@ -495,6 +510,7 @@ func (q *Queries) ListBackupPlansPage(ctx context.Context, arg ListBackupPlansPa
 			&i.NextRunAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.StorageDriver,
 		); err != nil {
 			return nil, err
 		}
@@ -510,7 +526,7 @@ func (q *Queries) ListBackupPlansPage(ctx context.Context, arg ListBackupPlansPa
 }
 
 const listBackupRuns = `-- name: ListBackupRuns :many
-SELECT backup_runs.id, backup_runs.plan_id, backup_runs.account_id, backup_runs.node_id, backup_runs.status, backup_runs.error, backup_runs.created_at, backup_runs.started_at, backup_runs.finished_at FROM backup_runs
+SELECT backup_runs.id, backup_runs.plan_id, backup_runs.account_id, backup_runs.node_id, backup_runs.status, backup_runs.error, backup_runs.created_at, backup_runs.started_at, backup_runs.finished_at, backup_runs.storage_driver FROM backup_runs
 JOIN account_members ON account_members.account_id = backup_runs.account_id
 WHERE ? OR account_members.user_id = ?
 GROUP BY backup_runs.id
@@ -541,6 +557,7 @@ func (q *Queries) ListBackupRuns(ctx context.Context, arg ListBackupRunsParams) 
 			&i.CreatedAt,
 			&i.StartedAt,
 			&i.FinishedAt,
+			&i.StorageDriver,
 		); err != nil {
 			return nil, err
 		}
@@ -556,7 +573,7 @@ func (q *Queries) ListBackupRuns(ctx context.Context, arg ListBackupRunsParams) 
 }
 
 const listBackupRunsPage = `-- name: ListBackupRunsPage :many
-SELECT backup_runs.id, backup_runs.plan_id, backup_runs.account_id, backup_runs.node_id, backup_runs.status, backup_runs.error, backup_runs.created_at, backup_runs.started_at, backup_runs.finished_at FROM backup_runs
+SELECT backup_runs.id, backup_runs.plan_id, backup_runs.account_id, backup_runs.node_id, backup_runs.status, backup_runs.error, backup_runs.created_at, backup_runs.started_at, backup_runs.finished_at, backup_runs.storage_driver FROM backup_runs
 JOIN account_members ON account_members.account_id = backup_runs.account_id
 WHERE ?1 OR account_members.user_id = ?2
 GROUP BY backup_runs.id
@@ -595,6 +612,7 @@ func (q *Queries) ListBackupRunsPage(ctx context.Context, arg ListBackupRunsPage
 			&i.CreatedAt,
 			&i.StartedAt,
 			&i.FinishedAt,
+			&i.StorageDriver,
 		); err != nil {
 			return nil, err
 		}
@@ -610,7 +628,7 @@ func (q *Queries) ListBackupRunsPage(ctx context.Context, arg ListBackupRunsPage
 }
 
 const listDueBackupPlans = `-- name: ListDueBackupPlans :many
-SELECT id, account_id, node_id, name, schedule, retention_count, include_files, include_databases, enabled, last_run_at, next_run_at, created_at, updated_at FROM backup_plans
+SELECT id, account_id, node_id, name, schedule, retention_count, include_files, include_databases, enabled, last_run_at, next_run_at, created_at, updated_at, storage_driver FROM backup_plans
 WHERE enabled = 1 AND schedule <> '' AND next_run_at IS NOT NULL AND next_run_at <= ?
 ORDER BY next_run_at
 `
@@ -638,6 +656,7 @@ func (q *Queries) ListDueBackupPlans(ctx context.Context, nextRunAt sql.NullInt6
 			&i.NextRunAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.StorageDriver,
 		); err != nil {
 			return nil, err
 		}
@@ -653,7 +672,7 @@ func (q *Queries) ListDueBackupPlans(ctx context.Context, nextRunAt sql.NullInt6
 }
 
 const listExpiredBackupArtifacts = `-- name: ListExpiredBackupArtifacts :many
-SELECT backup_artifacts.id, backup_artifacts.run_id, backup_artifacts.account_id, backup_artifacts.node_id, backup_artifacts.path, backup_artifacts.checksum, backup_artifacts.size_bytes, backup_artifacts.manifest, backup_artifacts.created_at FROM backup_artifacts
+SELECT backup_artifacts.id, backup_artifacts.run_id, backup_artifacts.account_id, backup_artifacts.node_id, backup_artifacts.path, backup_artifacts.checksum, backup_artifacts.size_bytes, backup_artifacts.manifest, backup_artifacts.created_at, backup_artifacts.storage_driver FROM backup_artifacts
 JOIN backup_runs ON backup_runs.id = backup_artifacts.run_id
 WHERE backup_runs.plan_id = ?
 ORDER BY backup_artifacts.created_at DESC
@@ -684,6 +703,7 @@ func (q *Queries) ListExpiredBackupArtifacts(ctx context.Context, arg ListExpire
 			&i.SizeBytes,
 			&i.Manifest,
 			&i.CreatedAt,
+			&i.StorageDriver,
 		); err != nil {
 			return nil, err
 		}
@@ -722,9 +742,9 @@ func (q *Queries) MarkBackupPlanRun(ctx context.Context, arg MarkBackupPlanRunPa
 const updateBackupPlan = `-- name: UpdateBackupPlan :one
 UPDATE backup_plans SET
     name = ?, schedule = ?, retention_count = ?, include_files = ?,
-    include_databases = ?, enabled = ?, next_run_at = ?, updated_at = ?
+    include_databases = ?, storage_driver = ?, enabled = ?, next_run_at = ?, updated_at = ?
 WHERE id = ?
-RETURNING id, account_id, node_id, name, schedule, retention_count, include_files, include_databases, enabled, last_run_at, next_run_at, created_at, updated_at
+RETURNING id, account_id, node_id, name, schedule, retention_count, include_files, include_databases, enabled, last_run_at, next_run_at, created_at, updated_at, storage_driver
 `
 
 type UpdateBackupPlanParams struct {
@@ -733,6 +753,7 @@ type UpdateBackupPlanParams struct {
 	RetentionCount   int64         `json:"retention_count"`
 	IncludeFiles     int64         `json:"include_files"`
 	IncludeDatabases int64         `json:"include_databases"`
+	StorageDriver    string        `json:"storage_driver"`
 	Enabled          int64         `json:"enabled"`
 	NextRunAt        sql.NullInt64 `json:"next_run_at"`
 	UpdatedAt        int64         `json:"updated_at"`
@@ -746,6 +767,7 @@ func (q *Queries) UpdateBackupPlan(ctx context.Context, arg UpdateBackupPlanPara
 		arg.RetentionCount,
 		arg.IncludeFiles,
 		arg.IncludeDatabases,
+		arg.StorageDriver,
 		arg.Enabled,
 		arg.NextRunAt,
 		arg.UpdatedAt,
@@ -766,6 +788,7 @@ func (q *Queries) UpdateBackupPlan(ctx context.Context, arg UpdateBackupPlanPara
 		&i.NextRunAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.StorageDriver,
 	)
 	return i, err
 }
@@ -796,25 +819,26 @@ func (q *Queries) UpdateBackupRun(ctx context.Context, arg UpdateBackupRunParams
 }
 
 const upsertRestoredCronJob = `-- name: UpsertRestoredCronJob :exec
-INSERT INTO cron_jobs (id, account_id, node_id, name, schedule, command, enabled, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?)
+INSERT INTO cron_jobs (id, account_id, node_id, name, schedule, command, scheduler_driver, enabled, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?)
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, schedule = excluded.schedule,
-    command = excluded.command, enabled = excluded.enabled,
+    command = excluded.command, scheduler_driver = excluded.scheduler_driver, enabled = excluded.enabled,
     status = CASE WHEN excluded.enabled = 1 THEN 'active' ELSE 'disabled' END,
     updated_at = excluded.updated_at
 `
 
 type UpsertRestoredCronJobParams struct {
-	ID        string      `json:"id"`
-	AccountID string      `json:"account_id"`
-	NodeID    string      `json:"node_id"`
-	Name      string      `json:"name"`
-	Schedule  string      `json:"schedule"`
-	Command   string      `json:"command"`
-	Enabled   int64       `json:"enabled"`
-	Column8   interface{} `json:"column_8"`
-	CreatedAt int64       `json:"created_at"`
-	UpdatedAt int64       `json:"updated_at"`
+	ID              string      `json:"id"`
+	AccountID       string      `json:"account_id"`
+	NodeID          string      `json:"node_id"`
+	Name            string      `json:"name"`
+	Schedule        string      `json:"schedule"`
+	Command         string      `json:"command"`
+	SchedulerDriver string      `json:"scheduler_driver"`
+	Enabled         int64       `json:"enabled"`
+	Column9         interface{} `json:"column_9"`
+	CreatedAt       int64       `json:"created_at"`
+	UpdatedAt       int64       `json:"updated_at"`
 }
 
 func (q *Queries) UpsertRestoredCronJob(ctx context.Context, arg UpsertRestoredCronJobParams) error {
@@ -825,8 +849,9 @@ func (q *Queries) UpsertRestoredCronJob(ctx context.Context, arg UpsertRestoredC
 		arg.Name,
 		arg.Schedule,
 		arg.Command,
+		arg.SchedulerDriver,
 		arg.Enabled,
-		arg.Column8,
+		arg.Column9,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -834,10 +859,10 @@ func (q *Queries) UpsertRestoredCronJob(ctx context.Context, arg UpsertRestoredC
 }
 
 const upsertRestoredDatabase = `-- name: UpsertRestoredDatabase :exec
-INSERT INTO databases (id, account_id, node_id, name, system_name, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, 'active', ?, ?)
+INSERT INTO databases (id, account_id, node_id, name, system_name, driver, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, system_name = excluded.system_name,
-    status = 'active', updated_at = excluded.updated_at
+    driver = excluded.driver, status = 'active', updated_at = excluded.updated_at
 `
 
 type UpsertRestoredDatabaseParams struct {
@@ -846,6 +871,7 @@ type UpsertRestoredDatabaseParams struct {
 	NodeID     string `json:"node_id"`
 	Name       string `json:"name"`
 	SystemName string `json:"system_name"`
+	Driver     string `json:"driver"`
 	CreatedAt  int64  `json:"created_at"`
 	UpdatedAt  int64  `json:"updated_at"`
 }
@@ -857,6 +883,7 @@ func (q *Queries) UpsertRestoredDatabase(ctx context.Context, arg UpsertRestored
 		arg.NodeID,
 		arg.Name,
 		arg.SystemName,
+		arg.Driver,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)

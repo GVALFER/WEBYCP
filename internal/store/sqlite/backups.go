@@ -14,6 +14,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/backups"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/pagination"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite/dbgen"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
@@ -75,7 +76,8 @@ func (s *Store) CreateBackupPlan(ctx context.Context, value backups.Plan) (backu
 	row, err := q.CreateBackupPlan(ctx, dbgen.CreateBackupPlanParams{
 		ID: value.ID, AccountID: value.AccountID, NodeID: value.NodeID, Name: value.Name,
 		Schedule: value.Schedule, RetentionCount: value.RetentionCount,
-		IncludeFiles: boolValue(value.IncludeFiles), IncludeDatabases: boolValue(value.IncludeDatabases),
+		StorageDriver: value.StorageDriver,
+		IncludeFiles:  boolValue(value.IncludeFiles), IncludeDatabases: boolValue(value.IncludeDatabases),
 		Enabled: boolValue(value.Enabled), NextRunAt: nullTime(value.NextRunAt),
 		CreatedAt: timeValue(value.CreatedAt), UpdatedAt: timeValue(value.UpdatedAt),
 	})
@@ -101,7 +103,8 @@ func (s *Store) UpdateBackupPlan(ctx context.Context, value backups.Plan, curren
 	row, err := q.UpdateBackupPlan(ctx, dbgen.UpdateBackupPlanParams{
 		Name: value.Name, Schedule: value.Schedule, RetentionCount: value.RetentionCount,
 		IncludeFiles: boolValue(value.IncludeFiles), IncludeDatabases: boolValue(value.IncludeDatabases),
-		Enabled: boolValue(value.Enabled), NextRunAt: nullTime(value.NextRunAt),
+		StorageDriver: value.StorageDriver,
+		Enabled:       boolValue(value.Enabled), NextRunAt: nullTime(value.NextRunAt),
 		UpdatedAt: timeValue(value.UpdatedAt), ID: value.ID,
 	})
 	if err != nil {
@@ -140,7 +143,7 @@ func (s *Store) QueueBackupRun(ctx context.Context, run backups.Run, job jobs.Jo
 	}
 	defer tx.Rollback()
 	q := s.queries.WithTx(tx)
-	row, err := q.CreateBackupRun(ctx, dbgen.CreateBackupRunParams{ID: run.ID, PlanID: nullString(run.PlanID), AccountID: run.AccountID, NodeID: run.NodeID, CreatedAt: timeValue(run.CreatedAt)})
+	row, err := q.CreateBackupRun(ctx, dbgen.CreateBackupRunParams{ID: run.ID, PlanID: nullString(run.PlanID), AccountID: run.AccountID, NodeID: run.NodeID, StorageDriver: run.StorageDriver, CreatedAt: timeValue(run.CreatedAt)})
 	if err != nil {
 		return backups.Run{}, jobs.Job{}, err
 	}
@@ -172,7 +175,7 @@ func (s *Store) CompleteBackup(ctx context.Context, run backups.Run, artifact ba
 	if err != nil {
 		return backups.Artifact{}, err
 	}
-	row, err := q.CreateBackupArtifact(ctx, dbgen.CreateBackupArtifactParams{ID: artifact.ID, RunID: artifact.RunID, AccountID: artifact.AccountID, NodeID: artifact.NodeID, Path: artifact.Path, Checksum: artifact.Checksum, SizeBytes: artifact.Size, Manifest: string(data), CreatedAt: timeValue(artifact.CreatedAt)})
+	row, err := q.CreateBackupArtifact(ctx, dbgen.CreateBackupArtifactParams{ID: artifact.ID, RunID: artifact.RunID, AccountID: artifact.AccountID, NodeID: artifact.NodeID, StorageDriver: artifact.StorageDriver, Path: artifact.Path, Checksum: artifact.Checksum, SizeBytes: artifact.Size, Manifest: string(data), CreatedAt: timeValue(artifact.CreatedAt)})
 	if err != nil {
 		return backups.Artifact{}, err
 	}
@@ -310,7 +313,7 @@ func (s *Store) RestoreMetadata(ctx context.Context, value backupfmt.Metadata) e
 	}
 	now := time.Now().UTC()
 	for _, website := range value.Websites {
-		if validate.ID("websiteId", website.ID) != nil || !account.NodeID.Valid || website.NodeID != account.NodeID.String || website.Kind != "php" || website.WebDriver != "nginx" || website.RuntimeDriver != "phpfpm" || website.RuntimeVersion != "8.3" {
+		if validate.ID("websiteId", website.ID) != nil || !account.NodeID.Valid || website.NodeID != account.NodeID.String || website.Kind != "php" || website.WebDriver != services.Nginx || website.RuntimeDriver != services.PHPFPM || website.RuntimeVersion != services.PHP83 {
 			return fmt.Errorf("restored website metadata is invalid")
 		}
 		if _, err := validate.ResourceName(website.Name); err != nil {
@@ -374,7 +377,7 @@ func (s *Store) RestoreMetadata(ctx context.Context, value backupfmt.Metadata) e
 	}
 	for _, database := range value.Databases {
 		name, nameErr := validate.DatabaseName(database.Name)
-		if validate.ID("databaseId", database.ID) != nil || !account.NodeID.Valid || database.NodeID != account.NodeID.String || nameErr != nil || name != database.Name || validate.DatabaseSystemName(database.SystemName) != nil {
+		if validate.ID("databaseId", database.ID) != nil || !account.NodeID.Valid || database.NodeID != account.NodeID.String || nameErr != nil || name != database.Name || validate.DatabaseSystemName(database.SystemName) != nil || database.Driver != services.MySQL {
 			return fmt.Errorf("restored database metadata is invalid")
 		}
 		current, getErr := q.GetDatabase(ctx, database.ID)
@@ -389,12 +392,12 @@ func (s *Store) RestoreMetadata(ctx context.Context, value backupfmt.Metadata) e
 				return err
 			}
 		}
-		if err := q.UpsertRestoredDatabase(ctx, dbgen.UpsertRestoredDatabaseParams{ID: database.ID, AccountID: value.AccountID, NodeID: database.NodeID, Name: database.Name, SystemName: database.SystemName, CreatedAt: timeValue(now), UpdatedAt: timeValue(now)}); err != nil {
+		if err := q.UpsertRestoredDatabase(ctx, dbgen.UpsertRestoredDatabaseParams{ID: database.ID, AccountID: value.AccountID, NodeID: database.NodeID, Name: database.Name, SystemName: database.SystemName, Driver: database.Driver, CreatedAt: timeValue(now), UpdatedAt: timeValue(now)}); err != nil {
 			return err
 		}
 	}
 	for _, cron := range value.CronJobs {
-		if validate.ID("cronJobId", cron.ID) != nil || !account.NodeID.Valid || cron.NodeID != account.NodeID.String {
+		if validate.ID("cronJobId", cron.ID) != nil || !account.NodeID.Valid || cron.NodeID != account.NodeID.String || cron.SchedulerDriver != services.Crontab {
 			return fmt.Errorf("restored cron metadata is invalid")
 		}
 		if _, err := validate.ResourceName(cron.Name); err != nil {
@@ -419,7 +422,7 @@ func (s *Store) RestoreMetadata(ctx context.Context, value backupfmt.Metadata) e
 			}
 		}
 		enabled := boolValue(cron.Enabled)
-		if err := q.UpsertRestoredCronJob(ctx, dbgen.UpsertRestoredCronJobParams{ID: cron.ID, AccountID: value.AccountID, NodeID: cron.NodeID, Name: cron.Name, Schedule: cron.Schedule, Command: cron.Command, Enabled: enabled, Column8: enabled, CreatedAt: timeValue(now), UpdatedAt: timeValue(now)}); err != nil {
+		if err := q.UpsertRestoredCronJob(ctx, dbgen.UpsertRestoredCronJobParams{ID: cron.ID, AccountID: value.AccountID, NodeID: cron.NodeID, Name: cron.Name, Schedule: cron.Schedule, Command: cron.Command, SchedulerDriver: cron.SchedulerDriver, Enabled: enabled, Column9: enabled, CreatedAt: timeValue(now), UpdatedAt: timeValue(now)}); err != nil {
 			return err
 		}
 	}
@@ -427,11 +430,11 @@ func (s *Store) RestoreMetadata(ctx context.Context, value backupfmt.Metadata) e
 }
 
 func backupPlanValue(row dbgen.BackupPlan) backups.Plan {
-	return backups.Plan{ID: row.ID, AccountID: row.AccountID, NodeID: row.NodeID, Name: row.Name, Schedule: row.Schedule, RetentionCount: row.RetentionCount, IncludeFiles: row.IncludeFiles != 0, IncludeDatabases: row.IncludeDatabases != 0, Enabled: row.Enabled != 0, LastRunAt: timePtr(row.LastRunAt), NextRunAt: timePtr(row.NextRunAt), CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt)}
+	return backups.Plan{ID: row.ID, AccountID: row.AccountID, NodeID: row.NodeID, Name: row.Name, Schedule: row.Schedule, RetentionCount: row.RetentionCount, StorageDriver: row.StorageDriver, IncludeFiles: row.IncludeFiles != 0, IncludeDatabases: row.IncludeDatabases != 0, Enabled: row.Enabled != 0, LastRunAt: timePtr(row.LastRunAt), NextRunAt: timePtr(row.NextRunAt), CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt)}
 }
 
 func backupRunValue(row dbgen.BackupRun) backups.Run {
-	return backups.Run{ID: row.ID, PlanID: row.PlanID.String, AccountID: row.AccountID, NodeID: row.NodeID, Status: row.Status, Error: row.Error, CreatedAt: timeFrom(row.CreatedAt), StartedAt: timePtr(row.StartedAt), FinishedAt: timePtr(row.FinishedAt)}
+	return backups.Run{ID: row.ID, PlanID: row.PlanID.String, AccountID: row.AccountID, NodeID: row.NodeID, StorageDriver: row.StorageDriver, Status: row.Status, Error: row.Error, CreatedAt: timeFrom(row.CreatedAt), StartedAt: timePtr(row.StartedAt), FinishedAt: timePtr(row.FinishedAt)}
 }
 
 func backupArtifactValue(row dbgen.BackupArtifact) (backups.Artifact, error) {
@@ -439,5 +442,5 @@ func backupArtifactValue(row dbgen.BackupArtifact) (backups.Artifact, error) {
 	if err := json.Unmarshal([]byte(row.Manifest), &manifest); err != nil {
 		return backups.Artifact{}, fmt.Errorf("decode backup manifest: %w", err)
 	}
-	return backups.Artifact{ID: row.ID, RunID: row.RunID, AccountID: row.AccountID, NodeID: row.NodeID, Path: row.Path, Checksum: row.Checksum, Size: row.SizeBytes, Manifest: manifest, CreatedAt: timeFrom(row.CreatedAt)}, nil
+	return backups.Artifact{ID: row.ID, RunID: row.RunID, AccountID: row.AccountID, NodeID: row.NodeID, StorageDriver: row.StorageDriver, Path: row.Path, Checksum: row.Checksum, Size: row.SizeBytes, Manifest: manifest, CreatedAt: timeFrom(row.CreatedAt)}, nil
 }

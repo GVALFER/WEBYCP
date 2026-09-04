@@ -8,9 +8,18 @@ import (
 	"testing"
 
 	agentwebsite "github.com/GVALFER/WEBYCP/internal/agent/website"
+	"github.com/GVALFER/WEBYCP/internal/services"
 )
 
 type accountManager struct{ user string }
+
+type capabilityObserver struct{}
+
+func (capabilityObserver) Observe(context.Context) services.Capabilities {
+	return services.Capabilities{
+		Webservers: []services.Capability{{Driver: services.Nginx, Status: services.Healthy}},
+	}
+}
 
 func (m *accountManager) Ensure(_ context.Context, _, user string) error { m.user = user; return nil }
 
@@ -35,8 +44,20 @@ func (m *websiteManager) Delete(_ context.Context, spec agentwebsite.Spec) error
 func TestHealth(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/agent/v1/health", nil)
 	response := httptest.NewRecorder()
-	New(Options{Version: "test"}).ServeHTTP(response, request)
-	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"protocolVersion":"v1"`) {
+	New(Options{Version: "test", Capabilities: capabilityObserver{}}).ServeHTTP(response, request)
+	if response.Code != http.StatusOK ||
+		!strings.Contains(response.Body.String(), `"protocolVersion":"v1"`) ||
+		!strings.Contains(response.Body.String(), `"driver":"nginx"`) {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestHealthRequiresCapabilityObserver(t *testing.T) {
+	response := httptest.NewRecorder()
+	New(Options{Version: "test"}).ServeHTTP(
+		response, httptest.NewRequest(http.MethodGet, "/agent/v1/health", nil),
+	)
+	if response.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
 }

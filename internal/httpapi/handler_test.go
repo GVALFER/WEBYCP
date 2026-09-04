@@ -17,6 +17,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
 	"github.com/GVALFER/WEBYCP/internal/packages"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 )
@@ -101,6 +102,27 @@ func TestTemporaryAdminSetupAndProbe(t *testing.T) {
 	api.ServeHTTP(current, me)
 	if current.Code != http.StatusOK {
 		t.Fatalf("me status = %d, body = %s", current.Code, current.Body.String())
+	}
+
+	settings := httptest.NewRequest(http.MethodGet, "/api/v1/service-settings", nil)
+	settings.AddCookie(cookie)
+	settingsResponse := httptest.NewRecorder()
+	api.ServeHTTP(settingsResponse, settings)
+	if settingsResponse.Code != http.StatusOK ||
+		!strings.Contains(settingsResponse.Body.String(), `"webDriver":"nginx"`) {
+		t.Fatalf("service settings status = %d, body = %s", settingsResponse.Code, settingsResponse.Body.String())
+	}
+
+	unsupported := httptest.NewRequest(http.MethodPut, "/api/v1/service-settings", strings.NewReader(`{
+		"webDriver":"apache","runtimeDriver":"phpfpm","runtimeVersion":"8.3",
+		"databaseDriver":"mysql","schedulerDriver":"crontab","backupDriver":"local"
+	}`))
+	unsupported.AddCookie(cookie)
+	unsupported.Header.Set("X-CSRF-Token", session.CSRFToken)
+	unsupportedResponse := httptest.NewRecorder()
+	api.ServeHTTP(unsupportedResponse, unsupported)
+	if unsupportedResponse.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("unsupported defaults status = %d, body = %s", unsupportedResponse.Code, unsupportedResponse.Body.String())
 	}
 
 	nodeList, err := store.Nodes(context.Background())
@@ -276,6 +298,7 @@ func testAPI(t *testing.T) (http.Handler, *sqlite.Store, auth.Credentials) {
 		Auth:     authService,
 		Accounts: accountService,
 		Packages: packageService,
+		Services: services.NewService(store),
 		Websites: websites.NewService(store, accountService, store, agent, worker.Notify),
 		Nodes:    nodes.NewService(store, agent),
 		Jobs:     jobs.NewService(store, worker.Notify),

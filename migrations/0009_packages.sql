@@ -46,12 +46,12 @@ INSERT INTO packages (
     20,
     5,
     7,
-    unixepoch(),
-    unixepoch()
+    unixepoch() * 1000,
+    unixepoch() * 1000
 );
 
 INSERT INTO account_packages (account_id, package_id, created_at, updated_at)
-SELECT id, '00000000000000000000000000000001', unixepoch(), unixepoch()
+SELECT id, '00000000000000000000000000000001', unixepoch() * 1000, unixepoch() * 1000
 FROM accounts;
 
 CREATE VIEW package_overviews AS

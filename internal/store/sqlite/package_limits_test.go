@@ -17,6 +17,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/databases"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/packages"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 )
 
@@ -76,7 +77,7 @@ func TestPackageCountLimits(t *testing.T) {
 				_, _, err := store.CreateUser(ctx, databases.User{
 					ID: limitID(n), AccountID: account.ID, NodeID: account.NodeID,
 					Name: fmt.Sprintf("user_%d", n), SystemName: fmt.Sprintf("wcp_user_%d", n),
-					CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
+					Driver: services.MySQL, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 				}, limitJob(n, account.NodeID, jobs.KindDatabaseUserCreate))
 				return err
 			},
@@ -323,7 +324,7 @@ func testDatabase(account accounts.Account, n int) databases.Database {
 	return databases.Database{
 		ID: limitID(2000 + n), AccountID: account.ID, NodeID: account.NodeID,
 		Name: fmt.Sprintf("db_%d", n), SystemName: fmt.Sprintf("wcp_db_%d", n),
-		Status: "pending", CreatedAt: now, UpdatedAt: now,
+		Driver: services.MySQL, Status: "pending", CreatedAt: now, UpdatedAt: now,
 	}
 }
 
@@ -332,7 +333,8 @@ func testCron(account accounts.Account, n int) cronjob.CronJob {
 	return cronjob.CronJob{
 		ID: limitID(3000 + n), AccountID: account.ID, NodeID: account.NodeID,
 		Name: fmt.Sprintf("Task %d", n), Schedule: "0 * * * *", Command: "/usr/bin/true",
-		Enabled: true, Status: "pending", CreatedAt: now, UpdatedAt: now,
+		SchedulerDriver: services.Crontab, Enabled: true, Status: "pending",
+		CreatedAt: now, UpdatedAt: now,
 	}
 }
 
@@ -341,7 +343,8 @@ func testPlan(account accounts.Account, n int, retention int64) backups.Plan {
 	return backups.Plan{
 		ID: limitID(4000 + n), AccountID: account.ID, NodeID: account.NodeID,
 		Name: fmt.Sprintf("Plan %d", n), RetentionCount: retention,
-		IncludeFiles: true, Enabled: true, CreatedAt: now, UpdatedAt: now,
+		StorageDriver: services.Local, IncludeFiles: true, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
 	}
 }
 

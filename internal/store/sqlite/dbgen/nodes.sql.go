@@ -20,7 +20,7 @@ INSERT INTO nodes (
     created_at,
     updated_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?)
-RETURNING id, name, kind, endpoint, status, last_seen_at, created_at, updated_at
+RETURNING id, name, kind, endpoint, status, last_seen_at, created_at, updated_at, capabilities, capabilities_at
 `
 
 type CreateNodeParams struct {
@@ -53,12 +53,14 @@ func (q *Queries) CreateNode(ctx context.Context, arg CreateNodeParams) (Node, e
 		&i.LastSeenAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Capabilities,
+		&i.CapabilitiesAt,
 	)
 	return i, err
 }
 
 const getLocalNode = `-- name: GetLocalNode :one
-SELECT id, name, kind, endpoint, status, last_seen_at, created_at, updated_at FROM nodes WHERE kind = 'local' LIMIT 1
+SELECT id, name, kind, endpoint, status, last_seen_at, created_at, updated_at, capabilities, capabilities_at FROM nodes WHERE kind = 'local' LIMIT 1
 `
 
 func (q *Queries) GetLocalNode(ctx context.Context) (Node, error) {
@@ -73,12 +75,14 @@ func (q *Queries) GetLocalNode(ctx context.Context) (Node, error) {
 		&i.LastSeenAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Capabilities,
+		&i.CapabilitiesAt,
 	)
 	return i, err
 }
 
 const getNode = `-- name: GetNode :one
-SELECT id, name, kind, endpoint, status, last_seen_at, created_at, updated_at FROM nodes WHERE id = ? LIMIT 1
+SELECT id, name, kind, endpoint, status, last_seen_at, created_at, updated_at, capabilities, capabilities_at FROM nodes WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetNode(ctx context.Context, id string) (Node, error) {
@@ -93,12 +97,14 @@ func (q *Queries) GetNode(ctx context.Context, id string) (Node, error) {
 		&i.LastSeenAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Capabilities,
+		&i.CapabilitiesAt,
 	)
 	return i, err
 }
 
 const listNodes = `-- name: ListNodes :many
-SELECT id, name, kind, endpoint, status, last_seen_at, created_at, updated_at FROM nodes ORDER BY created_at ASC
+SELECT id, name, kind, endpoint, status, last_seen_at, created_at, updated_at, capabilities, capabilities_at FROM nodes ORDER BY created_at ASC
 `
 
 func (q *Queries) ListNodes(ctx context.Context) ([]Node, error) {
@@ -119,6 +125,8 @@ func (q *Queries) ListNodes(ctx context.Context) ([]Node, error) {
 			&i.LastSeenAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Capabilities,
+			&i.CapabilitiesAt,
 		); err != nil {
 			return nil, err
 		}
@@ -137,7 +145,7 @@ const updateLocalNode = `-- name: UpdateLocalNode :one
 UPDATE nodes
 SET name = ?, endpoint = ?, updated_at = ?
 WHERE kind = 'local'
-RETURNING id, name, kind, endpoint, status, last_seen_at, created_at, updated_at
+RETURNING id, name, kind, endpoint, status, last_seen_at, created_at, updated_at, capabilities, capabilities_at
 `
 
 type UpdateLocalNodeParams struct {
@@ -158,27 +166,37 @@ func (q *Queries) UpdateLocalNode(ctx context.Context, arg UpdateLocalNodeParams
 		&i.LastSeenAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Capabilities,
+		&i.CapabilitiesAt,
 	)
 	return i, err
 }
 
 const updateNodeProbe = `-- name: UpdateNodeProbe :exec
 UPDATE nodes
-SET status = ?, last_seen_at = ?, updated_at = ?
-WHERE id = ?
+SET status = ?1,
+    last_seen_at = COALESCE(?2, last_seen_at),
+    capabilities = COALESCE(?3, capabilities),
+    capabilities_at = COALESCE(?4, capabilities_at),
+    updated_at = ?5
+WHERE id = ?6
 `
 
 type UpdateNodeProbeParams struct {
-	Status     string        `json:"status"`
-	LastSeenAt sql.NullInt64 `json:"last_seen_at"`
-	UpdatedAt  int64         `json:"updated_at"`
-	ID         string        `json:"id"`
+	Status         string         `json:"status"`
+	LastSeenAt     sql.NullInt64  `json:"last_seen_at"`
+	Capabilities   sql.NullString `json:"capabilities"`
+	CapabilitiesAt sql.NullInt64  `json:"capabilities_at"`
+	UpdatedAt      int64          `json:"updated_at"`
+	ID             string         `json:"id"`
 }
 
 func (q *Queries) UpdateNodeProbe(ctx context.Context, arg UpdateNodeProbeParams) error {
 	_, err := q.db.ExecContext(ctx, updateNodeProbe,
 		arg.Status,
 		arg.LastSeenAt,
+		arg.Capabilities,
+		arg.CapabilitiesAt,
 		arg.UpdatedAt,
 		arg.ID,
 	)

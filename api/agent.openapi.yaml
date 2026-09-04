@@ -390,6 +390,7 @@ components:
                 - service
                 - status
                 - version
+                - capabilities
             properties:
                 protocolVersion:
                     type: string
@@ -404,6 +405,36 @@ components:
                 version:
                     type: string
                     example: dev
+                capabilities:
+                    $ref: "#/components/schemas/ServiceCapabilities"
+        ServiceCapability:
+            type: object
+            additionalProperties: false
+            required: [driver, version, status]
+            properties:
+                driver: { type: string }
+                version: { type: string }
+                status: { type: string, enum: [healthy, unavailable] }
+        ServiceCapabilities:
+            type: object
+            additionalProperties: false
+            required: [webservers, runtimes, databases, schedulers, backups]
+            properties:
+                webservers:
+                    type: array
+                    items: { $ref: "#/components/schemas/ServiceCapability" }
+                runtimes:
+                    type: array
+                    items: { $ref: "#/components/schemas/ServiceCapability" }
+                databases:
+                    type: array
+                    items: { $ref: "#/components/schemas/ServiceCapability" }
+                schedulers:
+                    type: array
+                    items: { $ref: "#/components/schemas/ServiceCapability" }
+                backups:
+                    type: array
+                    items: { $ref: "#/components/schemas/ServiceCapability" }
         EnsureAccountRequest:
             type: object
             additionalProperties: false

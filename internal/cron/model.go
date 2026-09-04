@@ -9,9 +9,9 @@ import (
 )
 
 type CronJob struct {
-	ID, AccountID, NodeID, Name, Schedule, Command, Status string
-	Enabled                                                bool
-	CreatedAt, UpdatedAt                                   time.Time
+	ID, AccountID, NodeID, Name, Schedule, Command, SchedulerDriver, Status string
+	Enabled                                                                 bool
+	CreatedAt, UpdatedAt                                                    time.Time
 }
 
 type Repository interface {

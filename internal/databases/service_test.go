@@ -13,6 +13,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/databases"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/packages"
+	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite"
 )
 
@@ -37,11 +38,14 @@ func TestGrantCannotCrossAccountBoundary(t *testing.T) {
 	second := createAccount(t, ctx, store, node.ID, "abcdef0123456789abcdef0123456789", "Second", now)
 	accountService := accounts.NewService(store, store, nil, packages.NewService(store), func() {})
 	service := databases.NewService(store, accountService, store, nil, func() {})
-	database, _, err := service.CreateDatabase(ctx, first.ID, "app", "user-1", true)
+	if _, _, err := service.CreateDatabase(ctx, first.ID, "unsupported", "sqlite", "user-1", true); err == nil {
+		t.Fatal("unsupported database driver was accepted")
+	}
+	database, _, err := service.CreateDatabase(ctx, first.ID, "app", services.MySQL, "user-1", true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	user, userJob, password, err := service.CreateUser(ctx, second.ID, "app", "user-1", true)
+	user, userJob, password, err := service.CreateUser(ctx, second.ID, "app", services.MySQL, "user-1", true)
 	if err != nil {
 		t.Fatal(err)
 	}

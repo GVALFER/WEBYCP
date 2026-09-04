@@ -4,7 +4,11 @@ import { Clock3 } from "lucide-react";
 import useSWR from "swr";
 import { Table, type TableColumn } from "@/components/table/table";
 import { useTable } from "@/components/table/useTable";
-import type { AccountListResponse, CronJobListResponse } from "@/contracts/types";
+import type {
+    AccountListResponse,
+    CronJobListResponse,
+    ServiceSettings,
+} from "@/contracts/types";
 import { cn } from "@/utils/classnames";
 import { statusClass } from "@/utils/status";
 import CreateCron from "./actions/createCron";
@@ -13,15 +17,19 @@ import CronActions from "./actions/cronActions";
 type CronProps = {
     accounts: AccountListResponse;
     jobs: CronJobListResponse;
+    settings: ServiceSettings;
 };
 
 type CronJob = CronJobListResponse["items"][number];
 
-const Cron = ({ accounts, jobs }: CronProps) => {
+const Cron = ({ accounts, jobs, settings: initialSettings }: CronProps) => {
     const table = useTable(jobs.pagination);
 
     const { data } = useSWR<CronJobListResponse>(`cron-jobs${table.query}`, {
         fallbackData: table.isInitialQuery ? jobs : undefined,
+    });
+    const { data: settings = initialSettings } = useSWR<ServiceSettings>("service-settings", {
+        fallbackData: initialSettings,
     });
 
     const columns: TableColumn<CronJob>[] = [
@@ -37,7 +45,7 @@ const Cron = ({ accounts, jobs }: CronProps) => {
                     <div className="min-w-0">
                         <div className="font-medium">{job.name}</div>
                         <div className="mt-1 max-w-xl truncate font-mono text-xs text-foreground-400">
-                            {job.command}
+                            {job.command} · {job.schedulerDriver}
                         </div>
                     </div>
                 </div>
@@ -81,7 +89,7 @@ const Cron = ({ accounts, jobs }: CronProps) => {
                         Commands run as the hosting account from its home directory.
                     </div>
                 </div>
-                <CreateCron accounts={accounts} />
+                <CreateCron accounts={accounts} driver={settings.defaults.schedulerDriver} />
             </div>
             <Table table={table} columns={columns} data={data} />
         </section>
