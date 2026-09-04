@@ -8,6 +8,7 @@ import type { CronJobListResponse, CronJobResponse, Job } from "@/contracts/type
 import { Confirm } from "@/components/actions/confirm";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey } from "@/utils/pagination";
 
 type CronActionsProps = {
     item: CronJobListResponse["items"][number];
@@ -23,7 +24,7 @@ const CronActions = ({ item }: CronActionsProps) => {
 
         try {
             await action();
-            await Promise.all([mutate("cron-jobs"), mutate("jobs")]);
+            await mutate((key) => isPageKey(key, "cron-jobs", "jobs"));
             toast.success(success);
         } catch (error) {
             toast.danger("Action failed", {

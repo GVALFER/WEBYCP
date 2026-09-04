@@ -7,6 +7,7 @@ import { useSWRConfig } from "swr";
 import type { Job, NodeListResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey } from "@/utils/pagination";
 
 type CheckNodeProps = {
     node: NodeListResponse["items"][number];
@@ -21,7 +22,10 @@ const CheckNode = ({ node }: CheckNodeProps) => {
 
         try {
             await api.post(`nodes/${encodeURIComponent(node.id)}/probe`).json<Job>();
-            await Promise.all([mutate("nodes"), mutate("jobs")]);
+            await Promise.all([
+                mutate("nodes"),
+                mutate((key) => isPageKey(key, "jobs")),
+            ]);
             toast.success("Agent check completed");
         } catch (error) {
             toast.danger("Agent check failed", {

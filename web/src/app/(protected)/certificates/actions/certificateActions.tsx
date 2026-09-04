@@ -7,6 +7,7 @@ import { useSWRConfig } from "swr";
 import type { CertificateJobResponse, CertificateListResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey } from "@/utils/pagination";
 
 type CertificateActionsProps = {
     certificate: CertificateListResponse["items"][number];
@@ -23,7 +24,7 @@ const CertificateActions = ({ certificate }: CertificateActionsProps) => {
 
         try {
             await action();
-            await Promise.all([mutate("certificates"), mutate("jobs")]);
+            await mutate((cacheKey) => isPageKey(cacheKey, "certificates", "jobs"));
             toast.success(success);
         } catch (error) {
             toast.danger("Certificate action failed", {

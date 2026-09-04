@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 )
 
 var (
@@ -46,8 +47,10 @@ type Repository interface {
 	CreateAliasProvision(context.Context, Alias, jobs.Job) (Alias, jobs.Job, error)
 	Domain(context.Context, string) (Domain, error)
 	Domains(context.Context, string, bool) ([]Domain, error)
+	DomainPage(context.Context, string, bool, pagination.Query) (pagination.Result[Domain], error)
 	Alias(context.Context, string) (Alias, error)
 	Aliases(context.Context, string) ([]Alias, error)
+	AliasPage(context.Context, string, pagination.Query) (pagination.Result[Alias], error)
 	EnabledAliases(context.Context, string) ([]Alias, error)
 	QueueDomainAction(context.Context, string, bool, jobs.Job) (Domain, jobs.Job, error)
 	QueueAliasAction(context.Context, string, bool, jobs.Job) (Alias, jobs.Job, error)

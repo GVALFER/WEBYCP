@@ -13,6 +13,7 @@ import { FormSelect } from "@/components/form/formSelect";
 import type { CertificateJobResponse, DomainListResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey, pageKey } from "@/utils/pagination";
 import { emailField } from "@/utils/validation";
 
 type CreateCertificateProps = {
@@ -33,7 +34,7 @@ const CreateCertificate = ({ domains, email }: CreateCertificateProps) => {
     const [pending, startTransition] = useTransition();
     const { mutate } = useSWRConfig();
 
-    const { data } = useSWR<DomainListResponse>("domains", {
+    const { data } = useSWR<DomainListResponse>(pageKey("domains", { page: 1, size: 100 }), {
         fallbackData: domains,
     });
 
@@ -56,7 +57,7 @@ const CreateCertificate = ({ domains, email }: CreateCertificateProps) => {
                             json: { email: values.email },
                         })
                         .json<CertificateJobResponse>();
-                    await Promise.all([mutate("certificates"), mutate("jobs")]);
+                    await mutate((key) => isPageKey(key, "certificates", "jobs"));
                     setOpen(false);
                     toast.success("Certificate request queued");
                 } catch (error) {

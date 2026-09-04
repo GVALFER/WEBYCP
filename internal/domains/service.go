@@ -12,6 +12,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/idgen"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
 
@@ -111,6 +112,12 @@ func (s *Service) Domains(ctx context.Context, userID string, admin bool) ([]Dom
 	return s.repository.Domains(ctx, userID, admin)
 }
 
+func (s *Service) DomainPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[Domain], error) {
+	return s.repository.DomainPage(ctx, userID, admin, query)
+}
+
 func (s *Service) GetDomain(ctx context.Context, id, userID string, admin bool) (Domain, error) {
 	return s.domain(ctx, id, userID, admin)
 }
@@ -183,6 +190,16 @@ func (s *Service) Aliases(
 		return nil, err
 	}
 	return s.repository.Aliases(ctx, domain.ID)
+}
+
+func (s *Service) AliasPage(
+	ctx context.Context, domainID, userID string, admin bool, query pagination.Query,
+) (pagination.Result[Alias], error) {
+	domain, err := s.domain(ctx, domainID, userID, admin)
+	if err != nil {
+		return pagination.Result[Alias]{}, err
+	}
+	return s.repository.AliasPage(ctx, domain.ID, query)
 }
 
 func (s *Service) SetDomain(

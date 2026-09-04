@@ -43,6 +43,42 @@ func (q *Queries) CompleteDomainRename(ctx context.Context, arg CompleteDomainRe
 	return err
 }
 
+const countDomainAliases = `-- name: CountDomainAliases :one
+SELECT COUNT(*) FROM domain_aliases WHERE domain_id = ?
+`
+
+func (q *Queries) CountDomainAliases(ctx context.Context, domainID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countDomainAliases, domainID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countDomains = `-- name: CountDomains :one
+SELECT COUNT(*) FROM domains
+`
+
+func (q *Queries) CountDomains(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countDomains)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUserDomains = `-- name: CountUserDomains :one
+SELECT COUNT(*)
+FROM domains
+JOIN account_members ON account_members.account_id = domains.account_id
+WHERE account_members.user_id = ?
+`
+
+func (q *Queries) CountUserDomains(ctx context.Context, userID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUserDomains, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createDomain = `-- name: CreateDomain :one
 INSERT INTO domains (
     id,
@@ -289,12 +325,103 @@ func (q *Queries) ListDomainAliases(ctx context.Context, domainID string) ([]Dom
 	return items, nil
 }
 
+const listDomainAliasesPage = `-- name: ListDomainAliasesPage :many
+SELECT id, domain_id, name, status, created_at, updated_at, enabled, previous_name
+FROM domain_aliases
+WHERE domain_id = ?1
+ORDER BY created_at ASC
+LIMIT ?3 OFFSET ?2
+`
+
+type ListDomainAliasesPageParams struct {
+	DomainID   string `json:"domain_id"`
+	PageOffset int64  `json:"page_offset"`
+	PageSize   int64  `json:"page_size"`
+}
+
+func (q *Queries) ListDomainAliasesPage(ctx context.Context, arg ListDomainAliasesPageParams) ([]DomainAlias, error) {
+	rows, err := q.db.QueryContext(ctx, listDomainAliasesPage, arg.DomainID, arg.PageOffset, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DomainAlias{}
+	for rows.Next() {
+		var i DomainAlias
+		if err := rows.Scan(
+			&i.ID,
+			&i.DomainID,
+			&i.Name,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Enabled,
+			&i.PreviousName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDomains = `-- name: ListDomains :many
 SELECT id, account_id, node_id, name, status, php_version, created_at, updated_at, enabled, previous_name FROM domains ORDER BY created_at ASC
 `
 
 func (q *Queries) ListDomains(ctx context.Context) ([]Domain, error) {
 	rows, err := q.db.QueryContext(ctx, listDomains)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Domain{}
+	for rows.Next() {
+		var i Domain
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.NodeID,
+			&i.Name,
+			&i.Status,
+			&i.PhpVersion,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Enabled,
+			&i.PreviousName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDomainsPage = `-- name: ListDomainsPage :many
+SELECT id, account_id, node_id, name, status, php_version, created_at, updated_at, enabled, previous_name FROM domains
+ORDER BY created_at ASC
+LIMIT ?2 OFFSET ?1
+`
+
+type ListDomainsPageParams struct {
+	PageOffset int64 `json:"page_offset"`
+	PageSize   int64 `json:"page_size"`
+}
+
+func (q *Queries) ListDomainsPage(ctx context.Context, arg ListDomainsPageParams) ([]Domain, error) {
+	rows, err := q.db.QueryContext(ctx, listDomainsPage, arg.PageOffset, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -376,6 +503,55 @@ ORDER BY domains.created_at ASC
 
 func (q *Queries) ListUserDomains(ctx context.Context, userID string) ([]Domain, error) {
 	rows, err := q.db.QueryContext(ctx, listUserDomains, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Domain{}
+	for rows.Next() {
+		var i Domain
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.NodeID,
+			&i.Name,
+			&i.Status,
+			&i.PhpVersion,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Enabled,
+			&i.PreviousName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserDomainsPage = `-- name: ListUserDomainsPage :many
+SELECT domains.id, domains.account_id, domains.node_id, domains.name, domains.status, domains.php_version, domains.created_at, domains.updated_at, domains.enabled, domains.previous_name
+FROM domains
+JOIN account_members ON account_members.account_id = domains.account_id
+WHERE account_members.user_id = ?1
+ORDER BY domains.created_at ASC
+LIMIT ?3 OFFSET ?2
+`
+
+type ListUserDomainsPageParams struct {
+	UserID     string `json:"user_id"`
+	PageOffset int64  `json:"page_offset"`
+	PageSize   int64  `json:"page_size"`
+}
+
+func (q *Queries) ListUserDomainsPage(ctx context.Context, arg ListUserDomainsPageParams) ([]Domain, error) {
+	rows, err := q.db.QueryContext(ctx, listUserDomainsPage, arg.UserID, arg.PageOffset, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}

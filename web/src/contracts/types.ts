@@ -5,6 +5,7 @@ export type LoginRequest = components["schemas"]["LoginRequest"];
 export type AuthResponse = components["schemas"]["AuthResponse"];
 export type UpdateProfileRequest = components["schemas"]["UpdateProfileRequest"];
 export type Account = components["schemas"]["Account"];
+export type Pagination = components["schemas"]["Pagination"];
 export type AccountListResponse = components["schemas"]["AccountListResponse"];
 export type AccountJobResponse = components["schemas"]["AccountJobResponse"];
 export type CreateAccountRequest = components["schemas"]["CreateAccountRequest"];

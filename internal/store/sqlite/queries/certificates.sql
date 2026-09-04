@@ -6,6 +6,21 @@ WHERE ? OR certificates.kind = 'panel' OR account_members.user_id = ?
 GROUP BY certificates.id
 ORDER BY certificates.created_at DESC;
 
+-- name: CountCertificates :one
+SELECT COUNT(DISTINCT certificates.id) FROM certificates
+LEFT JOIN domains ON domains.id = certificates.domain_id
+LEFT JOIN account_members ON account_members.account_id = domains.account_id
+WHERE sqlc.arg(is_admin) OR certificates.kind = 'panel' OR account_members.user_id = sqlc.arg(user_id);
+
+-- name: ListCertificatesPage :many
+SELECT certificates.* FROM certificates
+LEFT JOIN domains ON domains.id = certificates.domain_id
+LEFT JOIN account_members ON account_members.account_id = domains.account_id
+WHERE sqlc.arg(is_admin) OR certificates.kind = 'panel' OR account_members.user_id = sqlc.arg(user_id)
+GROUP BY certificates.id
+ORDER BY certificates.created_at DESC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
 -- name: GetCertificate :one
 SELECT * FROM certificates WHERE id = ? LIMIT 1;
 

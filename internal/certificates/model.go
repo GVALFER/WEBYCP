@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 )
 
 var ErrBusy = errors.New("certificate operation is pending")
@@ -32,6 +33,7 @@ type Result struct {
 
 type Repository interface {
 	Certificates(context.Context, string, bool) ([]Certificate, error)
+	CertificatePage(context.Context, string, bool, pagination.Query) (pagination.Result[Certificate], error)
 	Certificate(context.Context, string) (Certificate, error)
 	DomainCertificate(context.Context, string) (Certificate, error)
 	PanelCertificate(context.Context) (Certificate, error)

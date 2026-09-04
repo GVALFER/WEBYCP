@@ -10,6 +10,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/idgen"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
 
@@ -101,6 +102,12 @@ func (s *Service) Delete(ctx context.Context, id, userID string, admin bool) (jo
 
 func (s *Service) CronJobs(ctx context.Context, userID string, admin bool) ([]CronJob, error) {
 	return s.repository.CronJobs(ctx, userID, admin)
+}
+
+func (s *Service) CronJobPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[CronJob], error) {
+	return s.repository.CronJobPage(ctx, userID, admin, query)
 }
 
 func (s *Service) Sync(ctx context.Context, job jobs.Job) error {

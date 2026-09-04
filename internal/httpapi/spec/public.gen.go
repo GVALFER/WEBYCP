@@ -371,7 +371,8 @@ type AccountJobResponse struct {
 
 // AccountListResponse defines model for AccountListResponse.
 type AccountListResponse struct {
-	Items []Account `json:"items"`
+	Items      []Account  `json:"items"`
+	Pagination Pagination `json:"pagination"`
 }
 
 // AuthResponse defines model for AuthResponse.
@@ -396,7 +397,8 @@ type BackupArtifact struct {
 
 // BackupArtifactListResponse defines model for BackupArtifactListResponse.
 type BackupArtifactListResponse struct {
-	Items []BackupArtifact `json:"items"`
+	Items      []BackupArtifact `json:"items"`
+	Pagination Pagination       `json:"pagination"`
 }
 
 // BackupEntry defines model for BackupEntry.
@@ -437,7 +439,8 @@ type BackupPlan struct {
 
 // BackupPlanListResponse defines model for BackupPlanListResponse.
 type BackupPlanListResponse struct {
-	Items []BackupPlan `json:"items"`
+	Items      []BackupPlan `json:"items"`
+	Pagination Pagination   `json:"pagination"`
 }
 
 // BackupRun defines model for BackupRun.
@@ -458,7 +461,8 @@ type BackupRunStatus string
 
 // BackupRunListResponse defines model for BackupRunListResponse.
 type BackupRunListResponse struct {
-	Items []BackupRun `json:"items"`
+	Items      []BackupRun `json:"items"`
+	Pagination Pagination  `json:"pagination"`
 }
 
 // BackupRunResponse defines model for BackupRunResponse.
@@ -498,7 +502,8 @@ type CertificateJobResponse struct {
 
 // CertificateListResponse defines model for CertificateListResponse.
 type CertificateListResponse struct {
-	Items []Certificate `json:"items"`
+	Items      []Certificate `json:"items"`
+	Pagination Pagination    `json:"pagination"`
 }
 
 // CreateAccountRequest defines model for CreateAccountRequest.
@@ -549,7 +554,8 @@ type CronJobStatus string
 
 // CronJobListResponse defines model for CronJobListResponse.
 type CronJobListResponse struct {
-	Items []CronJob `json:"items"`
+	Items      []CronJob  `json:"items"`
+	Pagination Pagination `json:"pagination"`
 }
 
 // CronJobResponse defines model for CronJobResponse.
@@ -593,7 +599,8 @@ type DatabaseGrantJobResponse struct {
 
 // DatabaseGrantListResponse defines model for DatabaseGrantListResponse.
 type DatabaseGrantListResponse struct {
-	Items []DatabaseGrant `json:"items"`
+	Items      []DatabaseGrant `json:"items"`
+	Pagination Pagination      `json:"pagination"`
 }
 
 // DatabaseJobResponse defines model for DatabaseJobResponse.
@@ -604,7 +611,8 @@ type DatabaseJobResponse struct {
 
 // DatabaseListResponse defines model for DatabaseListResponse.
 type DatabaseListResponse struct {
-	Items []Database `json:"items"`
+	Items      []Database `json:"items"`
+	Pagination Pagination `json:"pagination"`
 }
 
 // DatabaseUser defines model for DatabaseUser.
@@ -633,7 +641,8 @@ type DatabaseUserJobResponse struct {
 
 // DatabaseUserListResponse defines model for DatabaseUserListResponse.
 type DatabaseUserListResponse struct {
-	Items []DatabaseUser `json:"items"`
+	Items      []DatabaseUser `json:"items"`
+	Pagination Pagination     `json:"pagination"`
 }
 
 // Domain defines model for Domain.
@@ -674,7 +683,8 @@ type DomainAliasJobResponse struct {
 
 // DomainAliasListResponse defines model for DomainAliasListResponse.
 type DomainAliasListResponse struct {
-	Items []DomainAlias `json:"items"`
+	Items      []DomainAlias `json:"items"`
+	Pagination Pagination    `json:"pagination"`
 }
 
 // DomainJobResponse defines model for DomainJobResponse.
@@ -685,7 +695,8 @@ type DomainJobResponse struct {
 
 // DomainListResponse defines model for DomainListResponse.
 type DomainListResponse struct {
-	Items []Domain `json:"items"`
+	Items      []Domain   `json:"items"`
+	Pagination Pagination `json:"pagination"`
 }
 
 // ErrorResponse defines model for ErrorResponse.
@@ -746,7 +757,8 @@ type JobDetail struct {
 
 // JobListResponse defines model for JobListResponse.
 type JobListResponse struct {
-	Items []Job `json:"items"`
+	Items      []Job      `json:"items"`
+	Pagination Pagination `json:"pagination"`
 }
 
 // JobStep defines model for JobStep.
@@ -789,6 +801,14 @@ type NodeStatus string
 // NodeListResponse defines model for NodeListResponse.
 type NodeListResponse struct {
 	Items []Node `json:"items"`
+}
+
+// Pagination defines model for Pagination.
+type Pagination struct {
+	Page       int   `json:"page"`
+	Size       int   `json:"size"`
+	TotalItems int64 `json:"totalItems"`
+	TotalPages int   `json:"totalPages"`
 }
 
 // RestoreBackupRequest defines model for RestoreBackupRequest.
@@ -894,6 +914,12 @@ type JobID = string
 // NodeID defines model for NodeID.
 type NodeID = string
 
+// Page defines model for Page.
+type Page = int
+
+// PageSize defines model for PageSize.
+type PageSize = int
+
 // BadRequestError defines model for BadRequestError.
 type BadRequestError = ErrorResponse
 
@@ -914,6 +940,12 @@ type UnauthorizedError = ErrorResponse
 
 // ValidationError defines model for ValidationError.
 type ValidationError = ErrorResponse
+
+// ListAccountsParams defines parameters for ListAccounts.
+type ListAccountsParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
 
 // CreateAccountParams defines parameters for CreateAccount.
 type CreateAccountParams struct {
@@ -940,6 +972,12 @@ type UpdateProfileParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
+// ListBackupArtifactsParams defines parameters for ListBackupArtifacts.
+type ListBackupArtifactsParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
+
 // DeleteBackupArtifactParams defines parameters for DeleteBackupArtifact.
 type DeleteBackupArtifactParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
@@ -948,6 +986,12 @@ type DeleteBackupArtifactParams struct {
 // RestoreBackupParams defines parameters for RestoreBackup.
 type RestoreBackupParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// ListBackupPlansParams defines parameters for ListBackupPlans.
+type ListBackupPlansParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
 }
 
 // CreateBackupPlanParams defines parameters for CreateBackupPlan.
@@ -970,6 +1014,18 @@ type RunBackupPlanParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
+// ListBackupRunsParams defines parameters for ListBackupRuns.
+type ListBackupRunsParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
+
+// ListCertificatesParams defines parameters for ListCertificates.
+type ListCertificatesParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
+
 // IssuePanelCertificateParams defines parameters for IssuePanelCertificate.
 type IssuePanelCertificateParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
@@ -983,6 +1039,12 @@ type SetCertificateParams struct {
 // RenewCertificateParams defines parameters for RenewCertificate.
 type RenewCertificateParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// ListCronJobsParams defines parameters for ListCronJobs.
+type ListCronJobsParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
 }
 
 // CreateCronJobParams defines parameters for CreateCronJob.
@@ -1000,6 +1062,18 @@ type SetCronJobParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
+// ListDatabaseGrantsParams defines parameters for ListDatabaseGrants.
+type ListDatabaseGrantsParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
+
+// ListDatabaseUsersParams defines parameters for ListDatabaseUsers.
+type ListDatabaseUsersParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
+
 // CreateDatabaseUserParams defines parameters for CreateDatabaseUser.
 type CreateDatabaseUserParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
@@ -1008,6 +1082,12 @@ type CreateDatabaseUserParams struct {
 // DeleteDatabaseUserParams defines parameters for DeleteDatabaseUser.
 type DeleteDatabaseUserParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// ListDatabasesParams defines parameters for ListDatabases.
+type ListDatabasesParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
 }
 
 // CreateDatabaseParams defines parameters for CreateDatabase.
@@ -1030,6 +1110,12 @@ type CreateDatabaseGrantParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
+// ListDomainsParams defines parameters for ListDomains.
+type ListDomainsParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
+
 // CreateDomainParams defines parameters for CreateDomain.
 type CreateDomainParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
@@ -1043,6 +1129,12 @@ type DeleteDomainParams struct {
 // SetDomainParams defines parameters for SetDomain.
 type SetDomainParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// ListDomainAliasesParams defines parameters for ListDomainAliases.
+type ListDomainAliasesParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
 }
 
 // CreateDomainAliasParams defines parameters for CreateDomainAlias.
@@ -1063,6 +1155,12 @@ type SetDomainAliasParams struct {
 // IssueDomainCertificateParams defines parameters for IssueDomainCertificate.
 type IssueDomainCertificateParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// ListJobsParams defines parameters for ListJobs.
+type ListJobsParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
 }
 
 // ProbeNodeParams defines parameters for ProbeNode.

@@ -12,6 +12,7 @@ import type {
 import { Confirm } from "@/components/actions/confirm";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey } from "@/utils/pagination";
 
 type BackupArtifactActionsProps = {
     artifact: BackupArtifactListResponse["items"][number];
@@ -26,12 +27,9 @@ const BackupArtifactActions = ({ artifact }: BackupArtifactActionsProps) => {
 
         try {
             await action();
-            await Promise.all([
-                mutate("backup-plans"),
-                mutate("backup-runs"),
-                mutate("backup-artifacts"),
-                mutate("jobs"),
-            ]);
+            await mutate((key) =>
+                isPageKey(key, "backup-plans", "backup-runs", "backup-artifacts", "jobs"),
+            );
             toast.success(success);
         } catch (error) {
             toast.danger("Backup action failed", {

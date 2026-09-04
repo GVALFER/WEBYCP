@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 )
 
 var (
@@ -32,18 +33,21 @@ type Grant struct {
 type Repository interface {
 	CreateDatabase(context.Context, Database, jobs.Job) (Database, jobs.Job, error)
 	Databases(context.Context, string, bool) ([]Database, error)
+	DatabasePage(context.Context, string, bool, pagination.Query) (pagination.Result[Database], error)
 	Database(context.Context, string) (Database, error)
 	QueueDatabaseDelete(context.Context, string, jobs.Job) (Database, jobs.Job, error)
 	SetDatabaseStatus(context.Context, string, string) error
 	DeleteDatabase(context.Context, string) error
 	CreateUser(context.Context, User, jobs.Job) (User, jobs.Job, error)
 	Users(context.Context, string, bool) ([]User, error)
+	UserPage(context.Context, string, bool, pagination.Query) (pagination.Result[User], error)
 	User(context.Context, string) (User, error)
 	QueueUserDelete(context.Context, string, jobs.Job) (User, jobs.Job, error)
 	SetUserStatus(context.Context, string, string) error
 	DeleteUser(context.Context, string) error
 	QueueGrant(context.Context, Grant, bool, jobs.Job) (Grant, jobs.Job, error)
 	Grants(context.Context, string, bool) ([]Grant, error)
+	GrantPage(context.Context, string, bool, pagination.Query) (pagination.Result[Grant], error)
 	Grant(context.Context, string, string) (Grant, error)
 	SetGrantStatus(context.Context, string, string, string) error
 	DeleteGrant(context.Context, string, string) error

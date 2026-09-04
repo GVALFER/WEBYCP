@@ -78,6 +78,31 @@ func (q *Queries) AddAccountMember(ctx context.Context, arg AddAccountMemberPara
 	return err
 }
 
+const countAccounts = `-- name: CountAccounts :one
+SELECT COUNT(*) FROM accounts
+`
+
+func (q *Queries) CountAccounts(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countAccounts)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUserAccounts = `-- name: CountUserAccounts :one
+SELECT COUNT(*)
+FROM accounts
+JOIN account_members ON account_members.account_id = accounts.id
+WHERE account_members.user_id = ?
+`
+
+func (q *Queries) CountUserAccounts(ctx context.Context, userID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUserAccounts, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAccount = `-- name: CreateAccount :one
 INSERT INTO accounts (
     id,
@@ -188,6 +213,49 @@ func (q *Queries) ListAccounts(ctx context.Context) ([]Account, error) {
 	return items, nil
 }
 
+const listAccountsPage = `-- name: ListAccountsPage :many
+SELECT id, node_id, name, system_user, status, created_at, updated_at, enabled FROM accounts
+ORDER BY created_at ASC
+LIMIT ?2 OFFSET ?1
+`
+
+type ListAccountsPageParams struct {
+	PageOffset int64 `json:"page_offset"`
+	PageSize   int64 `json:"page_size"`
+}
+
+func (q *Queries) ListAccountsPage(ctx context.Context, arg ListAccountsPageParams) ([]Account, error) {
+	rows, err := q.db.QueryContext(ctx, listAccountsPage, arg.PageOffset, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Account{}
+	for rows.Next() {
+		var i Account
+		if err := rows.Scan(
+			&i.ID,
+			&i.NodeID,
+			&i.Name,
+			&i.SystemUser,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Enabled,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserAccounts = `-- name: ListUserAccounts :many
 SELECT accounts.id, accounts.node_id, accounts.name, accounts.system_user, accounts.status, accounts.created_at, accounts.updated_at, accounts.enabled
 FROM accounts
@@ -198,6 +266,53 @@ ORDER BY accounts.created_at ASC
 
 func (q *Queries) ListUserAccounts(ctx context.Context, userID string) ([]Account, error) {
 	rows, err := q.db.QueryContext(ctx, listUserAccounts, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Account{}
+	for rows.Next() {
+		var i Account
+		if err := rows.Scan(
+			&i.ID,
+			&i.NodeID,
+			&i.Name,
+			&i.SystemUser,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Enabled,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserAccountsPage = `-- name: ListUserAccountsPage :many
+SELECT accounts.id, accounts.node_id, accounts.name, accounts.system_user, accounts.status, accounts.created_at, accounts.updated_at, accounts.enabled
+FROM accounts
+JOIN account_members ON account_members.account_id = accounts.id
+WHERE account_members.user_id = ?1
+ORDER BY accounts.created_at ASC
+LIMIT ?3 OFFSET ?2
+`
+
+type ListUserAccountsPageParams struct {
+	UserID     string `json:"user_id"`
+	PageOffset int64  `json:"page_offset"`
+	PageSize   int64  `json:"page_size"`
+}
+
+func (q *Queries) ListUserAccountsPage(ctx context.Context, arg ListUserAccountsPageParams) ([]Account, error) {
+	rows, err := q.db.QueryContext(ctx, listUserAccountsPage, arg.UserID, arg.PageOffset, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}

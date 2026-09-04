@@ -9,6 +9,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/idgen"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
 
@@ -151,6 +152,12 @@ func newActionJob(account Account, userID, kind string) (jobs.Job, error) {
 
 func (s *Service) Accounts(ctx context.Context, userID string, admin bool) ([]Account, error) {
 	return s.repository.Accounts(ctx, userID, admin)
+}
+
+func (s *Service) AccountPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[Account], error) {
+	return s.repository.AccountPage(ctx, userID, admin, query)
 }
 
 func (s *Service) Account(ctx context.Context, id, userID string, admin bool) (Account, error) {

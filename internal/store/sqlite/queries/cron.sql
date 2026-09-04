@@ -5,6 +5,19 @@ WHERE ? OR account_members.user_id = ?
 GROUP BY cron_jobs.id
 ORDER BY cron_jobs.created_at ASC;
 
+-- name: CountCronJobs :one
+SELECT COUNT(DISTINCT cron_jobs.id) FROM cron_jobs
+JOIN account_members ON account_members.account_id = cron_jobs.account_id
+WHERE sqlc.arg(is_admin) OR account_members.user_id = sqlc.arg(user_id);
+
+-- name: ListCronJobsPage :many
+SELECT cron_jobs.* FROM cron_jobs
+JOIN account_members ON account_members.account_id = cron_jobs.account_id
+WHERE sqlc.arg(is_admin) OR account_members.user_id = sqlc.arg(user_id)
+GROUP BY cron_jobs.id
+ORDER BY cron_jobs.created_at ASC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
 -- name: GetCronJob :one
 SELECT * FROM cron_jobs WHERE id = ? LIMIT 1;
 

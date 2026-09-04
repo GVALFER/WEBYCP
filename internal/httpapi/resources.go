@@ -17,15 +17,22 @@ import (
 )
 
 func (h *handler) listAccounts(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	items, err := h.options.Accounts.Accounts(
-		r.Context(), session.User.ID, session.User.Role == "admin",
+	query, ok := requestPage(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.options.Accounts.AccountPage(
+		r.Context(), session.User.ID, session.User.Role == "admin", query,
 	)
 	if err != nil {
 		h.internalError(w, r, err)
 		return
 	}
-	response := publicapi.AccountListResponse{Items: make([]publicapi.Account, 0, len(items))}
-	for _, item := range items {
+	response := publicapi.AccountListResponse{
+		Items:      make([]publicapi.Account, 0, len(page.Items)),
+		Pagination: paginationResponse(page.Query, page.Total),
+	}
+	for _, item := range page.Items {
 		response.Items = append(response.Items, accountResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
@@ -122,15 +129,22 @@ func (h *handler) deleteAccount(w http.ResponseWriter, r *http.Request, session 
 }
 
 func (h *handler) listDomains(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	items, err := h.options.Domains.Domains(
-		r.Context(), session.User.ID, session.User.Role == "admin",
+	query, ok := requestPage(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.options.Domains.DomainPage(
+		r.Context(), session.User.ID, session.User.Role == "admin", query,
 	)
 	if err != nil {
 		h.internalError(w, r, err)
 		return
 	}
-	response := publicapi.DomainListResponse{Items: make([]publicapi.Domain, 0, len(items))}
-	for _, item := range items {
+	response := publicapi.DomainListResponse{
+		Items:      make([]publicapi.Domain, 0, len(page.Items)),
+		Pagination: paginationResponse(page.Query, page.Total),
+	}
+	for _, item := range page.Items {
 		response.Items = append(response.Items, domainResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
@@ -228,17 +242,23 @@ func (h *handler) deleteDomain(w http.ResponseWriter, r *http.Request, session a
 }
 
 func (h *handler) listAliases(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	items, err := h.options.Domains.Aliases(
-		r.Context(), r.PathValue("domainId"), session.User.ID, session.User.Role == "admin",
+	query, ok := requestPage(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.options.Domains.AliasPage(
+		r.Context(), r.PathValue("domainId"), session.User.ID,
+		session.User.Role == "admin", query,
 	)
 	if err != nil {
 		h.writeDomainError(w, r, err)
 		return
 	}
 	response := publicapi.DomainAliasListResponse{
-		Items: make([]publicapi.DomainAlias, 0, len(items)),
+		Items:      make([]publicapi.DomainAlias, 0, len(page.Items)),
+		Pagination: paginationResponse(page.Query, page.Total),
 	}
-	for _, item := range items {
+	for _, item := range page.Items {
 		response.Items = append(response.Items, aliasResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
@@ -379,13 +399,20 @@ func (h *handler) probeNode(w http.ResponseWriter, r *http.Request, session auth
 }
 
 func (h *handler) listJobs(w http.ResponseWriter, r *http.Request, _ auth.Session) {
-	items, err := h.options.Jobs.Jobs(r.Context())
+	query, ok := requestPage(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.options.Jobs.JobPage(r.Context(), query)
 	if err != nil {
 		h.internalError(w, r, err)
 		return
 	}
-	response := publicapi.JobListResponse{Items: make([]publicapi.Job, 0, len(items))}
-	for _, item := range items {
+	response := publicapi.JobListResponse{
+		Items:      make([]publicapi.Job, 0, len(page.Items)),
+		Pagination: paginationResponse(page.Query, page.Total),
+	}
+	for _, item := range page.Items {
 		response.Items = append(response.Items, jobResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)

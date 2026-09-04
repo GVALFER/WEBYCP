@@ -9,6 +9,7 @@ import (
 
 	"github.com/GVALFER/WEBYCP/internal/domains"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite/dbgen"
 )
 
@@ -112,6 +113,42 @@ func (s *Store) Domains(ctx context.Context, userID string, admin bool) ([]domai
 	return result, nil
 }
 
+func (s *Store) DomainPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[domains.Domain], error) {
+	var (
+		total int64
+		rows  []dbgen.Domain
+		err   error
+	)
+	if admin {
+		total, err = s.queries.CountDomains(ctx)
+	} else {
+		total, err = s.queries.CountUserDomains(ctx, userID)
+	}
+	if err != nil {
+		return pagination.Result[domains.Domain]{}, err
+	}
+	query = pagination.Clamp(query, total)
+	if admin {
+		rows, err = s.queries.ListDomainsPage(ctx, dbgen.ListDomainsPageParams{
+			PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+		})
+	} else {
+		rows, err = s.queries.ListUserDomainsPage(ctx, dbgen.ListUserDomainsPageParams{
+			UserID: userID, PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+		})
+	}
+	if err != nil {
+		return pagination.Result[domains.Domain]{}, err
+	}
+	items := make([]domains.Domain, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, domainValue(row))
+	}
+	return pagination.Result[domains.Domain]{Items: items, Query: query, Total: total}, nil
+}
+
 func (s *Store) Alias(ctx context.Context, id string) (domains.Alias, error) {
 	row, err := s.queries.GetDomainAlias(ctx, id)
 	if err != nil {
@@ -126,6 +163,25 @@ func (s *Store) Aliases(ctx context.Context, domainID string) ([]domains.Alias, 
 		return nil, err
 	}
 	return aliasValues(rows), nil
+}
+
+func (s *Store) AliasPage(
+	ctx context.Context, domainID string, query pagination.Query,
+) (pagination.Result[domains.Alias], error) {
+	total, err := s.queries.CountDomainAliases(ctx, domainID)
+	if err != nil {
+		return pagination.Result[domains.Alias]{}, err
+	}
+	query = pagination.Clamp(query, total)
+	rows, err := s.queries.ListDomainAliasesPage(ctx, dbgen.ListDomainAliasesPageParams{
+		DomainID: domainID, PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+	})
+	if err != nil {
+		return pagination.Result[domains.Alias]{}, err
+	}
+	return pagination.Result[domains.Alias]{
+		Items: aliasValues(rows), Query: query, Total: total,
+	}, nil
 }
 
 func (s *Store) EnabledAliases(ctx context.Context, domainID string) ([]domains.Alias, error) {

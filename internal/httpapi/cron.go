@@ -14,13 +14,22 @@ import (
 )
 
 func (h *handler) listCronJobs(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	items, err := h.options.Cron.CronJobs(r.Context(), session.User.ID, session.User.Role == "admin")
+	query, ok := requestPage(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.options.Cron.CronJobPage(
+		r.Context(), session.User.ID, session.User.Role == "admin", query,
+	)
 	if err != nil {
 		h.internalError(w, r, err)
 		return
 	}
-	response := publicapi.CronJobListResponse{Items: make([]publicapi.CronJob, 0, len(items))}
-	for _, item := range items {
+	response := publicapi.CronJobListResponse{
+		Items:      make([]publicapi.CronJob, 0, len(page.Items)),
+		Pagination: paginationResponse(page.Query, page.Total),
+	}
+	for _, item := range page.Items {
 		response.Items = append(response.Items, cronJobResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)

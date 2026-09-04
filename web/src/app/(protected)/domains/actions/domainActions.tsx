@@ -9,6 +9,7 @@ import { Confirm } from "@/components/actions/confirm";
 import { TextDialog } from "@/components/actions/textDialog";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey } from "@/utils/pagination";
 import { domainField } from "@/utils/validation";
 
 type DomainActionsProps = {
@@ -25,7 +26,7 @@ const DomainActions = ({ domain }: DomainActionsProps) => {
 
         try {
             await action();
-            await Promise.all([mutate("domains"), mutate("jobs")]);
+            await mutate((key) => isPageKey(key, "domains", "jobs"));
             toast.success(success);
         } catch (error) {
             toast.danger("Domain action failed", {

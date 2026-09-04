@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 )
 
 const (
@@ -66,6 +68,7 @@ type Repository interface {
 	CreateJob(context.Context, Job) (Job, error)
 	Job(context.Context, string) (Job, error)
 	Jobs(context.Context, int64) ([]Job, error)
+	JobPage(context.Context, pagination.Query) (pagination.Result[Job], error)
 	ClaimJob(context.Context, time.Time) (Job, error)
 	CompleteJob(context.Context, string, time.Time) error
 	RetryJob(context.Context, string, string) error

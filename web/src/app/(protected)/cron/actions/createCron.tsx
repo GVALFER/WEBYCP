@@ -13,6 +13,7 @@ import { FormSelect } from "@/components/form/formSelect";
 import type { AccountListResponse, CronJobResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey, pageKey } from "@/utils/pagination";
 import { commandField, nameField, scheduleField } from "@/utils/validation";
 
 const formSchema = v.object({
@@ -33,7 +34,7 @@ const CreateCron = ({ accounts }: CreateCronProps) => {
     const [pending, startTransition] = useTransition();
     const { mutate } = useSWRConfig();
 
-    const { data } = useSWR<AccountListResponse>("accounts", {
+    const { data } = useSWR<AccountListResponse>(pageKey("accounts", { page: 1, size: 100 }), {
         fallbackData: accounts,
     });
 
@@ -65,7 +66,7 @@ const CreateCron = ({ accounts }: CreateCronProps) => {
                         schedule: values.schedule,
                         command: "",
                     });
-                    await Promise.all([mutate("cron-jobs"), mutate("jobs")]);
+                    await mutate((key) => isPageKey(key, "cron-jobs", "jobs"));
                     setOpen(false);
                     toast.success("Cron job queued for creation");
                 } catch (error) {

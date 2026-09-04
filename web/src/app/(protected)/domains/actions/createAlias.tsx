@@ -13,6 +13,7 @@ import { FormSelect } from "@/components/form/formSelect";
 import type { DomainAliasJobResponse, DomainListResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey, pageKey } from "@/utils/pagination";
 import { domainField } from "@/utils/validation";
 
 type CreateAliasProps = {
@@ -33,7 +34,7 @@ const CreateAlias = ({ domains, domainId, onDomainChange }: CreateAliasProps) =>
     const [pending, startTransition] = useTransition();
     const { mutate } = useSWRConfig();
 
-    const { data } = useSWR<DomainListResponse>("domains", {
+    const { data } = useSWR<DomainListResponse>(pageKey("domains", { page: 1, size: 100 }), {
         fallbackData: domains,
     });
 
@@ -60,10 +61,8 @@ const CreateAlias = ({ domains, domainId, onDomainChange }: CreateAliasProps) =>
                         })
                         .json<DomainAliasJobResponse>();
                     form.reset({ domainId: values.domainId, name: "" });
-                    await Promise.all([
-                        mutate(`domains/${encodeURIComponent(values.domainId)}/aliases`),
-                        mutate("jobs"),
-                    ]);
+                    const aliases = `domains/${encodeURIComponent(values.domainId)}/aliases`;
+                    await mutate((key) => isPageKey(key, aliases, "jobs"));
                     setOpen(false);
                     toast.success("Alias queued for creation");
                 } catch (error) {

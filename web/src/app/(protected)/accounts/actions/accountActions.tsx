@@ -8,6 +8,7 @@ import type { AccountJobResponse, AccountListResponse } from "@/contracts/types"
 import { Confirm } from "@/components/actions/confirm";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey } from "@/utils/pagination";
 
 type AccountActionsProps = {
     account: AccountListResponse["items"][number];
@@ -29,7 +30,7 @@ const AccountActions = ({ account }: AccountActionsProps) => {
                 await api.patch(path, { json: { enabled } }).json<AccountJobResponse>();
             }
 
-            await Promise.all([mutate("accounts"), mutate("jobs")]);
+            await mutate((key) => isPageKey(key, "accounts", "jobs"));
             toast.success(
                 enabled === undefined
                     ? "Account queued for deletion"

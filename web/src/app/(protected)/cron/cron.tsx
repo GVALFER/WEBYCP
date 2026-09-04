@@ -2,6 +2,8 @@
 
 import { Clock3 } from "lucide-react";
 import useSWR from "swr";
+import { Table, type TableColumn } from "@/components/table/table";
+import { useTable } from "@/components/table/useTable";
 import type { AccountListResponse, CronJobListResponse } from "@/contracts/types";
 import { cn } from "@/utils/classnames";
 import { statusClass } from "@/utils/status";
@@ -13,10 +15,62 @@ type CronProps = {
     jobs: CronJobListResponse;
 };
 
+type CronJob = CronJobListResponse["items"][number];
+
 const Cron = ({ accounts, jobs }: CronProps) => {
-    const { data } = useSWR<CronJobListResponse>("cron-jobs", {
-        fallbackData: jobs,
+    const table = useTable(jobs.pagination);
+
+    const { data } = useSWR<CronJobListResponse>(`cron-jobs${table.query}`, {
+        fallbackData: table.isInitialQuery ? jobs : undefined,
     });
+
+    const columns: TableColumn<CronJob>[] = [
+        {
+            id: "job",
+            label: "Cron job",
+            isRowHeader: true,
+            render: (job) => (
+                <div className="flex min-w-0 items-center gap-4">
+                    <div className="icon-box">
+                        <Clock3 className="size-5" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0">
+                        <div className="font-medium">{job.name}</div>
+                        <div className="mt-1 max-w-xl truncate font-mono text-xs text-foreground-400">
+                            {job.command}
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: "schedule",
+            label: "Schedule",
+            cellClassName: "whitespace-nowrap font-mono text-xs text-foreground-500",
+            render: (job) => job.schedule,
+        },
+        {
+            id: "status",
+            label: "Status",
+            render: (job) => (
+                <span
+                    className={cn(
+                        "rounded-full px-2.5 py-1 text-xs capitalize",
+                        statusClass(job.status),
+                    )}
+                >
+                    {job.status}
+                </span>
+            ),
+        },
+        {
+            id: "actions",
+            label: "Actions",
+            headerClassName: "text-end",
+            cellClassName: "w-px whitespace-nowrap",
+            render: (job) => <CronActions item={job} />,
+        },
+    ];
 
     return (
         <section className="panel-card overflow-hidden">
@@ -29,43 +83,7 @@ const Cron = ({ accounts, jobs }: CronProps) => {
                 </div>
                 <CreateCron accounts={accounts} />
             </div>
-            <div className="divide-y divide-divider">
-                {data?.items.length ? (
-                    data.items.map((item) => (
-                        <div
-                            key={item.id}
-                            className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                            <div className="flex min-w-0 items-center gap-4">
-                                <div className="icon-box">
-                                    <Clock3 className="size-5" />
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="font-medium">{item.name}</div>
-                                    <div className="mt-1 truncate font-mono text-xs text-foreground-400">
-                                        {item.schedule} · {item.command}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span
-                                    className={cn(
-                                        "rounded-full px-2 py-1 text-xs capitalize",
-                                        statusClass(item.status),
-                                    )}
-                                >
-                                    {item.status}
-                                </span>
-                                <CronActions item={item} />
-                            </div>
-                        </div>
-                    ))
-                ) : (
-                    <div className="px-6 py-12 text-center text-sm text-foreground-400">
-                        No cron jobs yet.
-                    </div>
-                )}
-            </div>
+            <Table table={table} columns={columns} data={data} />
         </section>
     );
 };

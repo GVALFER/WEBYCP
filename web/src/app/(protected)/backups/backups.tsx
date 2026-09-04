@@ -2,6 +2,8 @@
 
 import { HardDrive } from "lucide-react";
 import useSWR from "swr";
+import { Table, type TableColumn } from "@/components/table/table";
+import { useTable } from "@/components/table/useTable";
 import type {
     AccountListResponse,
     BackupArtifactListResponse,
@@ -22,23 +24,150 @@ type BackupsProps = {
     artifacts: BackupArtifactListResponse;
 };
 
-const Backups = ({
-    accounts,
-    plans: initialPlans,
-    runs: initialRuns,
-    artifacts: initialArtifacts,
-}: BackupsProps) => {
+type Plan = BackupPlanListResponse["items"][number];
+type Run = BackupRunListResponse["items"][number];
+type Artifact = BackupArtifactListResponse["items"][number];
+
+const Backups = ({ accounts, plans, runs, artifacts }: BackupsProps) => {
     const { dt } = useTimezone();
 
-    const { data: plans } = useSWR<BackupPlanListResponse>("backup-plans", {
-        fallbackData: initialPlans,
+    const plansTable = useTable(plans.pagination, "plans");
+    const runsTable = useTable(runs.pagination, "runs");
+    const artifactsTable = useTable(artifacts.pagination, "artifacts");
+
+    const { data: planData } = useSWR<BackupPlanListResponse>(`backup-plans${plansTable.query}`, {
+        fallbackData: plansTable.isInitialQuery ? plans : undefined,
     });
-    const { data: runs } = useSWR<BackupRunListResponse>("backup-runs", {
-        fallbackData: initialRuns,
+    const { data: runData } = useSWR<BackupRunListResponse>(`backup-runs${runsTable.query}`, {
+        fallbackData: runsTable.isInitialQuery ? runs : undefined,
     });
-    const { data: artifacts } = useSWR<BackupArtifactListResponse>("backup-artifacts", {
-        fallbackData: initialArtifacts,
-    });
+    const { data: artifactData } = useSWR<BackupArtifactListResponse>(
+        `backup-artifacts${artifactsTable.query}`,
+        { fallbackData: artifactsTable.isInitialQuery ? artifacts : undefined },
+    );
+
+    const planColumns: TableColumn<Plan>[] = [
+        {
+            id: "plan",
+            label: "Plan",
+            isRowHeader: true,
+            render: (plan) => (
+                <div className="flex items-center gap-4">
+                    <div className="icon-box">
+                        <HardDrive className="size-5" aria-hidden="true" />
+                    </div>
+                    <div>
+                        <div className="font-medium">{plan.name}</div>
+                        <div className="mt-1 text-xs text-foreground-400">
+                            {plan.includeFiles && plan.includeDatabases
+                                ? "Files and databases"
+                                : plan.includeFiles
+                                  ? "Files"
+                                  : "Databases"}
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: "schedule",
+            label: "Schedule",
+            cellClassName: "whitespace-nowrap text-foreground-500",
+            render: (plan) => plan.schedule || "Manual only",
+        },
+        {
+            id: "nextRun",
+            label: "Next run",
+            cellClassName: "whitespace-nowrap text-foreground-500",
+            render: (plan) => (plan.nextRunAt ? dt(plan.nextRunAt) : "—"),
+        },
+        {
+            id: "retention",
+            label: "Retention",
+            cellClassName: "whitespace-nowrap text-foreground-500",
+            render: (plan) => `${plan.retentionCount} backups`,
+        },
+        {
+            id: "actions",
+            label: "Actions",
+            headerClassName: "text-end",
+            cellClassName: "w-px whitespace-nowrap",
+            render: (plan) => <BackupPlanActions plan={plan} />,
+        },
+    ];
+
+    const artifactColumns: TableColumn<Artifact>[] = [
+        {
+            id: "artifact",
+            label: "Artifact",
+            isRowHeader: true,
+            render: (artifact) => (
+                <div>
+                    <div className="font-medium">{dt(artifact.createdAt)}</div>
+                    <div className="mt-1 font-mono text-xs text-foreground-400">{artifact.id}</div>
+                </div>
+            ),
+        },
+        {
+            id: "size",
+            label: "Size",
+            cellClassName: "whitespace-nowrap text-foreground-500",
+            render: (artifact) => `${(artifact.size / 1_048_576).toFixed(2)} MB`,
+        },
+        {
+            id: "checksum",
+            label: "SHA-256",
+            cellClassName: "font-mono text-xs text-foreground-500",
+            render: (artifact) => `${artifact.checksum.slice(0, 12)}…`,
+        },
+        {
+            id: "actions",
+            label: "Actions",
+            headerClassName: "text-end",
+            cellClassName: "w-px whitespace-nowrap",
+            render: (artifact) => <BackupArtifactActions artifact={artifact} />,
+        },
+    ];
+
+    const runColumns: TableColumn<Run>[] = [
+        {
+            id: "run",
+            label: "Run",
+            isRowHeader: true,
+            render: (run) => (
+                <div>
+                    <div className="font-medium">{dt(run.createdAt)}</div>
+                    <div className="mt-1 font-mono text-xs text-foreground-400">{run.id}</div>
+                </div>
+            ),
+        },
+        {
+            id: "status",
+            label: "Status",
+            render: (run) => (
+                <span
+                    className={cn(
+                        "rounded-full px-2.5 py-1 text-xs capitalize",
+                        statusClass(run.status),
+                    )}
+                >
+                    {run.status}
+                </span>
+            ),
+        },
+        {
+            id: "finished",
+            label: "Finished",
+            cellClassName: "whitespace-nowrap text-foreground-500",
+            render: (run) => (run.finishedAt ? dt(run.finishedAt) : "—"),
+        },
+        {
+            id: "message",
+            label: "Message",
+            cellClassName: "max-w-sm truncate text-foreground-500",
+            render: (run) => run.error || "—",
+        },
+    ];
 
     return (
         <div className="space-y-6">
@@ -52,94 +181,21 @@ const Backups = ({
                     </div>
                     <CreateBackup accounts={accounts} />
                 </div>
-                <div className="divide-y divide-divider">
-                    {plans?.items.length ? (
-                        plans.items.map((plan) => (
-                            <div
-                                key={plan.id}
-                                className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="icon-box">
-                                        <HardDrive className="size-5" />
-                                    </div>
-                                    <div>
-                                        <div className="font-medium">{plan.name}</div>
-                                        <div className="mt-1 text-xs text-foreground-400">
-                                            {plan.schedule || "Manual only"} · keep{" "}
-                                            {plan.retentionCount}
-                                            {plan.nextRunAt
-                                                ? ` · next ${dt(plan.nextRunAt)}`
-                                                : ""}
-                                        </div>
-                                    </div>
-                                </div>
-                                <BackupPlanActions plan={plan} />
-                            </div>
-                        ))
-                    ) : (
-                        <div className="px-6 py-12 text-center text-sm text-foreground-400">
-                            No backup plans yet.
-                        </div>
-                    )}
-                </div>
+                <Table table={plansTable} columns={planColumns} data={planData} />
             </section>
 
             <section className="panel-card overflow-hidden">
                 <div className="border-b border-divider px-6 py-5">
                     <h2 className="text-base font-semibold">Verified artifacts</h2>
                 </div>
-                <div className="divide-y divide-divider">
-                    {artifacts?.items.length ? (
-                        artifacts.items.map((artifact) => (
-                            <div
-                                key={artifact.id}
-                                className="flex flex-col gap-4 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
-                            >
-                                <div>
-                                    <div className="font-medium">{dt(artifact.createdAt)}</div>
-                                    <div className="mt-1 text-xs text-foreground-400">
-                                        {(artifact.size / 1_048_576).toFixed(2)} MB · SHA-256{" "}
-                                        {artifact.checksum.slice(0, 12)}…
-                                    </div>
-                                </div>
-                                <BackupArtifactActions artifact={artifact} />
-                            </div>
-                        ))
-                    ) : (
-                        <div className="px-6 py-10 text-center text-sm text-foreground-400">
-                            No completed artifacts yet.
-                        </div>
-                    )}
-                </div>
+                <Table table={artifactsTable} columns={artifactColumns} data={artifactData} />
             </section>
 
-            <section className="panel-card p-6">
-                <h2 className="text-base font-semibold">Recent runs</h2>
-                <div className="mt-4 space-y-2">
-                    {runs?.items.length ? (
-                        runs.items.slice(0, 10).map((item) => (
-                            <div
-                                key={item.id}
-                                className="flex items-center justify-between rounded-xl border border-border/70 bg-surface-secondary/60 px-4 py-3 text-sm"
-                            >
-                                <div>{dt(item.createdAt)}</div>
-                                <span
-                                    className={cn(
-                                        "rounded-full px-2 py-1 text-xs capitalize",
-                                        statusClass(item.status),
-                                    )}
-                                >
-                                    {item.status}
-                                </span>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="py-6 text-center text-sm text-foreground-400">
-                            No backup runs yet.
-                        </div>
-                    )}
+            <section className="panel-card overflow-hidden">
+                <div className="border-b border-divider px-6 py-5">
+                    <h2 className="text-base font-semibold">Recent runs</h2>
                 </div>
+                <Table table={runsTable} columns={runColumns} data={runData} />
             </section>
         </div>
     );

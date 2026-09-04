@@ -30,12 +30,34 @@ SELECT * FROM domains WHERE id = ? LIMIT 1;
 -- name: ListDomains :many
 SELECT * FROM domains ORDER BY created_at ASC;
 
+-- name: CountDomains :one
+SELECT COUNT(*) FROM domains;
+
+-- name: ListDomainsPage :many
+SELECT * FROM domains
+ORDER BY created_at ASC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
 -- name: ListUserDomains :many
 SELECT domains.*
 FROM domains
 JOIN account_members ON account_members.account_id = domains.account_id
 WHERE account_members.user_id = ?
 ORDER BY domains.created_at ASC;
+
+-- name: CountUserDomains :one
+SELECT COUNT(*)
+FROM domains
+JOIN account_members ON account_members.account_id = domains.account_id
+WHERE account_members.user_id = ?;
+
+-- name: ListUserDomainsPage :many
+SELECT domains.*
+FROM domains
+JOIN account_members ON account_members.account_id = domains.account_id
+WHERE account_members.user_id = sqlc.arg(user_id)
+ORDER BY domains.created_at ASC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
 
 -- name: UpdateDomainStatus :exec
 UPDATE domains
@@ -61,6 +83,16 @@ SELECT *
 FROM domain_aliases
 WHERE domain_id = ?
 ORDER BY created_at ASC;
+
+-- name: CountDomainAliases :one
+SELECT COUNT(*) FROM domain_aliases WHERE domain_id = ?;
+
+-- name: ListDomainAliasesPage :many
+SELECT *
+FROM domain_aliases
+WHERE domain_id = sqlc.arg(domain_id)
+ORDER BY created_at ASC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
 
 -- name: ListEnabledDomainAliases :many
 SELECT *

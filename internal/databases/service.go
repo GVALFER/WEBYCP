@@ -10,6 +10,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/idgen"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/secret"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
@@ -69,6 +70,12 @@ func (s *Service) CreateDatabase(
 
 func (s *Service) Databases(ctx context.Context, userID string, admin bool) ([]Database, error) {
 	return s.repository.Databases(ctx, userID, admin)
+}
+
+func (s *Service) DatabasePage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[Database], error) {
+	return s.repository.DatabasePage(ctx, userID, admin, query)
 }
 
 func (s *Service) DeleteDatabase(
@@ -134,6 +141,12 @@ func (s *Service) Users(ctx context.Context, userID string, admin bool) ([]User,
 	return s.repository.Users(ctx, userID, admin)
 }
 
+func (s *Service) UserPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[User], error) {
+	return s.repository.UserPage(ctx, userID, admin, query)
+}
+
 func (s *Service) DeleteUser(
 	ctx context.Context, id, userID string, admin bool,
 ) (User, jobs.Job, error) {
@@ -190,6 +203,12 @@ func (s *Service) SetGrant(
 
 func (s *Service) Grants(ctx context.Context, userID string, admin bool) ([]Grant, error) {
 	return s.repository.Grants(ctx, userID, admin)
+}
+
+func (s *Service) GrantPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[Grant], error) {
+	return s.repository.GrantPage(ctx, userID, admin, query)
 }
 
 func (s *Service) Provision(ctx context.Context, job jobs.Job) error {

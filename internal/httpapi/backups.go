@@ -14,13 +14,22 @@ import (
 )
 
 func (h *handler) listBackupPlans(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	items, err := h.options.Backups.Plans(r.Context(), session.User.ID, session.User.Role == "admin")
+	query, ok := requestPage(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.options.Backups.PlanPage(
+		r.Context(), session.User.ID, session.User.Role == "admin", query,
+	)
 	if err != nil {
 		h.internalError(w, r, err)
 		return
 	}
-	response := publicapi.BackupPlanListResponse{Items: make([]publicapi.BackupPlan, 0, len(items))}
-	for _, item := range items {
+	response := publicapi.BackupPlanListResponse{
+		Items:      make([]publicapi.BackupPlan, 0, len(page.Items)),
+		Pagination: paginationResponse(page.Query, page.Total),
+	}
+	for _, item := range page.Items {
 		response.Items = append(response.Items, backupPlanResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
@@ -84,26 +93,44 @@ func (h *handler) runBackupPlan(w http.ResponseWriter, r *http.Request, session 
 }
 
 func (h *handler) listBackupRuns(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	items, err := h.options.Backups.Runs(r.Context(), session.User.ID, session.User.Role == "admin")
+	query, ok := requestPage(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.options.Backups.RunPage(
+		r.Context(), session.User.ID, session.User.Role == "admin", query,
+	)
 	if err != nil {
 		h.internalError(w, r, err)
 		return
 	}
-	response := publicapi.BackupRunListResponse{Items: make([]publicapi.BackupRun, 0, len(items))}
-	for _, item := range items {
+	response := publicapi.BackupRunListResponse{
+		Items:      make([]publicapi.BackupRun, 0, len(page.Items)),
+		Pagination: paginationResponse(page.Query, page.Total),
+	}
+	for _, item := range page.Items {
 		response.Items = append(response.Items, backupRunResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
 }
 
 func (h *handler) listBackupArtifacts(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	items, err := h.options.Backups.Artifacts(r.Context(), session.User.ID, session.User.Role == "admin")
+	query, ok := requestPage(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.options.Backups.ArtifactPage(
+		r.Context(), session.User.ID, session.User.Role == "admin", query,
+	)
 	if err != nil {
 		h.internalError(w, r, err)
 		return
 	}
-	response := publicapi.BackupArtifactListResponse{Items: make([]publicapi.BackupArtifact, 0, len(items))}
-	for _, item := range items {
+	response := publicapi.BackupArtifactListResponse{
+		Items:      make([]publicapi.BackupArtifact, 0, len(page.Items)),
+		Pagination: paginationResponse(page.Query, page.Total),
+	}
+	for _, item := range page.Items {
 		response.Items = append(response.Items, backupArtifactResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)

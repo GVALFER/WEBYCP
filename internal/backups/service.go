@@ -17,6 +17,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/idgen"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 	robfigcron "github.com/robfig/cron/v3"
 )
@@ -48,6 +49,12 @@ func NewService(repository Repository, accounts *accounts.Service, domains *doma
 
 func (s *Service) Plans(ctx context.Context, userID string, admin bool) ([]Plan, error) {
 	return s.repository.BackupPlans(ctx, userID, admin)
+}
+
+func (s *Service) PlanPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[Plan], error) {
+	return s.repository.BackupPlanPage(ctx, userID, admin, query)
 }
 
 func (s *Service) CreatePlan(ctx context.Context, value Plan, userID string, admin bool) (Plan, error) {
@@ -130,8 +137,20 @@ func (s *Service) Runs(ctx context.Context, userID string, admin bool) ([]Run, e
 	return s.repository.BackupRuns(ctx, userID, admin)
 }
 
+func (s *Service) RunPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[Run], error) {
+	return s.repository.BackupRunPage(ctx, userID, admin, query)
+}
+
 func (s *Service) Artifacts(ctx context.Context, userID string, admin bool) ([]Artifact, error) {
 	return s.repository.BackupArtifacts(ctx, userID, admin)
+}
+
+func (s *Service) ArtifactPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[Artifact], error) {
+	return s.repository.BackupArtifactPage(ctx, userID, admin, query)
 }
 
 func (s *Service) DeleteArtifact(ctx context.Context, id, userID string, admin bool) error {

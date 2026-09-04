@@ -14,13 +14,22 @@ import (
 )
 
 func (h *handler) listDatabases(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	items, err := h.options.Databases.Databases(r.Context(), session.User.ID, session.User.Role == "admin")
+	query, ok := requestPage(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.options.Databases.DatabasePage(
+		r.Context(), session.User.ID, session.User.Role == "admin", query,
+	)
 	if err != nil {
 		h.internalError(w, r, err)
 		return
 	}
-	response := publicapi.DatabaseListResponse{Items: make([]publicapi.Database, 0, len(items))}
-	for _, item := range items {
+	response := publicapi.DatabaseListResponse{
+		Items:      make([]publicapi.Database, 0, len(page.Items)),
+		Pagination: paginationResponse(page.Query, page.Total),
+	}
+	for _, item := range page.Items {
 		response.Items = append(response.Items, databaseResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
@@ -52,13 +61,22 @@ func (h *handler) deleteDatabase(w http.ResponseWriter, r *http.Request, session
 }
 
 func (h *handler) listDatabaseUsers(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	items, err := h.options.Databases.Users(r.Context(), session.User.ID, session.User.Role == "admin")
+	query, ok := requestPage(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.options.Databases.UserPage(
+		r.Context(), session.User.ID, session.User.Role == "admin", query,
+	)
 	if err != nil {
 		h.internalError(w, r, err)
 		return
 	}
-	response := publicapi.DatabaseUserListResponse{Items: make([]publicapi.DatabaseUser, 0, len(items))}
-	for _, item := range items {
+	response := publicapi.DatabaseUserListResponse{
+		Items:      make([]publicapi.DatabaseUser, 0, len(page.Items)),
+		Pagination: paginationResponse(page.Query, page.Total),
+	}
+	for _, item := range page.Items {
 		response.Items = append(response.Items, databaseUserResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
@@ -90,13 +108,22 @@ func (h *handler) deleteDatabaseUser(w http.ResponseWriter, r *http.Request, ses
 }
 
 func (h *handler) listDatabaseGrants(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	items, err := h.options.Databases.Grants(r.Context(), session.User.ID, session.User.Role == "admin")
+	query, ok := requestPage(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.options.Databases.GrantPage(
+		r.Context(), session.User.ID, session.User.Role == "admin", query,
+	)
 	if err != nil {
 		h.internalError(w, r, err)
 		return
 	}
-	response := publicapi.DatabaseGrantListResponse{Items: make([]publicapi.DatabaseGrant, 0, len(items))}
-	for _, item := range items {
+	response := publicapi.DatabaseGrantListResponse{
+		Items:      make([]publicapi.DatabaseGrant, 0, len(page.Items)),
+		Pagination: paginationResponse(page.Query, page.Total),
+	}
+	for _, item := range page.Items {
 		response.Items = append(response.Items, databaseGrantResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)

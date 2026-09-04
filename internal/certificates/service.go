@@ -13,6 +13,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/idgen"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
 
@@ -35,6 +36,12 @@ func NewService(repository Repository, domains *domains.Service, accounts *accou
 
 func (s *Service) Certificates(ctx context.Context, userID string, admin bool) ([]Certificate, error) {
 	return s.repository.Certificates(ctx, userID, admin)
+}
+
+func (s *Service) CertificatePage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[Certificate], error) {
+	return s.repository.CertificatePage(ctx, userID, admin, query)
 }
 
 func (s *Service) IssueDomain(ctx context.Context, domainID, email, userID string, admin bool) (Certificate, jobs.Job, error) {

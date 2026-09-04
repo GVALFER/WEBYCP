@@ -11,6 +11,7 @@ import { FormModal } from "@/components/form/formModal";
 import { FormSelect } from "@/components/form/formSelect";
 import type { AccountListResponse, DatabaseUserJobResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
+import { pageKey } from "@/utils/pagination";
 import { dbNameField } from "@/utils/validation";
 import { useDatabaseAction } from "./useDatabaseAction";
 
@@ -31,7 +32,7 @@ const CreateDatabaseUser = ({ accounts }: CreateDatabaseUserProps) => {
     const [pending, startTransition] = useTransition();
     const { run } = useDatabaseAction();
 
-    const { data } = useSWR<AccountListResponse>("accounts", {
+    const { data } = useSWR<AccountListResponse>(pageKey("accounts", { page: 1, size: 100 }), {
         fallbackData: accounts,
     });
 

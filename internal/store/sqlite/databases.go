@@ -7,6 +7,7 @@ import (
 
 	"github.com/GVALFER/WEBYCP/internal/databases"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite/dbgen"
 )
 
@@ -53,6 +54,30 @@ func (s *Store) Databases(ctx context.Context, userID string, admin bool) ([]dat
 		result = append(result, databaseValue(row))
 	}
 	return result, nil
+}
+
+func (s *Store) DatabasePage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[databases.Database], error) {
+	total, err := s.queries.CountDatabases(ctx, dbgen.CountDatabasesParams{
+		IsAdmin: admin, UserID: userID,
+	})
+	if err != nil {
+		return pagination.Result[databases.Database]{}, err
+	}
+	query = pagination.Clamp(query, total)
+	rows, err := s.queries.ListDatabasesPage(ctx, dbgen.ListDatabasesPageParams{
+		IsAdmin: admin, UserID: userID,
+		PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+	})
+	if err != nil {
+		return pagination.Result[databases.Database]{}, err
+	}
+	items := make([]databases.Database, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, databaseValue(row))
+	}
+	return pagination.Result[databases.Database]{Items: items, Query: query, Total: total}, nil
 }
 
 func (s *Store) Database(ctx context.Context, id string) (databases.Database, error) {
@@ -136,6 +161,30 @@ func (s *Store) Users(ctx context.Context, userID string, admin bool) ([]databas
 	return result, nil
 }
 
+func (s *Store) UserPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[databases.User], error) {
+	total, err := s.queries.CountDatabaseUsers(ctx, dbgen.CountDatabaseUsersParams{
+		IsAdmin: admin, UserID: userID,
+	})
+	if err != nil {
+		return pagination.Result[databases.User]{}, err
+	}
+	query = pagination.Clamp(query, total)
+	rows, err := s.queries.ListDatabaseUsersPage(ctx, dbgen.ListDatabaseUsersPageParams{
+		IsAdmin: admin, UserID: userID,
+		PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+	})
+	if err != nil {
+		return pagination.Result[databases.User]{}, err
+	}
+	items := make([]databases.User, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, databaseUserValue(row))
+	}
+	return pagination.Result[databases.User]{Items: items, Query: query, Total: total}, nil
+}
+
 func (s *Store) User(ctx context.Context, id string) (databases.User, error) {
 	row, err := s.queries.GetDatabaseUser(ctx, id)
 	return databaseUserValue(row), err
@@ -215,6 +264,30 @@ func (s *Store) Grants(ctx context.Context, userID string, admin bool) ([]databa
 		result = append(result, databaseGrantValue(row))
 	}
 	return result, nil
+}
+
+func (s *Store) GrantPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[databases.Grant], error) {
+	total, err := s.queries.CountDatabaseGrants(ctx, dbgen.CountDatabaseGrantsParams{
+		IsAdmin: admin, UserID: userID,
+	})
+	if err != nil {
+		return pagination.Result[databases.Grant]{}, err
+	}
+	query = pagination.Clamp(query, total)
+	rows, err := s.queries.ListDatabaseGrantsPage(ctx, dbgen.ListDatabaseGrantsPageParams{
+		IsAdmin: admin, UserID: userID,
+		PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+	})
+	if err != nil {
+		return pagination.Result[databases.Grant]{}, err
+	}
+	items := make([]databases.Grant, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, databaseGrantValue(row))
+	}
+	return pagination.Result[databases.Grant]{Items: items, Query: query, Total: total}, nil
 }
 
 func (s *Store) Grant(ctx context.Context, databaseID, userID string) (databases.Grant, error) {

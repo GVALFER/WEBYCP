@@ -5,6 +5,19 @@ WHERE ? OR account_members.user_id = ?
 GROUP BY backup_plans.id
 ORDER BY backup_plans.created_at ASC;
 
+-- name: CountBackupPlans :one
+SELECT COUNT(DISTINCT backup_plans.id) FROM backup_plans
+JOIN account_members ON account_members.account_id = backup_plans.account_id
+WHERE sqlc.arg(is_admin) OR account_members.user_id = sqlc.arg(user_id);
+
+-- name: ListBackupPlansPage :many
+SELECT backup_plans.* FROM backup_plans
+JOIN account_members ON account_members.account_id = backup_plans.account_id
+WHERE sqlc.arg(is_admin) OR account_members.user_id = sqlc.arg(user_id)
+GROUP BY backup_plans.id
+ORDER BY backup_plans.created_at ASC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
 -- name: GetBackupPlan :one
 SELECT * FROM backup_plans WHERE id = ? LIMIT 1;
 
@@ -57,6 +70,19 @@ WHERE ? OR account_members.user_id = ?
 GROUP BY backup_runs.id
 ORDER BY backup_runs.created_at DESC;
 
+-- name: CountBackupRuns :one
+SELECT COUNT(DISTINCT backup_runs.id) FROM backup_runs
+JOIN account_members ON account_members.account_id = backup_runs.account_id
+WHERE sqlc.arg(is_admin) OR account_members.user_id = sqlc.arg(user_id);
+
+-- name: ListBackupRunsPage :many
+SELECT backup_runs.* FROM backup_runs
+JOIN account_members ON account_members.account_id = backup_runs.account_id
+WHERE sqlc.arg(is_admin) OR account_members.user_id = sqlc.arg(user_id)
+GROUP BY backup_runs.id
+ORDER BY backup_runs.created_at DESC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
 -- name: CreateBackupArtifact :one
 INSERT INTO backup_artifacts (
     id, run_id, account_id, node_id, path, checksum, size_bytes, manifest, created_at
@@ -72,6 +98,19 @@ JOIN account_members ON account_members.account_id = backup_artifacts.account_id
 WHERE ? OR account_members.user_id = ?
 GROUP BY backup_artifacts.id
 ORDER BY backup_artifacts.created_at DESC;
+
+-- name: CountBackupArtifacts :one
+SELECT COUNT(DISTINCT backup_artifacts.id) FROM backup_artifacts
+JOIN account_members ON account_members.account_id = backup_artifacts.account_id
+WHERE sqlc.arg(is_admin) OR account_members.user_id = sqlc.arg(user_id);
+
+-- name: ListBackupArtifactsPage :many
+SELECT backup_artifacts.* FROM backup_artifacts
+JOIN account_members ON account_members.account_id = backup_artifacts.account_id
+WHERE sqlc.arg(is_admin) OR account_members.user_id = sqlc.arg(user_id)
+GROUP BY backup_artifacts.id
+ORDER BY backup_artifacts.created_at DESC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
 
 -- name: ListExpiredBackupArtifacts :many
 SELECT backup_artifacts.* FROM backup_artifacts

@@ -9,6 +9,7 @@ import { Confirm } from "@/components/actions/confirm";
 import { TextDialog } from "@/components/actions/textDialog";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey } from "@/utils/pagination";
 import { domainField } from "@/utils/validation";
 
 type AliasActionsProps = {
@@ -29,7 +30,7 @@ const AliasActions = ({ alias, domainId }: AliasActionsProps) => {
 
         try {
             await action();
-            await Promise.all([mutate(aliasesKey), mutate("domains"), mutate("jobs")]);
+            await mutate((key) => isPageKey(key, aliasesKey, "domains", "jobs"));
             toast.success(success);
         } catch (error) {
             toast.danger("Alias action failed", {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/GVALFER/WEBYCP/internal/accounts"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite/dbgen"
 )
 
@@ -90,6 +91,44 @@ func (s *Store) Accounts(ctx context.Context, userID string, admin bool) ([]acco
 		result = append(result, accountValue(row))
 	}
 	return result, nil
+}
+
+func (s *Store) AccountPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[accounts.Account], error) {
+	var (
+		rows  []dbgen.Account
+		total int64
+		err   error
+	)
+	if admin {
+		total, err = s.queries.CountAccounts(ctx)
+	} else {
+		total, err = s.queries.CountUserAccounts(ctx, userID)
+	}
+	if err != nil {
+		return pagination.Result[accounts.Account]{}, err
+	}
+
+	query = pagination.Clamp(query, total)
+	if admin {
+		rows, err = s.queries.ListAccountsPage(ctx, dbgen.ListAccountsPageParams{
+			PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+		})
+	} else {
+		rows, err = s.queries.ListUserAccountsPage(ctx, dbgen.ListUserAccountsPageParams{
+			UserID: userID, PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+		})
+	}
+	if err != nil {
+		return pagination.Result[accounts.Account]{}, err
+	}
+
+	items := make([]accounts.Account, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, accountValue(row))
+	}
+	return pagination.Result[accounts.Account]{Items: items, Query: query, Total: total}, nil
 }
 
 func (s *Store) QueueAction(

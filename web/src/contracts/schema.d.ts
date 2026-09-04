@@ -691,6 +691,14 @@ export interface components {
         };
         AccountListResponse: {
             items: components["schemas"]["Account"][];
+            pagination: components["schemas"]["Pagination"];
+        };
+        Pagination: {
+            page: number;
+            size: number;
+            /** Format: int64 */
+            totalItems: number;
+            totalPages: number;
         };
         AccountJobResponse: {
             account: components["schemas"]["Account"];
@@ -719,6 +727,7 @@ export interface components {
         };
         DomainListResponse: {
             items: components["schemas"]["Domain"][];
+            pagination: components["schemas"]["Pagination"];
         };
         DomainJobResponse: {
             domain: components["schemas"]["Domain"];
@@ -745,6 +754,7 @@ export interface components {
         };
         DomainAliasListResponse: {
             items: components["schemas"]["DomainAlias"][];
+            pagination: components["schemas"]["Pagination"];
         };
         DomainAliasJobResponse: {
             alias: components["schemas"]["DomainAlias"];
@@ -792,6 +802,7 @@ export interface components {
         };
         JobListResponse: {
             items: components["schemas"]["Job"][];
+            pagination: components["schemas"]["Pagination"];
         };
         Certificate: {
             id: string;
@@ -828,6 +839,7 @@ export interface components {
         };
         CertificateListResponse: {
             items: components["schemas"]["Certificate"][];
+            pagination: components["schemas"]["Pagination"];
         };
         CertificateJobResponse: {
             certificate: components["schemas"]["Certificate"];
@@ -879,12 +891,15 @@ export interface components {
         };
         DatabaseListResponse: {
             items: components["schemas"]["Database"][];
+            pagination: components["schemas"]["Pagination"];
         };
         DatabaseUserListResponse: {
             items: components["schemas"]["DatabaseUser"][];
+            pagination: components["schemas"]["Pagination"];
         };
         DatabaseGrantListResponse: {
             items: components["schemas"]["DatabaseGrant"][];
+            pagination: components["schemas"]["Pagination"];
         };
         DatabaseJobResponse: {
             database: components["schemas"]["Database"];
@@ -924,6 +939,7 @@ export interface components {
         };
         CronJobListResponse: {
             items: components["schemas"]["CronJob"][];
+            pagination: components["schemas"]["Pagination"];
         };
         CronJobResponse: {
             cronJob: components["schemas"]["CronJob"];
@@ -1003,12 +1019,15 @@ export interface components {
         };
         BackupPlanListResponse: {
             items: components["schemas"]["BackupPlan"][];
+            pagination: components["schemas"]["Pagination"];
         };
         BackupRunListResponse: {
             items: components["schemas"]["BackupRun"][];
+            pagination: components["schemas"]["Pagination"];
         };
         BackupArtifactListResponse: {
             items: components["schemas"]["BackupArtifact"][];
+            pagination: components["schemas"]["Pagination"];
         };
         BackupRunResponse: {
             run: components["schemas"]["BackupRun"];
@@ -1028,7 +1047,7 @@ export interface components {
         };
     };
     responses: {
-        /** @description The request body is malformed. */
+        /** @description The request is malformed. */
         BadRequestError: {
             headers: {
                 [name: string]: unknown;
@@ -1093,6 +1112,8 @@ export interface components {
         };
     };
     parameters: {
+        Page: number;
+        PageSize: number;
         CSRFToken: string;
         NodeID: string;
         JobID: string;
@@ -1238,7 +1259,10 @@ export interface operations {
     };
     listAccounts: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1254,6 +1278,7 @@ export interface operations {
                     "application/json": components["schemas"]["AccountListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             500: components["responses"]["InternalError"];
         };
@@ -1356,7 +1381,10 @@ export interface operations {
     };
     listDomains: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1372,6 +1400,7 @@ export interface operations {
                     "application/json": components["schemas"]["DomainListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             500: components["responses"]["InternalError"];
         };
@@ -1476,7 +1505,10 @@ export interface operations {
     };
     listDomainAliases: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
             header?: never;
             path: {
                 domainId: components["parameters"]["DomainID"];
@@ -1494,6 +1526,7 @@ export interface operations {
                     "application/json": components["schemas"]["DomainAliasListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["ForbiddenError"];
             404: components["responses"]["NotFoundError"];
@@ -1605,7 +1638,10 @@ export interface operations {
     };
     listCertificates: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1621,6 +1657,7 @@ export interface operations {
                     "application/json": components["schemas"]["CertificateListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             500: components["responses"]["InternalError"];
         };
@@ -1755,7 +1792,10 @@ export interface operations {
     };
     listDatabases: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1771,6 +1811,7 @@ export interface operations {
                     "application/json": components["schemas"]["DatabaseListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             500: components["responses"]["InternalError"];
         };
@@ -1838,7 +1879,10 @@ export interface operations {
     };
     listDatabaseUsers: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1854,6 +1898,7 @@ export interface operations {
                     "application/json": components["schemas"]["DatabaseUserListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             500: components["responses"]["InternalError"];
         };
@@ -1921,7 +1966,10 @@ export interface operations {
     };
     listDatabaseGrants: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1937,6 +1985,7 @@ export interface operations {
                     "application/json": components["schemas"]["DatabaseGrantListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             500: components["responses"]["InternalError"];
         };
@@ -2003,7 +2052,10 @@ export interface operations {
     };
     listCronJobs: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2019,6 +2071,7 @@ export interface operations {
                     "application/json": components["schemas"]["CronJobListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             500: components["responses"]["InternalError"];
         };
@@ -2118,7 +2171,10 @@ export interface operations {
     };
     listBackupPlans: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2134,6 +2190,7 @@ export interface operations {
                     "application/json": components["schemas"]["BackupPlanListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             500: components["responses"]["InternalError"];
         };
@@ -2260,7 +2317,10 @@ export interface operations {
     };
     listBackupRuns: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2276,13 +2336,17 @@ export interface operations {
                     "application/json": components["schemas"]["BackupRunListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             500: components["responses"]["InternalError"];
         };
     };
     listBackupArtifacts: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2298,6 +2362,7 @@ export interface operations {
                     "application/json": components["schemas"]["BackupArtifactListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             500: components["responses"]["InternalError"];
         };
@@ -2440,7 +2505,10 @@ export interface operations {
     };
     listJobs: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2456,6 +2524,7 @@ export interface operations {
                     "application/json": components["schemas"]["JobListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             500: components["responses"]["InternalError"];
         };

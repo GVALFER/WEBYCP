@@ -12,6 +12,7 @@ import { FormModal } from "@/components/form/formModal";
 import type { CertificateJobResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey } from "@/utils/pagination";
 import { domainField, emailField } from "@/utils/validation";
 
 type CreatePanelCertificateProps = {
@@ -46,7 +47,7 @@ const CreatePanelCertificate = ({ email }: CreatePanelCertificateProps) => {
                         .post("certificates/panel", { json: values })
                         .json<CertificateJobResponse>();
                     form.reset({ hostname: "", email: values.email });
-                    await Promise.all([mutate("certificates"), mutate("jobs")]);
+                    await mutate((key) => isPageKey(key, "certificates", "jobs"));
                     setOpen(false);
                     toast.success("Panel certificate request queued");
                 } catch (error) {

@@ -9,6 +9,65 @@ import (
 	"context"
 )
 
+const countDatabaseGrants = `-- name: CountDatabaseGrants :one
+SELECT COUNT(*) FROM (
+    SELECT database_grants.database_id, database_grants.database_user_id
+    FROM database_grants
+    JOIN databases ON databases.id = database_grants.database_id
+    JOIN account_members ON account_members.account_id = databases.account_id
+    WHERE ?1 OR account_members.user_id = ?2
+    GROUP BY database_grants.database_id, database_grants.database_user_id
+)
+`
+
+type CountDatabaseGrantsParams struct {
+	IsAdmin interface{} `json:"is_admin"`
+	UserID  string      `json:"user_id"`
+}
+
+func (q *Queries) CountDatabaseGrants(ctx context.Context, arg CountDatabaseGrantsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countDatabaseGrants, arg.IsAdmin, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countDatabaseUsers = `-- name: CountDatabaseUsers :one
+SELECT COUNT(DISTINCT database_users.id) FROM database_users
+JOIN account_members ON account_members.account_id = database_users.account_id
+WHERE ?1 OR account_members.user_id = ?2
+`
+
+type CountDatabaseUsersParams struct {
+	IsAdmin interface{} `json:"is_admin"`
+	UserID  string      `json:"user_id"`
+}
+
+func (q *Queries) CountDatabaseUsers(ctx context.Context, arg CountDatabaseUsersParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countDatabaseUsers, arg.IsAdmin, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countDatabases = `-- name: CountDatabases :one
+SELECT COUNT(DISTINCT databases.id) FROM databases
+JOIN account_members ON account_members.account_id = databases.account_id
+WHERE ?1 OR account_members.user_id = ?2
+`
+
+type CountDatabasesParams struct {
+	IsAdmin interface{} `json:"is_admin"`
+	UserID  string      `json:"user_id"`
+}
+
+func (q *Queries) CountDatabases(ctx context.Context, arg CountDatabasesParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countDatabases, arg.IsAdmin, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createDatabase = `-- name: CreateDatabase :one
 INSERT INTO databases (
     id, account_id, node_id, name, system_name, status, created_at, updated_at
@@ -289,6 +348,57 @@ func (q *Queries) ListDatabaseGrants(ctx context.Context, arg ListDatabaseGrants
 	return items, nil
 }
 
+const listDatabaseGrantsPage = `-- name: ListDatabaseGrantsPage :many
+SELECT database_grants.database_id, database_grants.database_user_id, database_grants.status, database_grants.created_at, database_grants.updated_at FROM database_grants
+JOIN databases ON databases.id = database_grants.database_id
+JOIN account_members ON account_members.account_id = databases.account_id
+WHERE ?1 OR account_members.user_id = ?2
+GROUP BY database_grants.database_id, database_grants.database_user_id
+ORDER BY database_grants.created_at ASC
+LIMIT ?4 OFFSET ?3
+`
+
+type ListDatabaseGrantsPageParams struct {
+	IsAdmin    interface{} `json:"is_admin"`
+	UserID     string      `json:"user_id"`
+	PageOffset int64       `json:"page_offset"`
+	PageSize   int64       `json:"page_size"`
+}
+
+func (q *Queries) ListDatabaseGrantsPage(ctx context.Context, arg ListDatabaseGrantsPageParams) ([]DatabaseGrant, error) {
+	rows, err := q.db.QueryContext(ctx, listDatabaseGrantsPage,
+		arg.IsAdmin,
+		arg.UserID,
+		arg.PageOffset,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DatabaseGrant{}
+	for rows.Next() {
+		var i DatabaseGrant
+		if err := rows.Scan(
+			&i.DatabaseID,
+			&i.DatabaseUserID,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDatabaseUsers = `-- name: ListDatabaseUsers :many
 SELECT database_users.id, database_users.account_id, database_users.node_id, database_users.name, database_users.system_name, database_users.status, database_users.created_at, database_users.updated_at FROM database_users
 JOIN account_members ON account_members.account_id = database_users.account_id
@@ -334,6 +444,59 @@ func (q *Queries) ListDatabaseUsers(ctx context.Context, arg ListDatabaseUsersPa
 	return items, nil
 }
 
+const listDatabaseUsersPage = `-- name: ListDatabaseUsersPage :many
+SELECT database_users.id, database_users.account_id, database_users.node_id, database_users.name, database_users.system_name, database_users.status, database_users.created_at, database_users.updated_at FROM database_users
+JOIN account_members ON account_members.account_id = database_users.account_id
+WHERE ?1 OR account_members.user_id = ?2
+GROUP BY database_users.id
+ORDER BY database_users.created_at ASC
+LIMIT ?4 OFFSET ?3
+`
+
+type ListDatabaseUsersPageParams struct {
+	IsAdmin    interface{} `json:"is_admin"`
+	UserID     string      `json:"user_id"`
+	PageOffset int64       `json:"page_offset"`
+	PageSize   int64       `json:"page_size"`
+}
+
+func (q *Queries) ListDatabaseUsersPage(ctx context.Context, arg ListDatabaseUsersPageParams) ([]DatabaseUser, error) {
+	rows, err := q.db.QueryContext(ctx, listDatabaseUsersPage,
+		arg.IsAdmin,
+		arg.UserID,
+		arg.PageOffset,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DatabaseUser{}
+	for rows.Next() {
+		var i DatabaseUser
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.NodeID,
+			&i.Name,
+			&i.SystemName,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDatabases = `-- name: ListDatabases :many
 SELECT databases.id, databases.account_id, databases.node_id, databases.name, databases.system_name, databases.status, databases.created_at, databases.updated_at FROM databases
 JOIN account_members ON account_members.account_id = databases.account_id
@@ -349,6 +512,59 @@ type ListDatabasesParams struct {
 
 func (q *Queries) ListDatabases(ctx context.Context, arg ListDatabasesParams) ([]Database, error) {
 	rows, err := q.db.QueryContext(ctx, listDatabases, arg.Column1, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Database{}
+	for rows.Next() {
+		var i Database
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.NodeID,
+			&i.Name,
+			&i.SystemName,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDatabasesPage = `-- name: ListDatabasesPage :many
+SELECT databases.id, databases.account_id, databases.node_id, databases.name, databases.system_name, databases.status, databases.created_at, databases.updated_at FROM databases
+JOIN account_members ON account_members.account_id = databases.account_id
+WHERE ?1 OR account_members.user_id = ?2
+GROUP BY databases.id
+ORDER BY databases.created_at ASC
+LIMIT ?4 OFFSET ?3
+`
+
+type ListDatabasesPageParams struct {
+	IsAdmin    interface{} `json:"is_admin"`
+	UserID     string      `json:"user_id"`
+	PageOffset int64       `json:"page_offset"`
+	PageSize   int64       `json:"page_size"`
+}
+
+func (q *Queries) ListDatabasesPage(ctx context.Context, arg ListDatabasesPageParams) ([]Database, error) {
+	rows, err := q.db.QueryContext(ctx, listDatabasesPage,
+		arg.IsAdmin,
+		arg.UserID,
+		arg.PageOffset,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}

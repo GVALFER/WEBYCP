@@ -59,6 +59,17 @@ func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) error 
 	return err
 }
 
+const countJobs = `-- name: CountJobs :one
+SELECT COUNT(*) FROM jobs
+`
+
+func (q *Queries) CountJobs(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countJobs)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createJob = `-- name: CreateJob :one
 INSERT INTO jobs (
     id,
@@ -259,6 +270,53 @@ LIMIT ?
 
 func (q *Queries) ListJobs(ctx context.Context, limit int64) ([]Job, error) {
 	rows, err := q.db.QueryContext(ctx, listJobs, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Job{}
+	for rows.Next() {
+		var i Job
+		if err := rows.Scan(
+			&i.ID,
+			&i.NodeID,
+			&i.UserID,
+			&i.Kind,
+			&i.Status,
+			&i.Payload,
+			&i.Attempts,
+			&i.MaxAttempts,
+			&i.Error,
+			&i.CreatedAt,
+			&i.StartedAt,
+			&i.FinishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listJobsPage = `-- name: ListJobsPage :many
+SELECT id, node_id, user_id, kind, status, payload, attempts, max_attempts, error, created_at, started_at, finished_at FROM jobs
+ORDER BY created_at DESC
+LIMIT ?2 OFFSET ?1
+`
+
+type ListJobsPageParams struct {
+	PageOffset int64 `json:"page_offset"`
+	PageSize   int64 `json:"page_size"`
+}
+
+func (q *Queries) ListJobsPage(ctx context.Context, arg ListJobsPageParams) ([]Job, error) {
+	rows, err := q.db.QueryContext(ctx, listJobsPage, arg.PageOffset, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}

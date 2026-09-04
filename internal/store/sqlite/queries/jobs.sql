@@ -20,6 +20,14 @@ SELECT * FROM jobs
 ORDER BY created_at DESC
 LIMIT ?;
 
+-- name: CountJobs :one
+SELECT COUNT(*) FROM jobs;
+
+-- name: ListJobsPage :many
+SELECT * FROM jobs
+ORDER BY created_at DESC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
 -- name: ClaimJob :one
 UPDATE jobs
 SET status = 'running', attempts = attempts + 1, started_at = ?, error = NULL

@@ -9,6 +9,24 @@ import (
 	"context"
 )
 
+const countCronJobs = `-- name: CountCronJobs :one
+SELECT COUNT(DISTINCT cron_jobs.id) FROM cron_jobs
+JOIN account_members ON account_members.account_id = cron_jobs.account_id
+WHERE ?1 OR account_members.user_id = ?2
+`
+
+type CountCronJobsParams struct {
+	IsAdmin interface{} `json:"is_admin"`
+	UserID  string      `json:"user_id"`
+}
+
+func (q *Queries) CountCronJobs(ctx context.Context, arg CountCronJobsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCronJobs, arg.IsAdmin, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCronJob = `-- name: CreateCronJob :one
 INSERT INTO cron_jobs (
     id, account_id, node_id, name, schedule, command, enabled, status,
@@ -141,6 +159,61 @@ type ListCronJobsParams struct {
 
 func (q *Queries) ListCronJobs(ctx context.Context, arg ListCronJobsParams) ([]CronJob, error) {
 	rows, err := q.db.QueryContext(ctx, listCronJobs, arg.Column1, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CronJob{}
+	for rows.Next() {
+		var i CronJob
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.NodeID,
+			&i.Name,
+			&i.Schedule,
+			&i.Command,
+			&i.Enabled,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCronJobsPage = `-- name: ListCronJobsPage :many
+SELECT cron_jobs.id, cron_jobs.account_id, cron_jobs.node_id, cron_jobs.name, cron_jobs.schedule, cron_jobs.command, cron_jobs.enabled, cron_jobs.status, cron_jobs.created_at, cron_jobs.updated_at FROM cron_jobs
+JOIN account_members ON account_members.account_id = cron_jobs.account_id
+WHERE ?1 OR account_members.user_id = ?2
+GROUP BY cron_jobs.id
+ORDER BY cron_jobs.created_at ASC
+LIMIT ?4 OFFSET ?3
+`
+
+type ListCronJobsPageParams struct {
+	IsAdmin    interface{} `json:"is_admin"`
+	UserID     string      `json:"user_id"`
+	PageOffset int64       `json:"page_offset"`
+	PageSize   int64       `json:"page_size"`
+}
+
+func (q *Queries) ListCronJobsPage(ctx context.Context, arg ListCronJobsPageParams) ([]CronJob, error) {
+	rows, err := q.db.QueryContext(ctx, listCronJobsPage,
+		arg.IsAdmin,
+		arg.UserID,
+		arg.PageOffset,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}

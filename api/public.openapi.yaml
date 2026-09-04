@@ -111,6 +111,9 @@ paths:
             summary: List accessible hosting accounts
             security:
                 - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
                     description: Hosting accounts.
@@ -120,6 +123,8 @@ paths:
                                 $ref: "#/components/schemas/AccountListResponse"
                 "401":
                     $ref: "#/components/responses/UnauthorizedError"
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
                 "500":
                     $ref: "#/components/responses/InternalError"
         post:
@@ -208,6 +213,9 @@ paths:
             summary: List accessible domains
             security:
                 - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
                     description: Domains.
@@ -215,6 +223,8 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/DomainListResponse"
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
                 "401":
                     $ref: "#/components/responses/UnauthorizedError"
                 "500":
@@ -324,6 +334,8 @@ paths:
                 - cookieAuth: []
             parameters:
                 - $ref: "#/components/parameters/DomainID"
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
                     description: Domain aliases.
@@ -331,6 +343,8 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/DomainAliasListResponse"
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
                 "401":
                     $ref: "#/components/responses/UnauthorizedError"
                 "403":
@@ -446,6 +460,9 @@ paths:
             operationId: listCertificates
             summary: List accessible certificates
             security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
                     description: Certificates.
@@ -453,6 +470,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/CertificateListResponse"
+                "400": { $ref: "#/components/responses/BadRequestError" }
                 "401": { $ref: "#/components/responses/UnauthorizedError" }
                 "500": { $ref: "#/components/responses/InternalError" }
     /api/v1/domains/{domainId}/certificate:
@@ -559,12 +577,16 @@ paths:
             operationId: listDatabases
             summary: List accessible MySQL databases
             security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
                     description: Databases.
                     content:
                         application/json:
                             schema: { $ref: "#/components/schemas/DatabaseListResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
                 "401": { $ref: "#/components/responses/UnauthorizedError" }
                 "500": { $ref: "#/components/responses/InternalError" }
         post:
@@ -613,12 +635,16 @@ paths:
             operationId: listDatabaseUsers
             summary: List accessible MySQL users
             security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
                     description: Database users.
                     content:
                         application/json:
                             schema: { $ref: "#/components/schemas/DatabaseUserListResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
                 "401": { $ref: "#/components/responses/UnauthorizedError" }
                 "500": { $ref: "#/components/responses/InternalError" }
         post:
@@ -667,12 +693,16 @@ paths:
             operationId: listDatabaseGrants
             summary: List accessible grants
             security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
                     description: Database grants.
                     content:
                         application/json:
                             schema: { $ref: "#/components/schemas/DatabaseGrantListResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
                 "401": { $ref: "#/components/responses/UnauthorizedError" }
                 "500": { $ref: "#/components/responses/InternalError" }
     /api/v1/databases/{databaseId}/users/{databaseUserId}:
@@ -719,12 +749,16 @@ paths:
             operationId: listCronJobs
             summary: List accessible cron jobs
             security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
                     description: Cron jobs.
                     content:
                         application/json:
                             schema: { $ref: "#/components/schemas/CronJobListResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
                 "401": { $ref: "#/components/responses/UnauthorizedError" }
                 "500": { $ref: "#/components/responses/InternalError" }
         post:
@@ -795,12 +829,16 @@ paths:
             operationId: listBackupPlans
             summary: List accessible backup plans
             security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
                     description: Backup plans.
                     content:
                         application/json:
                             schema: { $ref: "#/components/schemas/BackupPlanListResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
                 "401": { $ref: "#/components/responses/UnauthorizedError" }
                 "500": { $ref: "#/components/responses/InternalError" }
         post:
@@ -886,12 +924,16 @@ paths:
             operationId: listBackupRuns
             summary: List accessible backup runs
             security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
                     description: Backup runs.
                     content:
                         application/json:
                             schema: { $ref: "#/components/schemas/BackupRunListResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
                 "401": { $ref: "#/components/responses/UnauthorizedError" }
                 "500": { $ref: "#/components/responses/InternalError" }
     /api/v1/backup-artifacts:
@@ -899,12 +941,16 @@ paths:
             operationId: listBackupArtifacts
             summary: List accessible verified artifacts
             security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
                     description: Backup artifacts.
                     content:
                         application/json:
                             schema: { $ref: "#/components/schemas/BackupArtifactListResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
                 "401": { $ref: "#/components/responses/UnauthorizedError" }
                 "500": { $ref: "#/components/responses/InternalError" }
     /api/v1/backup-artifacts/{backupArtifactId}/restore:
@@ -1009,6 +1055,9 @@ paths:
             summary: List recent jobs
             security:
                 - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
                     description: Recent jobs.
@@ -1016,6 +1065,8 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/JobListResponse"
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
                 "401":
                     $ref: "#/components/responses/UnauthorizedError"
                 "500":
@@ -1048,6 +1099,21 @@ components:
             in: cookie
             name: webycp_session
     parameters:
+        Page:
+            name: page
+            in: query
+            schema:
+                type: integer
+                minimum: 1
+                default: 1
+        PageSize:
+            name: size
+            in: query
+            schema:
+                type: integer
+                minimum: 1
+                maximum: 100
+                default: 10
         CSRFToken:
             name: X-CSRF-Token
             in: header
@@ -1115,7 +1181,7 @@ components:
             schema: { type: string }
     responses:
         BadRequestError:
-            description: The request body is malformed.
+            description: The request is malformed.
             content:
                 application/json:
                     schema:
@@ -1309,12 +1375,33 @@ components:
         AccountListResponse:
             type: object
             additionalProperties: false
-            required: [items]
+            required: [items, pagination]
             properties:
                 items:
                     type: array
                     items:
                         $ref: "#/components/schemas/Account"
+                pagination:
+                    $ref: "#/components/schemas/Pagination"
+        Pagination:
+            type: object
+            additionalProperties: false
+            required: [page, size, totalItems, totalPages]
+            properties:
+                page:
+                    type: integer
+                    minimum: 1
+                size:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                totalItems:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                totalPages:
+                    type: integer
+                    minimum: 0
         AccountJobResponse:
             type: object
             additionalProperties: false
@@ -1371,12 +1458,14 @@ components:
         DomainListResponse:
             type: object
             additionalProperties: false
-            required: [items]
+            required: [items, pagination]
             properties:
                 items:
                     type: array
                     items:
                         $ref: "#/components/schemas/Domain"
+                pagination:
+                    $ref: "#/components/schemas/Pagination"
         DomainJobResponse:
             type: object
             additionalProperties: false
@@ -1432,12 +1521,14 @@ components:
         DomainAliasListResponse:
             type: object
             additionalProperties: false
-            required: [items]
+            required: [items, pagination]
             properties:
                 items:
                     type: array
                     items:
                         $ref: "#/components/schemas/DomainAlias"
+                pagination:
+                    $ref: "#/components/schemas/Pagination"
         DomainAliasJobResponse:
             type: object
             additionalProperties: false
@@ -1532,12 +1623,14 @@ components:
         JobListResponse:
             type: object
             additionalProperties: false
-            required: [items]
+            required: [items, pagination]
             properties:
                 items:
                     type: array
                     items:
                         $ref: "#/components/schemas/Job"
+                pagination:
+                    $ref: "#/components/schemas/Pagination"
         Certificate:
             type: object
             additionalProperties: false
@@ -1593,11 +1686,13 @@ components:
         CertificateListResponse:
             type: object
             additionalProperties: false
-            required: [items]
+            required: [items, pagination]
             properties:
                 items:
                     type: array
                     items: { $ref: "#/components/schemas/Certificate" }
+                pagination:
+                    $ref: "#/components/schemas/Pagination"
         CertificateJobResponse:
             type: object
             additionalProperties: false
@@ -1658,21 +1753,27 @@ components:
         DatabaseListResponse:
             type: object
             additionalProperties: false
-            required: [items]
+            required: [items, pagination]
             properties:
                 items: { type: array, items: { $ref: "#/components/schemas/Database" } }
+                pagination:
+                    $ref: "#/components/schemas/Pagination"
         DatabaseUserListResponse:
             type: object
             additionalProperties: false
-            required: [items]
+            required: [items, pagination]
             properties:
                 items: { type: array, items: { $ref: "#/components/schemas/DatabaseUser" } }
+                pagination:
+                    $ref: "#/components/schemas/Pagination"
         DatabaseGrantListResponse:
             type: object
             additionalProperties: false
-            required: [items]
+            required: [items, pagination]
             properties:
                 items: { type: array, items: { $ref: "#/components/schemas/DatabaseGrant" } }
+                pagination:
+                    $ref: "#/components/schemas/Pagination"
         DatabaseJobResponse:
             type: object
             additionalProperties: false
@@ -1737,9 +1838,11 @@ components:
         CronJobListResponse:
             type: object
             additionalProperties: false
-            required: [items]
+            required: [items, pagination]
             properties:
                 items: { type: array, items: { $ref: "#/components/schemas/CronJob" } }
+                pagination:
+                    $ref: "#/components/schemas/Pagination"
         CronJobResponse:
             type: object
             additionalProperties: false
@@ -1842,21 +1945,27 @@ components:
         BackupPlanListResponse:
             type: object
             additionalProperties: false
-            required: [items]
+            required: [items, pagination]
             properties:
                 items: { type: array, items: { $ref: "#/components/schemas/BackupPlan" } }
+                pagination:
+                    $ref: "#/components/schemas/Pagination"
         BackupRunListResponse:
             type: object
             additionalProperties: false
-            required: [items]
+            required: [items, pagination]
             properties:
                 items: { type: array, items: { $ref: "#/components/schemas/BackupRun" } }
+                pagination:
+                    $ref: "#/components/schemas/Pagination"
         BackupArtifactListResponse:
             type: object
             additionalProperties: false
-            required: [items]
+            required: [items, pagination]
             properties:
                 items: { type: array, items: { $ref: "#/components/schemas/BackupArtifact" } }
+                pagination:
+                    $ref: "#/components/schemas/Pagination"
         BackupRunResponse:
             type: object
             additionalProperties: false

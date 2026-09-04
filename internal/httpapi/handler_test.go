@@ -127,6 +127,28 @@ func TestTemporaryAdminSetupAndProbe(t *testing.T) {
 	if err := store.UpdateStatus(context.Background(), accountResult.Account.ID, "active"); err != nil {
 		t.Fatal(err)
 	}
+	listAccounts := httptest.NewRequest(http.MethodGet, "/api/v1/accounts?page=9&size=1", nil)
+	listAccounts.AddCookie(cookie)
+	listedAccounts := httptest.NewRecorder()
+	api.ServeHTTP(listedAccounts, listAccounts)
+	if listedAccounts.Code != http.StatusOK ||
+		!strings.Contains(listedAccounts.Body.String(), `"pagination":{"page":1,"size":1,"totalItems":1,"totalPages":1}`) {
+		t.Fatalf("account list status = %d, body = %s", listedAccounts.Code, listedAccounts.Body.String())
+	}
+	for _, path := range []string{
+		"/api/v1/accounts", "/api/v1/domains", "/api/v1/domains/test/aliases",
+		"/api/v1/certificates", "/api/v1/databases", "/api/v1/database-users",
+		"/api/v1/database-grants", "/api/v1/cron-jobs", "/api/v1/backup-plans",
+		"/api/v1/backup-runs", "/api/v1/backup-artifacts", "/api/v1/jobs",
+	} {
+		invalidPage := httptest.NewRequest(http.MethodGet, path+"?size=101", nil)
+		invalidPage.AddCookie(cookie)
+		invalidPageResponse := httptest.NewRecorder()
+		api.ServeHTTP(invalidPageResponse, invalidPage)
+		if invalidPageResponse.Code != http.StatusBadRequest {
+			t.Fatalf("invalid page %s status = %d, body = %s", path, invalidPageResponse.Code, invalidPageResponse.Body.String())
+		}
+	}
 
 	createDomain := httptest.NewRequest(http.MethodPost, "/api/v1/domains", strings.NewReader(`{
 		"accountId":"`+accountResult.Account.ID+`","name":"Example.COM."
@@ -183,7 +205,8 @@ func TestTemporaryAdminSetupAndProbe(t *testing.T) {
 	listedAliases := httptest.NewRecorder()
 	api.ServeHTTP(listedAliases, listAliases)
 	if listedAliases.Code != http.StatusOK ||
-		!strings.Contains(listedAliases.Body.String(), `"name":"www.example.com"`) {
+		!strings.Contains(listedAliases.Body.String(), `"name":"www.example.com"`) ||
+		!strings.Contains(listedAliases.Body.String(), `"pagination":{"page":1,"size":10,"totalItems":1,"totalPages":1}`) {
 		t.Fatalf("alias list status = %d, body = %s", listedAliases.Code, listedAliases.Body.String())
 	}
 
@@ -193,7 +216,8 @@ func TestTemporaryAdminSetupAndProbe(t *testing.T) {
 	api.ServeHTTP(listedDomains, listDomains)
 	if listedDomains.Code != http.StatusOK ||
 		!strings.Contains(listedDomains.Body.String(), `"name":"example.com"`) ||
-		!strings.Contains(listedDomains.Body.String(), `"enabled":true`) {
+		!strings.Contains(listedDomains.Body.String(), `"enabled":true`) ||
+		!strings.Contains(listedDomains.Body.String(), `"pagination":{"page":1,"size":10,"totalItems":1,"totalPages":1}`) {
 		t.Fatalf("domain list status = %d, body = %s", listedDomains.Code, listedDomains.Body.String())
 	}
 

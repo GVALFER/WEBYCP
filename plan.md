@@ -273,6 +273,12 @@ webycp/
   show compact create actions beside their list headings instead of permanent
   form sidebars. Async buttons keep their action label visible and use HeroUI
   `isPending` with a `Spinner`; confirmation dialogs stay open until completion.
+- Resource lists use the shared `Table` and `Paginate` components. Paginated
+  routes parse `page` and `size` from `urlstate-js` during SSR, use the same
+  values in the SWR request key, and return `page`, `size`, `totalItems`, and
+  `totalPages` from SQL-backed API pagination. Routes with multiple tables use
+  dotted URL namespaces such as `plans.page` and `artifacts.size`; API request
+  keys remain the resource's standard `?page=&size=` form.
 - Route-specific formatters, schemas, and hooks stay inside the route.
 - Go does not use a generic `utils` package.
 - Reusable Go behavior uses focused packages such as:

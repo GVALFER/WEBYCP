@@ -11,6 +11,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/backups"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite/dbgen"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
@@ -25,6 +26,30 @@ func (s *Store) BackupPlans(ctx context.Context, userID string, admin bool) ([]b
 		result = append(result, backupPlanValue(row))
 	}
 	return result, nil
+}
+
+func (s *Store) BackupPlanPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[backups.Plan], error) {
+	total, err := s.queries.CountBackupPlans(ctx, dbgen.CountBackupPlansParams{
+		IsAdmin: admin, UserID: userID,
+	})
+	if err != nil {
+		return pagination.Result[backups.Plan]{}, err
+	}
+	query = pagination.Clamp(query, total)
+	rows, err := s.queries.ListBackupPlansPage(ctx, dbgen.ListBackupPlansPageParams{
+		IsAdmin: admin, UserID: userID,
+		PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+	})
+	if err != nil {
+		return pagination.Result[backups.Plan]{}, err
+	}
+	items := make([]backups.Plan, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, backupPlanValue(row))
+	}
+	return pagination.Result[backups.Plan]{Items: items, Query: query, Total: total}, nil
 }
 
 func (s *Store) BackupPlan(ctx context.Context, id string) (backups.Plan, error) {
@@ -138,6 +163,30 @@ func (s *Store) BackupRuns(ctx context.Context, userID string, admin bool) ([]ba
 	return result, nil
 }
 
+func (s *Store) BackupRunPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[backups.Run], error) {
+	total, err := s.queries.CountBackupRuns(ctx, dbgen.CountBackupRunsParams{
+		IsAdmin: admin, UserID: userID,
+	})
+	if err != nil {
+		return pagination.Result[backups.Run]{}, err
+	}
+	query = pagination.Clamp(query, total)
+	rows, err := s.queries.ListBackupRunsPage(ctx, dbgen.ListBackupRunsPageParams{
+		IsAdmin: admin, UserID: userID,
+		PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+	})
+	if err != nil {
+		return pagination.Result[backups.Run]{}, err
+	}
+	items := make([]backups.Run, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, backupRunValue(row))
+	}
+	return pagination.Result[backups.Run]{Items: items, Query: query, Total: total}, nil
+}
+
 func (s *Store) BackupArtifact(ctx context.Context, id string) (backups.Artifact, error) {
 	row, err := s.queries.GetBackupArtifact(ctx, id)
 	if err != nil {
@@ -160,6 +209,34 @@ func (s *Store) BackupArtifacts(ctx context.Context, userID string, admin bool) 
 		result = append(result, value)
 	}
 	return result, nil
+}
+
+func (s *Store) BackupArtifactPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[backups.Artifact], error) {
+	total, err := s.queries.CountBackupArtifacts(ctx, dbgen.CountBackupArtifactsParams{
+		IsAdmin: admin, UserID: userID,
+	})
+	if err != nil {
+		return pagination.Result[backups.Artifact]{}, err
+	}
+	query = pagination.Clamp(query, total)
+	rows, err := s.queries.ListBackupArtifactsPage(ctx, dbgen.ListBackupArtifactsPageParams{
+		IsAdmin: admin, UserID: userID,
+		PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+	})
+	if err != nil {
+		return pagination.Result[backups.Artifact]{}, err
+	}
+	items := make([]backups.Artifact, 0, len(rows))
+	for _, row := range rows {
+		value, valueErr := backupArtifactValue(row)
+		if valueErr != nil {
+			return pagination.Result[backups.Artifact]{}, valueErr
+		}
+		items = append(items, value)
+	}
+	return pagination.Result[backups.Artifact]{Items: items, Query: query, Total: total}, nil
 }
 
 func (s *Store) ExpiredBackupArtifacts(ctx context.Context, planID string, keep int64) ([]backups.Artifact, error) {

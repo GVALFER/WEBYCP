@@ -2,6 +2,8 @@
 
 import { LockKeyhole } from "lucide-react";
 import useSWR from "swr";
+import { Table, type TableColumn } from "@/components/table/table";
+import { useTable } from "@/components/table/useTable";
 import type { CertificateListResponse, DomainListResponse } from "@/contracts/types";
 import { useTimezone } from "@/hooks/useDate";
 import { useSession } from "@/providers/SessionProvider";
@@ -16,13 +18,75 @@ type CertificatesProps = {
     domains: DomainListResponse;
 };
 
+type Certificate = CertificateListResponse["items"][number];
+
 const Certificates = ({ certificates, domains }: CertificatesProps) => {
     const session = useSession();
     const { dt } = useTimezone();
+    const table = useTable(certificates.pagination);
 
-    const { data } = useSWR<CertificateListResponse>("certificates", {
-        fallbackData: certificates,
+    const { data } = useSWR<CertificateListResponse>(`certificates${table.query}`, {
+        fallbackData: table.isInitialQuery ? certificates : undefined,
     });
+
+    const columns: TableColumn<Certificate>[] = [
+        {
+            id: "certificate",
+            label: "Certificate",
+            isRowHeader: true,
+            render: (certificate) => (
+                <div className="flex min-w-0 items-center gap-4">
+                    <div className="icon-box">
+                        <LockKeyhole className="size-5" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0">
+                        <div className="truncate font-medium">{certificate.name}</div>
+                        <div className="mt-1 max-w-xl truncate text-xs text-foreground-400">
+                            {certificate.names.length > 1
+                                ? `SANs: ${certificate.names.join(", ")}`
+                                : certificate.email}
+                        </div>
+                        {certificate.error && (
+                            <div className="mt-1 text-xs text-danger">{certificate.error}</div>
+                        )}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: "expires",
+            label: "Expires",
+            cellClassName: "whitespace-nowrap text-foreground-500",
+            render: (certificate) =>
+                certificate.expiresAt ? dt(certificate.expiresAt) : "Never",
+        },
+        {
+            id: "status",
+            label: "Status",
+            render: (certificate) => (
+                <div className="flex items-center gap-2">
+                    <span
+                        className={cn(
+                            "rounded-full px-2.5 py-1 text-xs capitalize",
+                            statusClass(certificate.status),
+                        )}
+                    >
+                        {certificate.status}
+                    </span>
+                    <span className="text-xs capitalize text-foreground-400">
+                        {certificate.kind}
+                    </span>
+                </div>
+            ),
+        },
+        {
+            id: "actions",
+            label: "Actions",
+            headerClassName: "text-end",
+            cellClassName: "w-px whitespace-nowrap",
+            render: (certificate) => <CertificateActions certificate={certificate} />,
+        },
+    ];
 
     return (
         <section className="panel-card overflow-hidden">
@@ -40,57 +104,7 @@ const Certificates = ({ certificates, domains }: CertificatesProps) => {
                     )}
                 </div>
             </div>
-            <div className="divide-y divide-divider">
-                {data?.items.length ? (
-                    data.items.map((certificate) => (
-                        <div key={certificate.id} className="px-6 py-5">
-                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="flex min-w-0 items-center gap-4">
-                                    <div className="icon-box">
-                                        <LockKeyhole className="size-5" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="truncate font-medium">
-                                            {certificate.name}
-                                        </div>
-                                        <div className="mt-1 text-xs text-foreground-400">
-                                            {certificate.kind} · expires{" "}
-                                            {certificate.expiresAt
-                                                ? dt(certificate.expiresAt)
-                                                : "Never"}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span
-                                        className={cn(
-                                            "rounded-full px-2.5 py-1 text-xs capitalize",
-                                            statusClass(certificate.status),
-                                        )}
-                                    >
-                                        {certificate.status}
-                                    </span>
-                                    <CertificateActions certificate={certificate} />
-                                </div>
-                            </div>
-                            {certificate.names.length > 1 && (
-                                <div className="mt-3 text-xs text-foreground-500">
-                                    SANs: {certificate.names.join(", ")}
-                                </div>
-                            )}
-                            {certificate.error && (
-                                <div className="mt-3 text-sm text-danger">
-                                    {certificate.error}
-                                </div>
-                            )}
-                        </div>
-                    ))
-                ) : (
-                    <div className="px-6 py-12 text-center text-sm text-foreground-400">
-                        No certificates yet. HTTP remains available for ACME bootstrap.
-                    </div>
-                )}
-            </div>
+            <Table table={table} columns={columns} data={data} />
         </section>
     );
 };

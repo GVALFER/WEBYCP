@@ -3,6 +3,8 @@
 import { CornerDownRight, Globe2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
+import { Table, type TableColumn } from "@/components/table/table";
+import { useTable } from "@/components/table/useTable";
 import type {
     AccountListResponse,
     DomainAliasListResponse,
@@ -10,6 +12,7 @@ import type {
 } from "@/contracts/types";
 import { useTimezone } from "@/hooks/useDate";
 import { cn } from "@/utils/classnames";
+import { pageKey } from "@/utils/pagination";
 import { statusClass } from "@/utils/status";
 import AliasActions from "./actions/aliasActions";
 import CreateAlias from "./actions/createAlias";
@@ -19,41 +22,154 @@ import DomainActions from "./actions/domainActions";
 type DomainsProps = {
     accounts: AccountListResponse;
     domains: DomainListResponse;
+    domainOptions: DomainListResponse;
     aliases: DomainAliasListResponse;
     aliasDomainId: string;
 };
 
+type Domain = DomainListResponse["items"][number];
+type Alias = DomainAliasListResponse["items"][number];
+
 const Domains = ({
     accounts,
     domains: initialDomains,
+    domainOptions,
     aliases: initialAliases,
     aliasDomainId,
 }: DomainsProps) => {
     const { dt } = useTimezone();
     const [domainId, setDomainId] = useState("");
+    const domainsTable = useTable(initialDomains.pagination, "domains");
+    const aliasesTable = useTable(initialAliases.pagination, "aliases");
 
-    const { data: accountsData } = useSWR<AccountListResponse>("accounts", {
-        fallbackData: accounts,
-    });
-    const { data: domains } = useSWR<DomainListResponse>("domains", {
-        fallbackData: initialDomains,
-    });
+    const { data: accountsData } = useSWR<AccountListResponse>(
+        pageKey("accounts", { page: 1, size: 100 }),
+        { fallbackData: accounts },
+    );
+    const { data: domains } = useSWR<DomainListResponse>(
+        `domains${domainsTable.query}`,
+        { fallbackData: domainsTable.isInitialQuery ? initialDomains : undefined },
+    );
+    const { data: allDomains } = useSWR<DomainListResponse>(
+        pageKey("domains", { page: 1, size: 100 }),
+        { fallbackData: domainOptions },
+    );
 
-    const activeDomains = domains?.items.filter((domain) => domain.status === "active") ?? [];
+    const activeDomains = allDomains?.items.filter((domain) => domain.status === "active") ?? [];
     const selectedDomain = activeDomains.some((domain) => domain.id === domainId)
         ? domainId
         : activeDomains[0]?.id || "";
-
     const aliasKey = selectedDomain
-        ? `domains/${encodeURIComponent(selectedDomain)}/aliases`
+        ? `domains/${encodeURIComponent(selectedDomain)}/aliases${aliasesTable.query}`
         : null;
 
     const { data: aliases } = useSWR<DomainAliasListResponse>(aliasKey, {
-        fallbackData: selectedDomain === aliasDomainId ? initialAliases : undefined,
+        fallbackData:
+            aliasesTable.isInitialQuery && selectedDomain === aliasDomainId
+                ? initialAliases
+                : undefined,
     });
 
     const accountNames = new Map(accountsData?.items.map((account) => [account.id, account.name]));
-    const currentDomain = domains?.items.find((domain) => domain.id === selectedDomain);
+    const currentDomain = allDomains?.items.find((domain) => domain.id === selectedDomain);
+
+    const domainColumns: TableColumn<Domain>[] = [
+        {
+            id: "domain",
+            label: "Domain",
+            isRowHeader: true,
+            render: (domain) => (
+                <div className="flex items-center gap-4">
+                    <div className="icon-box">
+                        <Globe2 className="size-5" aria-hidden="true" />
+                    </div>
+                    <div>
+                        <div className="font-medium">{domain.name}</div>
+                        <div className="mt-1 text-xs text-foreground-400">
+                            {accountNames.get(domain.accountId) ?? domain.accountId} · PHP{" "}
+                            {domain.phpVersion}
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: "created",
+            label: "Created",
+            cellClassName: "whitespace-nowrap text-foreground-500",
+            render: (domain) => dt(domain.createdAt),
+        },
+        {
+            id: "status",
+            label: "Status",
+            render: (domain) => (
+                <span
+                    className={cn(
+                        "rounded-full px-2.5 py-1 text-xs capitalize",
+                        statusClass(domain.status),
+                    )}
+                >
+                    {domain.status}
+                </span>
+            ),
+        },
+        {
+            id: "actions",
+            label: "Actions",
+            headerClassName: "text-end",
+            cellClassName: "w-px whitespace-nowrap",
+            render: (domain) => <DomainActions domain={domain} />,
+        },
+    ];
+
+    const aliasColumns: TableColumn<Alias>[] = [
+        {
+            id: "alias",
+            label: "Alias",
+            isRowHeader: true,
+            render: (alias) => (
+                <div className="flex items-center gap-3">
+                    <CornerDownRight
+                        className="size-4 text-foreground-400"
+                        aria-hidden="true"
+                    />
+                    <div className="font-medium">{alias.name}</div>
+                </div>
+            ),
+        },
+        {
+            id: "created",
+            label: "Created",
+            cellClassName: "whitespace-nowrap text-foreground-500",
+            render: (alias) => dt(alias.createdAt),
+        },
+        {
+            id: "status",
+            label: "Status",
+            render: (alias) => (
+                <span
+                    className={cn(
+                        "rounded-full px-2.5 py-1 text-xs capitalize",
+                        statusClass(alias.status),
+                    )}
+                >
+                    {alias.status}
+                </span>
+            ),
+        },
+        {
+            id: "actions",
+            label: "Actions",
+            headerClassName: "text-end",
+            cellClassName: "w-px whitespace-nowrap",
+            render: (alias) => <AliasActions alias={alias} domainId={selectedDomain} />,
+        },
+    ];
+
+    const setAliasDomain = (id: string) => {
+        setDomainId(id);
+        aliasesTable.setPage(1);
+    };
 
     return (
         <div className="space-y-6">
@@ -67,48 +183,7 @@ const Domains = ({
                     </div>
                     <CreateDomain accounts={accounts} />
                 </div>
-                <div className="divide-y divide-divider">
-                    {domains?.items.length ? (
-                        domains.items.map((domain) => (
-                            <div
-                                key={domain.id}
-                                className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="icon-box">
-                                        <Globe2 className="size-5" aria-hidden="true" />
-                                    </div>
-                                    <div>
-                                        <div className="font-medium">{domain.name}</div>
-                                        <div className="mt-1 text-xs text-foreground-400">
-                                            {accountNames.get(domain.accountId) ??
-                                                domain.accountId}{" "}
-                                            · PHP {domain.phpVersion}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="hidden text-xs text-foreground-400 sm:block">
-                                        {dt(domain.createdAt)}
-                                    </div>
-                                    <span
-                                        className={cn(
-                                            "rounded-full px-2.5 py-1 text-xs capitalize",
-                                            statusClass(domain.status),
-                                        )}
-                                    >
-                                        {domain.status}
-                                    </span>
-                                    <DomainActions domain={domain} />
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="px-6 py-12 text-center text-sm text-foreground-400">
-                            No domains yet.
-                        </div>
-                    )}
-                </div>
+                <Table table={domainsTable} columns={domainColumns} data={domains} />
             </section>
 
             <section className="panel-card overflow-hidden">
@@ -122,44 +197,16 @@ const Domains = ({
                         </div>
                     </div>
                     <CreateAlias
-                        domains={initialDomains}
+                        domains={allDomains ?? domainOptions}
                         domainId={selectedDomain}
-                        onDomainChange={setDomainId}
+                        onDomainChange={setAliasDomain}
                     />
                 </div>
-                <div className="divide-y divide-divider">
-                    {aliases?.items.length ? (
-                        aliases.items.map((alias) => (
-                            <div
-                                key={alias.id}
-                                className="flex items-center justify-between gap-4 px-6 py-4"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <CornerDownRight
-                                        className="size-4 text-foreground-400"
-                                        aria-hidden="true"
-                                    />
-                                    <div className="font-medium">{alias.name}</div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span
-                                        className={cn(
-                                            "rounded-full px-2.5 py-1 text-xs capitalize",
-                                            statusClass(alias.status),
-                                        )}
-                                    >
-                                        {alias.status}
-                                    </span>
-                                    <AliasActions alias={alias} domainId={selectedDomain} />
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="px-6 py-10 text-center text-sm text-foreground-400">
-                            {selectedDomain ? "No aliases yet." : "No active domain selected."}
-                        </div>
-                    )}
-                </div>
+                <Table
+                    table={aliasesTable}
+                    columns={aliasColumns}
+                    data={selectedDomain ? aliases : initialAliases}
+                />
             </section>
         </div>
     );

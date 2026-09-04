@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite/dbgen"
 )
 
@@ -44,6 +45,27 @@ func (s *Store) Jobs(ctx context.Context, limit int64) ([]jobs.Job, error) {
 		result = append(result, jobValue(row))
 	}
 	return result, nil
+}
+
+func (s *Store) JobPage(
+	ctx context.Context, query pagination.Query,
+) (pagination.Result[jobs.Job], error) {
+	total, err := s.queries.CountJobs(ctx)
+	if err != nil {
+		return pagination.Result[jobs.Job]{}, err
+	}
+	query = pagination.Clamp(query, total)
+	rows, err := s.queries.ListJobsPage(ctx, dbgen.ListJobsPageParams{
+		PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+	})
+	if err != nil {
+		return pagination.Result[jobs.Job]{}, err
+	}
+	items := make([]jobs.Job, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, jobValue(row))
+	}
+	return pagination.Result[jobs.Job]{Items: items, Query: query, Total: total}, nil
 }
 
 func (s *Store) ClaimJob(ctx context.Context, now time.Time) (jobs.Job, error) {

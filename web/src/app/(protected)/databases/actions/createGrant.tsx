@@ -15,6 +15,7 @@ import type {
     DatabaseUserListResponse,
 } from "@/contracts/types";
 import { api } from "@/lib/api";
+import { pageKey } from "@/utils/pagination";
 import { useDatabaseAction } from "./useDatabaseAction";
 
 type CreateGrantProps = {
@@ -40,13 +41,13 @@ const CreateGrant = ({
     const [pending, startTransition] = useTransition();
     const { run } = useDatabaseAction();
 
-    const { data: accountsData } = useSWR<AccountListResponse>("accounts", {
+    const { data: accountsData } = useSWR<AccountListResponse>(pageKey("accounts", { page: 1, size: 100 }), {
         fallbackData: accounts,
     });
-    const { data: databases } = useSWR<DatabaseListResponse>("databases", {
+    const { data: databases } = useSWR<DatabaseListResponse>(pageKey("databases", { page: 1, size: 100 }), {
         fallbackData: initialDatabases,
     });
-    const { data: users } = useSWR<DatabaseUserListResponse>("database-users", {
+    const { data: users } = useSWR<DatabaseUserListResponse>(pageKey("database-users", { page: 1, size: 100 }), {
         fallbackData: initialUsers,
     });
 

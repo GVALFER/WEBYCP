@@ -14,6 +14,7 @@ import { FormSelect } from "@/components/form/formSelect";
 import type { AccountListResponse, BackupPlan } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey, pageKey } from "@/utils/pagination";
 import { nameField, scheduleField } from "@/utils/validation";
 
 const formSchema = v.pipe(
@@ -55,7 +56,7 @@ const CreateBackup = ({ accounts }: CreateBackupProps) => {
     const [pending, startTransition] = useTransition();
     const { mutate } = useSWRConfig();
 
-    const { data } = useSWR<AccountListResponse>("accounts", {
+    const { data } = useSWR<AccountListResponse>(pageKey("accounts", { page: 1, size: 100 }), {
         fallbackData: accounts,
     });
 
@@ -86,12 +87,15 @@ const CreateBackup = ({ accounts }: CreateBackupProps) => {
                         .post("backup-plans", { json: { ...values, enabled: true } })
                         .json<BackupPlan>();
 
-                    await Promise.all([
-                        mutate("backup-plans"),
-                        mutate("backup-runs"),
-                        mutate("backup-artifacts"),
-                        mutate("jobs"),
-                    ]);
+                    await mutate((key) =>
+                        isPageKey(
+                            key,
+                            "backup-plans",
+                            "backup-runs",
+                            "backup-artifacts",
+                            "jobs",
+                        ),
+                    );
 
                     setOpen(false);
                     toast.success("Backup plan created");

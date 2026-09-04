@@ -21,6 +21,60 @@ func (q *Queries) BackupRunPending(ctx context.Context, planID sql.NullString) (
 	return exists, err
 }
 
+const countBackupArtifacts = `-- name: CountBackupArtifacts :one
+SELECT COUNT(DISTINCT backup_artifacts.id) FROM backup_artifacts
+JOIN account_members ON account_members.account_id = backup_artifacts.account_id
+WHERE ?1 OR account_members.user_id = ?2
+`
+
+type CountBackupArtifactsParams struct {
+	IsAdmin interface{} `json:"is_admin"`
+	UserID  string      `json:"user_id"`
+}
+
+func (q *Queries) CountBackupArtifacts(ctx context.Context, arg CountBackupArtifactsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countBackupArtifacts, arg.IsAdmin, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countBackupPlans = `-- name: CountBackupPlans :one
+SELECT COUNT(DISTINCT backup_plans.id) FROM backup_plans
+JOIN account_members ON account_members.account_id = backup_plans.account_id
+WHERE ?1 OR account_members.user_id = ?2
+`
+
+type CountBackupPlansParams struct {
+	IsAdmin interface{} `json:"is_admin"`
+	UserID  string      `json:"user_id"`
+}
+
+func (q *Queries) CountBackupPlans(ctx context.Context, arg CountBackupPlansParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countBackupPlans, arg.IsAdmin, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countBackupRuns = `-- name: CountBackupRuns :one
+SELECT COUNT(DISTINCT backup_runs.id) FROM backup_runs
+JOIN account_members ON account_members.account_id = backup_runs.account_id
+WHERE ?1 OR account_members.user_id = ?2
+`
+
+type CountBackupRunsParams struct {
+	IsAdmin interface{} `json:"is_admin"`
+	UserID  string      `json:"user_id"`
+}
+
+func (q *Queries) CountBackupRuns(ctx context.Context, arg CountBackupRunsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countBackupRuns, arg.IsAdmin, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createBackupArtifact = `-- name: CreateBackupArtifact :one
 INSERT INTO backup_artifacts (
     id, run_id, account_id, node_id, path, checksum, size_bytes, manifest, created_at
@@ -293,6 +347,60 @@ func (q *Queries) ListBackupArtifacts(ctx context.Context, arg ListBackupArtifac
 	return items, nil
 }
 
+const listBackupArtifactsPage = `-- name: ListBackupArtifactsPage :many
+SELECT backup_artifacts.id, backup_artifacts.run_id, backup_artifacts.account_id, backup_artifacts.node_id, backup_artifacts.path, backup_artifacts.checksum, backup_artifacts.size_bytes, backup_artifacts.manifest, backup_artifacts.created_at FROM backup_artifacts
+JOIN account_members ON account_members.account_id = backup_artifacts.account_id
+WHERE ?1 OR account_members.user_id = ?2
+GROUP BY backup_artifacts.id
+ORDER BY backup_artifacts.created_at DESC
+LIMIT ?4 OFFSET ?3
+`
+
+type ListBackupArtifactsPageParams struct {
+	IsAdmin    interface{} `json:"is_admin"`
+	UserID     string      `json:"user_id"`
+	PageOffset int64       `json:"page_offset"`
+	PageSize   int64       `json:"page_size"`
+}
+
+func (q *Queries) ListBackupArtifactsPage(ctx context.Context, arg ListBackupArtifactsPageParams) ([]BackupArtifact, error) {
+	rows, err := q.db.QueryContext(ctx, listBackupArtifactsPage,
+		arg.IsAdmin,
+		arg.UserID,
+		arg.PageOffset,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BackupArtifact{}
+	for rows.Next() {
+		var i BackupArtifact
+		if err := rows.Scan(
+			&i.ID,
+			&i.RunID,
+			&i.AccountID,
+			&i.NodeID,
+			&i.Path,
+			&i.Checksum,
+			&i.SizeBytes,
+			&i.Manifest,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBackupPlans = `-- name: ListBackupPlans :many
 SELECT backup_plans.id, backup_plans.account_id, backup_plans.node_id, backup_plans.name, backup_plans.schedule, backup_plans.retention_count, backup_plans.include_files, backup_plans.include_databases, backup_plans.enabled, backup_plans.last_run_at, backup_plans.next_run_at, backup_plans.created_at, backup_plans.updated_at FROM backup_plans
 JOIN account_members ON account_members.account_id = backup_plans.account_id
@@ -343,6 +451,64 @@ func (q *Queries) ListBackupPlans(ctx context.Context, arg ListBackupPlansParams
 	return items, nil
 }
 
+const listBackupPlansPage = `-- name: ListBackupPlansPage :many
+SELECT backup_plans.id, backup_plans.account_id, backup_plans.node_id, backup_plans.name, backup_plans.schedule, backup_plans.retention_count, backup_plans.include_files, backup_plans.include_databases, backup_plans.enabled, backup_plans.last_run_at, backup_plans.next_run_at, backup_plans.created_at, backup_plans.updated_at FROM backup_plans
+JOIN account_members ON account_members.account_id = backup_plans.account_id
+WHERE ?1 OR account_members.user_id = ?2
+GROUP BY backup_plans.id
+ORDER BY backup_plans.created_at ASC
+LIMIT ?4 OFFSET ?3
+`
+
+type ListBackupPlansPageParams struct {
+	IsAdmin    interface{} `json:"is_admin"`
+	UserID     string      `json:"user_id"`
+	PageOffset int64       `json:"page_offset"`
+	PageSize   int64       `json:"page_size"`
+}
+
+func (q *Queries) ListBackupPlansPage(ctx context.Context, arg ListBackupPlansPageParams) ([]BackupPlan, error) {
+	rows, err := q.db.QueryContext(ctx, listBackupPlansPage,
+		arg.IsAdmin,
+		arg.UserID,
+		arg.PageOffset,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BackupPlan{}
+	for rows.Next() {
+		var i BackupPlan
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.NodeID,
+			&i.Name,
+			&i.Schedule,
+			&i.RetentionCount,
+			&i.IncludeFiles,
+			&i.IncludeDatabases,
+			&i.Enabled,
+			&i.LastRunAt,
+			&i.NextRunAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBackupRuns = `-- name: ListBackupRuns :many
 SELECT backup_runs.id, backup_runs.plan_id, backup_runs.account_id, backup_runs.node_id, backup_runs.status, backup_runs.error, backup_runs.created_at, backup_runs.started_at, backup_runs.finished_at FROM backup_runs
 JOIN account_members ON account_members.account_id = backup_runs.account_id
@@ -358,6 +524,60 @@ type ListBackupRunsParams struct {
 
 func (q *Queries) ListBackupRuns(ctx context.Context, arg ListBackupRunsParams) ([]BackupRun, error) {
 	rows, err := q.db.QueryContext(ctx, listBackupRuns, arg.Column1, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BackupRun{}
+	for rows.Next() {
+		var i BackupRun
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlanID,
+			&i.AccountID,
+			&i.NodeID,
+			&i.Status,
+			&i.Error,
+			&i.CreatedAt,
+			&i.StartedAt,
+			&i.FinishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBackupRunsPage = `-- name: ListBackupRunsPage :many
+SELECT backup_runs.id, backup_runs.plan_id, backup_runs.account_id, backup_runs.node_id, backup_runs.status, backup_runs.error, backup_runs.created_at, backup_runs.started_at, backup_runs.finished_at FROM backup_runs
+JOIN account_members ON account_members.account_id = backup_runs.account_id
+WHERE ?1 OR account_members.user_id = ?2
+GROUP BY backup_runs.id
+ORDER BY backup_runs.created_at DESC
+LIMIT ?4 OFFSET ?3
+`
+
+type ListBackupRunsPageParams struct {
+	IsAdmin    interface{} `json:"is_admin"`
+	UserID     string      `json:"user_id"`
+	PageOffset int64       `json:"page_offset"`
+	PageSize   int64       `json:"page_size"`
+}
+
+func (q *Queries) ListBackupRunsPage(ctx context.Context, arg ListBackupRunsPageParams) ([]BackupRun, error) {
+	rows, err := q.db.QueryContext(ctx, listBackupRunsPage,
+		arg.IsAdmin,
+		arg.UserID,
+		arg.PageOffset,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}

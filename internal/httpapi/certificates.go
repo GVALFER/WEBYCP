@@ -16,13 +16,22 @@ import (
 )
 
 func (h *handler) listCertificates(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	items, err := h.options.Certificates.Certificates(r.Context(), session.User.ID, session.User.Role == "admin")
+	query, ok := requestPage(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.options.Certificates.CertificatePage(
+		r.Context(), session.User.ID, session.User.Role == "admin", query,
+	)
 	if err != nil {
 		h.internalError(w, r, err)
 		return
 	}
-	response := publicapi.CertificateListResponse{Items: make([]publicapi.Certificate, 0, len(items))}
-	for _, item := range items {
+	response := publicapi.CertificateListResponse{
+		Items:      make([]publicapi.Certificate, 0, len(page.Items)),
+		Pagination: paginationResponse(page.Query, page.Total),
+	}
+	for _, item := range page.Items {
 		response.Items = append(response.Items, certificateResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)

@@ -8,6 +8,7 @@ import (
 	agentbackup "github.com/GVALFER/WEBYCP/internal/agent/backup"
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 )
 
 var (
@@ -44,6 +45,7 @@ type RestoreScope struct {
 type Repository interface {
 	CreateJob(context.Context, jobs.Job) (jobs.Job, error)
 	BackupPlans(context.Context, string, bool) ([]Plan, error)
+	BackupPlanPage(context.Context, string, bool, pagination.Query) (pagination.Result[Plan], error)
 	BackupPlan(context.Context, string) (Plan, error)
 	CreateBackupPlan(context.Context, Plan) (Plan, error)
 	UpdateBackupPlan(context.Context, Plan) (Plan, error)
@@ -54,8 +56,10 @@ type Repository interface {
 	SetBackupRun(context.Context, string, string, string, *time.Time, *time.Time) error
 	CompleteBackup(context.Context, Run, Artifact) (Artifact, error)
 	BackupRuns(context.Context, string, bool) ([]Run, error)
+	BackupRunPage(context.Context, string, bool, pagination.Query) (pagination.Result[Run], error)
 	BackupArtifact(context.Context, string) (Artifact, error)
 	BackupArtifacts(context.Context, string, bool) ([]Artifact, error)
+	BackupArtifactPage(context.Context, string, bool, pagination.Query) (pagination.Result[Artifact], error)
 	ExpiredBackupArtifacts(context.Context, string, int64) ([]Artifact, error)
 	DeleteBackupArtifact(context.Context, string) error
 	RestoreMetadata(context.Context, backupfmt.Metadata) error

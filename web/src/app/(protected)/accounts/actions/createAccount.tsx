@@ -12,6 +12,7 @@ import { FormModal } from "@/components/form/formModal";
 import type { AccountJobResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey } from "@/utils/pagination";
 import { nameField } from "@/utils/validation";
 
 type CreateAccountProps = {
@@ -39,7 +40,7 @@ const CreateAccount = ({ nodeId }: CreateAccountProps) => {
                         .post("accounts", { json: { ...values, nodeId } })
                         .json<AccountJobResponse>();
                     form.reset();
-                    await Promise.all([mutate("accounts"), mutate("jobs")]);
+                    await mutate((key) => isPageKey(key, "accounts", "jobs"));
                     setOpen(false);
                     toast.success("Account queued for creation");
                 } catch (error) {

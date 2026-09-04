@@ -2,6 +2,8 @@
 
 import { Clock3 } from "lucide-react";
 import useSWR from "swr";
+import { Table, type TableColumn } from "@/components/table/table";
+import { useTable } from "@/components/table/useTable";
 import type { JobListResponse } from "@/contracts/types";
 import { useTimezone } from "@/hooks/useDate";
 import { cn } from "@/utils/classnames";
@@ -11,12 +13,56 @@ type JobsProps = {
     jobs: JobListResponse;
 };
 
+type Job = JobListResponse["items"][number];
+
 const Jobs = ({ jobs }: JobsProps) => {
     const { dt } = useTimezone();
+    const table = useTable(jobs.pagination);
 
-    const { data } = useSWR<JobListResponse>("jobs", {
-        fallbackData: jobs,
+    const { data } = useSWR<JobListResponse>(`jobs${table.query}`, {
+        fallbackData: table.isInitialQuery ? jobs : undefined,
     });
+
+    const columns: TableColumn<Job>[] = [
+        {
+            id: "operation",
+            label: "Operation",
+            isRowHeader: true,
+            render: (job) => (
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="icon-box size-9">
+                        <Clock3 className="size-4" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0">
+                        <div className="truncate font-medium">{job.kind}</div>
+                        <div className="truncate font-mono text-xs text-foreground-400">
+                            {job.id}
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: "created",
+            label: "Created",
+            cellClassName: "whitespace-nowrap text-foreground-500",
+            render: (job) => dt(job.createdAt),
+        },
+        {
+            id: "status",
+            label: "Status",
+            render: (job) => (
+                <span
+                    className={cn(
+                        "rounded-full px-2.5 py-1 text-xs capitalize",
+                        statusClass(job.status),
+                    )}
+                >
+                    {job.status}
+                </span>
+            ),
+        },
+    ];
 
     return (
         <section className="panel-card overflow-hidden">
@@ -26,41 +72,7 @@ const Jobs = ({ jobs }: JobsProps) => {
                     Durable operations executed by the local agent.
                 </div>
             </div>
-            <div className="divide-y divide-divider">
-                {data?.items.length ? (
-                    data.items.map((job) => (
-                        <div
-                            key={job.id}
-                            className="grid gap-3 px-6 py-5 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-8"
-                        >
-                            <div className="flex min-w-0 items-center gap-3">
-                                <div className="icon-box size-9">
-                                    <Clock3 className="size-4" />
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="truncate font-medium">{job.kind}</div>
-                                    <div className="truncate font-mono text-xs text-foreground-400">
-                                        {job.id}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="text-sm text-foreground-500">{dt(job.createdAt)}</div>
-                            <span
-                                className={cn(
-                                    "w-fit rounded-full px-2.5 py-1 text-xs capitalize",
-                                    statusClass(job.status),
-                                )}
-                            >
-                                {job.status}
-                            </span>
-                        </div>
-                    ))
-                ) : (
-                    <div className="px-6 py-12 text-center text-sm text-foreground-400">
-                        No jobs have run yet.
-                    </div>
-                )}
-            </div>
+            <Table table={table} columns={columns} data={data} />
         </section>
     );
 };

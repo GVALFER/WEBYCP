@@ -6,6 +6,7 @@ import (
 
 	"github.com/GVALFER/WEBYCP/internal/certificates"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite/dbgen"
 )
 
@@ -23,6 +24,34 @@ func (s *Store) Certificates(ctx context.Context, userID string, admin bool) ([]
 		result = append(result, value)
 	}
 	return result, nil
+}
+
+func (s *Store) CertificatePage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[certificates.Certificate], error) {
+	total, err := s.queries.CountCertificates(ctx, dbgen.CountCertificatesParams{
+		IsAdmin: admin, UserID: userID,
+	})
+	if err != nil {
+		return pagination.Result[certificates.Certificate]{}, err
+	}
+	query = pagination.Clamp(query, total)
+	rows, err := s.queries.ListCertificatesPage(ctx, dbgen.ListCertificatesPageParams{
+		IsAdmin: admin, UserID: userID,
+		PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+	})
+	if err != nil {
+		return pagination.Result[certificates.Certificate]{}, err
+	}
+	items := make([]certificates.Certificate, 0, len(rows))
+	for _, row := range rows {
+		value, valueErr := s.certificateValue(ctx, row)
+		if valueErr != nil {
+			return pagination.Result[certificates.Certificate]{}, valueErr
+		}
+		items = append(items, value)
+	}
+	return pagination.Result[certificates.Certificate]{Items: items, Query: query, Total: total}, nil
 }
 
 func (s *Store) Certificate(ctx context.Context, id string) (certificates.Certificate, error) {

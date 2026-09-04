@@ -4,6 +4,7 @@ import { toast } from "@heroui/react";
 import { useCallback, useState } from "react";
 import { useSWRConfig } from "swr";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey } from "@/utils/pagination";
 
 export const useDatabaseAction = () => {
     const [pending, setPending] = useState(false);
@@ -15,12 +16,9 @@ export const useDatabaseAction = () => {
 
             try {
                 const response = await action();
-                await Promise.all([
-                    mutate("databases"),
-                    mutate("database-users"),
-                    mutate("database-grants"),
-                    mutate("jobs"),
-                ]);
+                await mutate((key) =>
+                    isPageKey(key, "databases", "database-users", "database-grants", "jobs"),
+                );
                 toast.success(success);
                 return response;
             } catch (error) {

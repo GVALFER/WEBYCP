@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/GVALFER/WEBYCP/internal/idgen"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 )
 
 type Service struct {
@@ -56,4 +57,10 @@ func (s *Service) Job(ctx context.Context, id string) (Job, []Step, error) {
 
 func (s *Service) Jobs(ctx context.Context) ([]Job, error) {
 	return s.repository.Jobs(ctx, 50)
+}
+
+func (s *Service) JobPage(
+	ctx context.Context, query pagination.Query,
+) (pagination.Result[Job], error) {
+	return s.repository.JobPage(ctx, query)
 }

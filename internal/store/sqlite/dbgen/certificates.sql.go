@@ -25,6 +25,25 @@ func (q *Queries) CertificatePendingJobExists(ctx context.Context, payload strin
 	return exists, err
 }
 
+const countCertificates = `-- name: CountCertificates :one
+SELECT COUNT(DISTINCT certificates.id) FROM certificates
+LEFT JOIN domains ON domains.id = certificates.domain_id
+LEFT JOIN account_members ON account_members.account_id = domains.account_id
+WHERE ?1 OR certificates.kind = 'panel' OR account_members.user_id = ?2
+`
+
+type CountCertificatesParams struct {
+	IsAdmin interface{} `json:"is_admin"`
+	UserID  string      `json:"user_id"`
+}
+
+func (q *Queries) CountCertificates(ctx context.Context, arg CountCertificatesParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCertificates, arg.IsAdmin, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCertificate = `-- name: CreateCertificate :one
 INSERT INTO certificates (
     id, domain_id, node_id, kind, name, email, status, redirect_https,
@@ -212,6 +231,65 @@ type ListCertificatesParams struct {
 
 func (q *Queries) ListCertificates(ctx context.Context, arg ListCertificatesParams) ([]Certificate, error) {
 	rows, err := q.db.QueryContext(ctx, listCertificates, arg.Column1, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Certificate{}
+	for rows.Next() {
+		var i Certificate
+		if err := rows.Scan(
+			&i.ID,
+			&i.DomainID,
+			&i.NodeID,
+			&i.Kind,
+			&i.Name,
+			&i.Email,
+			&i.Status,
+			&i.RedirectHttps,
+			&i.ExpiresAt,
+			&i.RenewAfter,
+			&i.Error,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCertificatesPage = `-- name: ListCertificatesPage :many
+SELECT certificates.id, certificates.domain_id, certificates.node_id, certificates.kind, certificates.name, certificates.email, certificates.status, certificates.redirect_https, certificates.expires_at, certificates.renew_after, certificates.error, certificates.created_at, certificates.updated_at FROM certificates
+LEFT JOIN domains ON domains.id = certificates.domain_id
+LEFT JOIN account_members ON account_members.account_id = domains.account_id
+WHERE ?1 OR certificates.kind = 'panel' OR account_members.user_id = ?2
+GROUP BY certificates.id
+ORDER BY certificates.created_at DESC
+LIMIT ?4 OFFSET ?3
+`
+
+type ListCertificatesPageParams struct {
+	IsAdmin    interface{} `json:"is_admin"`
+	UserID     string      `json:"user_id"`
+	PageOffset int64       `json:"page_offset"`
+	PageSize   int64       `json:"page_size"`
+}
+
+func (q *Queries) ListCertificatesPage(ctx context.Context, arg ListCertificatesPageParams) ([]Certificate, error) {
+	rows, err := q.db.QueryContext(ctx, listCertificatesPage,
+		arg.IsAdmin,
+		arg.UserID,
+		arg.PageOffset,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}

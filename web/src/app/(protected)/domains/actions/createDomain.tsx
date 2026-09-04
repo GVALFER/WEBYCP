@@ -13,6 +13,7 @@ import { FormSelect } from "@/components/form/formSelect";
 import type { AccountListResponse, DomainJobResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
+import { isPageKey, pageKey } from "@/utils/pagination";
 import { domainField } from "@/utils/validation";
 
 type CreateDomainProps = {
@@ -31,7 +32,7 @@ const CreateDomain = ({ accounts }: CreateDomainProps) => {
     const [pending, startTransition] = useTransition();
     const { mutate } = useSWRConfig();
 
-    const { data } = useSWR<AccountListResponse>("accounts", {
+    const { data } = useSWR<AccountListResponse>(pageKey("accounts", { page: 1, size: 100 }), {
         fallbackData: accounts,
     });
 
@@ -50,7 +51,7 @@ const CreateDomain = ({ accounts }: CreateDomainProps) => {
                 try {
                     await api.post("domains", { json: values }).json<DomainJobResponse>();
                     form.reset({ accountId: values.accountId, name: "" });
-                    await Promise.all([mutate("domains"), mutate("jobs")]);
+                    await mutate((key) => isPageKey(key, "domains", "jobs"));
                     setOpen(false);
                     toast.success("Domain queued for creation");
                 } catch (error) {

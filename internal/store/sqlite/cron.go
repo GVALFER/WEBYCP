@@ -6,6 +6,7 @@ import (
 
 	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite/dbgen"
 )
 
@@ -84,6 +85,28 @@ func (s *Store) CronJobs(ctx context.Context, userID string, admin bool) ([]cron
 		return nil, err
 	}
 	return cronJobValues(rows), nil
+}
+
+func (s *Store) CronJobPage(
+	ctx context.Context, userID string, admin bool, query pagination.Query,
+) (pagination.Result[cronjob.CronJob], error) {
+	total, err := s.queries.CountCronJobs(ctx, dbgen.CountCronJobsParams{
+		IsAdmin: admin, UserID: userID,
+	})
+	if err != nil {
+		return pagination.Result[cronjob.CronJob]{}, err
+	}
+	query = pagination.Clamp(query, total)
+	rows, err := s.queries.ListCronJobsPage(ctx, dbgen.ListCronJobsPageParams{
+		IsAdmin: admin, UserID: userID,
+		PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
+	})
+	if err != nil {
+		return pagination.Result[cronjob.CronJob]{}, err
+	}
+	return pagination.Result[cronjob.CronJob]{
+		Items: cronJobValues(rows), Query: query, Total: total,
+	}, nil
 }
 
 func (s *Store) CronJob(ctx context.Context, id string) (cronjob.CronJob, error) {

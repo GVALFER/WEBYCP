@@ -34,12 +34,34 @@ SELECT EXISTS(
 -- name: ListAccounts :many
 SELECT * FROM accounts ORDER BY created_at ASC;
 
+-- name: CountAccounts :one
+SELECT COUNT(*) FROM accounts;
+
+-- name: ListAccountsPage :many
+SELECT * FROM accounts
+ORDER BY created_at ASC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
 -- name: ListUserAccounts :many
 SELECT accounts.*
 FROM accounts
 JOIN account_members ON account_members.account_id = accounts.id
 WHERE account_members.user_id = ?
 ORDER BY accounts.created_at ASC;
+
+-- name: CountUserAccounts :one
+SELECT COUNT(*)
+FROM accounts
+JOIN account_members ON account_members.account_id = accounts.id
+WHERE account_members.user_id = ?;
+
+-- name: ListUserAccountsPage :many
+SELECT accounts.*
+FROM accounts
+JOIN account_members ON account_members.account_id = accounts.id
+WHERE account_members.user_id = sqlc.arg(user_id)
+ORDER BY accounts.created_at ASC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
 
 -- name: UpdateAccountStatus :exec
 UPDATE accounts
