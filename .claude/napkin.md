@@ -99,8 +99,8 @@
    Do instead: fetch `auth/me` in the protected Next.js server layout, redirect before sending HTML, and seed one client session context; use the reqly `401` handler only for expired protected requests and exclude `auth/login` and `auth/me`.
 7. **[2026-09-04] Format panel dates in the administrator timezone**
    Do instead: persist the IANA timezone on the administrator, expose it on the session, and format client dates through `useTimezone().dt` with UTC as the migration and runtime fallback.
-8. **[2026-09-04] Packages belong to hosting Accounts**
-   Do instead: attach future resource limits to Accounts, never panel-user identities, and defer Packages and DNS until the Next.js migration is stable.
+8. **[2026-09-04] Keep pre-release changes free of compatibility hacks**
+   Do instead: replace obsolete development models cleanly, avoid dual reads/writes, deprecated routes, fabricated fallbacks, and temporary adapters, then stop after each reviewed step.
 9. **[2026-09-04] Load each route's initial data in its Server Component**
    Do instead: make every route `page.tsx` fetch its initial data on the server, pass typed props to an adjacent Client Component, and seed its explicit SWR hook through `fallbackData`; use `useTable` only for URL query state and keep rows, loading state, and `Paginate` rendering inside `Table`; namespace multiple table states with dotted parameters such as `plans.page` while keeping API keys as `?page=&size=`; keep the shared shell in the four `components/layout` files and do not use a `features` directory.
 10. **[2026-09-04] Keep all mutation logic in action components**

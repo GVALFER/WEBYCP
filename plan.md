@@ -1,785 +1,672 @@
-# WEBYCP Implementation Plan
+# WEBYCP Product and Implementation Plan
 
-## 1. Purpose
+## 1. Product Direction
 
-WEBYCP is an open-source hosting control panel. Version 1 will manage one
-Ubuntu 24.04 LTS server while preserving clear upgrade paths for additional
-nodes, operating systems, web servers, database engines, PHP versions, and
-backup destinations.
+WEBYCP is an open-source, self-hosted hosting control panel for Ubuntu 24.04
+LTS. It starts as a single-server panel, but its contracts must allow more
+servers, service implementations, runtime versions, database engines, DNS
+providers, and backup destinations later.
 
-The first release must remain small enough to build and operate safely. Its
-architecture must support growth through stable contracts and isolated
-implementations, not through premature microservices or speculative features.
+The product must remain understandable while it grows. Extensibility comes
+from explicit domain boundaries and small driver interfaces, not speculative
+abstractions, generic entity stores, or premature microservices.
 
-## 2. Product Principles
+### Working rules
 
-1. **Safe by default**
-    - The public API never runs as root.
-    - The privileged agent exposes a small, typed operation surface.
-    - User input never becomes an arbitrary shell command.
-    - Configurations are validated before activation and written atomically.
+1. Implement one reviewed step at a time.
+2. Keep the smallest complete implementation for the current requirement.
+3. Prefer explicit state and typed contracts over implicit defaults.
+4. Reuse code only when behavior is genuinely shared.
+5. Keep feature-specific code beside its feature.
+6. Do not add compatibility fallbacks, dual reads, dual writes, deprecated
+   routes, or temporary adapters before the first public release.
+7. Replace obsolete development structures cleanly after taking a snapshot;
+   do not preserve test data at the cost of permanent complexity.
+8. Stop after every roadmap step for review before expanding the scope.
 
-2. **Simple first deployment**
-    - One server, two Go processes, one Next.js process, and one SQLite database.
-    - Native Ubuntu packages are preferred over external repositories.
-    - systemd owns process lifecycle and journald owns process logs.
-
-3. **Scalable contracts**
-    - Every managed resource belongs to a node, even when v1 has one local node.
-    - Driver interfaces describe capabilities rather than specific products.
-    - The local agent protocol is versioned and can later run remotely over mTLS.
-    - Core services do not depend directly on SQLite or a concrete driver.
-
-4. **No unnecessary duplication**
-    - OpenAPI is the source of truth for HTTP contracts and generated types.
-    - Shared behavior is extracted when it is genuinely reusable or
-      security-critical.
-    - Feature-specific helpers remain with their feature.
-    - Generic dumping-ground packages are avoided.
-
-5. **Observable operations**
-    - System changes run as persistent jobs.
-    - Jobs expose steps, timestamps, outcomes, and safe logs.
-    - Administrative actions are recorded in an audit log.
-
-## 3. Confirmed Technology Baseline
+## 2. Confirmed Stack
 
 ### Frontend
 
-- Next.js App Router with React and TypeScript
-- Server-rendered authentication state in protected layouts
-- HeroUI for UI components
-- Tailwind CSS for styling
+- Next.js App Router, React, and TypeScript
+- Server Components for authentication and initial route data
+- Client Components only where interaction is required
+- HeroUI for components, modals, confirmation dialogs, toasts, and spinners
+- Tailwind CSS for styling and design tokens
 - Lucide for icons
-- SWR for client server-state cache, focus revalidation, and mutations
-- `reqly-js` as the HTTP transport
-- `urlstate-js` for filters, search, pagination, tabs, and other URL state
+- SWR for client-side server-state synchronization
+- `reqly-js` for HTTP requests
+- `urlstate-js` for filters, search, tabs, sorting, and pagination in the URL
+- React Hook Form with `valibotResolver` for forms
+- Day.js for display formatting in the administrator's IANA timezone
+- No Prettier; frontend formatting remains owned by the editor
 
-The production frontend runs as a Next.js standalone service. It resolves the
-session during server rendering and proxies `/api/v1` to the loopback Go API so
-the browser keeps one origin.
+### Control plane
 
-### Backend
+- Go REST API running without root privileges
+- REST/JSON contracts described by OpenAPI
+- Generated Go and TypeScript contract types
+- SQLite for control-plane metadata
+- `sqlc` for typed database queries
+- Forward-only SQL migrations during development
+- Structured logging with `slog`
 
-- Go for both the REST API and privileged agent
-- Standard `net/http` where practical
-- REST/JSON APIs described with OpenAPI
-- SQLite for panel metadata
-- `sqlc` for typed database access
-- Versioned SQL migrations
-- Structured logging through Go `slog`
+### Host execution
 
-### Managed Host Baseline
+- Privileged Go Agent
+- Versioned typed protocol over a protected Unix socket
+- Ubuntu 24.04 LTS, amd64 initially
+- systemd for process lifecycle
+- journald for service logs
 
-- Ubuntu 24.04 LTS
-- amd64 initially
-- Nginx from the Ubuntu repositories
-- PHP-FPM 8.3 from the Ubuntu repositories
-- MySQL 8.0 from the Ubuntu repositories
-- system cron/crontab integration
-- Local backup storage
-- ACME certificates, initially through Let's Encrypt
+### Initial service implementations
 
-Exact patch versions are owned by Ubuntu security updates and must not be
-hard-coded into domain logic.
+| Capability | Initial implementation | Future implementations |
+| --- | --- | --- |
+| Web server | Nginx | Apache, OpenLiteSpeed |
+| Runtime | PHP-FPM 8.3 | Multiple PHP versions, Node.js, Python, Go |
+| Database | MySQL 8.0 | MariaDB, PostgreSQL |
+| Scheduler | crontab | systemd timers, distributed scheduler |
+| Backup storage | Local filesystem | S3-compatible, R2, remote SSH |
+| Certificates | Let's Encrypt HTTP-01 | Other ACME CAs, DNS-01 |
+| DNS | Decision required in Step 5 | PowerDNS, Cloudflare, other providers |
 
-## 4. High-Level Architecture
+Drivers are Go interfaces compiled with the application in v1. Dynamic binary
+plugins are not required. A second driver is only introduced when its feature
+is implemented.
+
+## 3. Runtime Architecture
 
 ```text
-Browser -> Nginx -> webycp-web         unprivileged
-                       |-- Next.js SSR and client assets
-                       `-- /api/v1 proxy
-                              |
-                              v
-webycp-server                         unprivileged
-   |-- REST API /api/v1
-   |-- authentication and authorization
-   |-- SQLite metadata
-   |-- job queue and workers
-   |-- audit log
+Browser
    |
-   | HTTP/JSON over a protected Unix socket
    v
-webycp-agent                          root
-   |-- account operations
-   |-- Nginx driver
-   |-- PHP-FPM driver
-   |-- MySQL driver
-   |-- cron driver
-   |-- certificate driver
-   `-- backup engine and storage driver
+Nginx
+   |-- Next.js standalone web service
+   |      |-- SSR authentication
+   |      |-- SSR route data
+   |      `-- client application
+   |
+   `-- /api/v1 -> webycp-server
+                        |
+                        |-- authentication and authorization
+                        |-- SQLite metadata
+                        |-- jobs and audit events
+                        `-- Unix socket -> webycp-agent (root)
+                                                |
+                                                |-- system accounts
+                                                |-- service configuration
+                                                |-- databases
+                                                |-- certificates
+                                                |-- scheduled tasks
+                                                `-- backups
 ```
 
-### Production Request Path
+### Responsibility boundaries
+
+`webycp-web` owns rendering and browser interaction. It never performs host
+operations directly.
+
+`webycp-server` owns authentication, authorization, desired state, validation,
+metadata, jobs, and audit events. It runs unprivileged and never writes service
+configuration or invokes arbitrary shell commands.
+
+`webycp-agent` owns the smallest possible set of privileged host operations. It
+accepts typed operations, validates every identifier and path, writes files
+atomically, tests service configuration before activation, and rolls back
+failed changes.
+
+V1 uses one local server. Every managed resource still carries a `serverId` so
+the model can later support remote Agents without rewriting ownership.
+
+## 4. Frontend Architecture Rules
+
+### Route data flow
+
+Every protected route follows one sequence:
 
 ```text
-HTTPS client
-   -> dedicated panel listener/reverse proxy
-   -> webycp-web on loopback port 3000
-      -> Next.js routes and SSR
-      -> /api/v1/* proxy to webycp-server on loopback port 8080
+page.tsx (Server Component)
+   -> fetch initial typed data
+   -> pass data as props
+route client component
+   -> seed SWR with fallbackData
+   -> render shared components
 ```
 
-The panel Nginx configuration must be isolated from generated customer site
-configuration. A failed customer configuration must never replace the last
-known valid Nginx configuration.
+`fallbackData` is only the SWR mechanism for seeding the cache with the SSR
+response. It is not a compatibility fallback and must not fabricate missing
+business data.
 
-## 5. Process Responsibilities
+Additional rules:
 
-### `webycp-server`
+- Do not use `refreshInterval` or background polling by default.
+- Revalidate on focus where appropriate.
+- Mutations call `mutate` only for affected keys after success.
+- A `401` from an expired protected request redirects to login through the
+  shared API status handler; authentication endpoints are excluded.
+- The protected layout resolves the session on the server before HTML is sent.
+- Backend timestamps remain UTC; the browser formats them with
+  `useTimezone().dt`.
 
-Runs under an unprivileged `webycp` system account and owns:
+### Components and actions
 
-- Authentication, sessions, and authorization
-- REST input validation and response serialization
-- Panel metadata and database migrations
-- Desired resource state
-- Persistent jobs and retry policy
-- Audit records
-- Health and readiness endpoints
-- Calls to the local Agent
+- Route client components own presentation and explicit SWR hooks.
+- POST, PUT, PATCH, and DELETE logic belongs in focused components under the
+  adjacent `actions` directory.
+- Action components own validation, pending state, API mutation, toast, and
+  cache mutation.
+- Forms use React Hook Form, `valibotResolver`, the shared `Form`, and shared
+  field components.
+- Create and edit forms open in HeroUI modals instead of permanent sidebars.
+- Destructive actions use the shared HeroUI `Confirm` component.
+- Pending buttons retain their label and show a HeroUI `Spinner`.
+- Native `alert`, `confirm`, and `prompt` are forbidden.
 
-It must not modify system users, `/etc`, Nginx, PHP-FPM, MySQL, crontabs, or
-backup directories directly.
+### Tables and URL state
 
-### `webycp-web`
+- Lists use the shared `Table` and `Paginate` components.
+- `Table` receives the typed response and renders rows, empty state, loading
+  state, and pagination internally.
+- `useTable` owns URL state only; it does not fetch data.
+- The route's SWR key changes when `urlstate-js` changes the URL query.
+- Multiple tables use dotted namespaces such as `plans.page` and
+  `archives.size`.
+- APIs continue receiving ordinary `page` and `size` parameters.
 
-Runs under the unprivileged `webycp` system account and owns:
+### Reuse and project structure
 
-- Next.js routes and server rendering
-- Server-side session resolution in protected layouts
-- Static frontend assets
-- Same-origin proxying of `/api/v1` to `webycp-server`
+- Pure reusable frontend functions live in `web/src/utils`.
+- Configured integrations live in `web/src/lib`.
+- OpenAPI-generated contracts live in `web/src/contracts`.
+- Shared UI belongs in `web/src/components`.
+- Route-only schemas, formatters, components, and actions stay in the route.
+- Do not create a `features` directory or a generic frontend dumping ground.
+- Go reuse remains in small purpose-named packages such as `fsx`, `execx`, and
+  `validate`; do not create a generic `utils` package.
 
-### `webycp-agent`
+## 5. Design System and Navigation
 
-Runs as root and owns only host-level execution:
+The next implementation step is visual only. It must establish one coherent
+design system before any domain refactor.
 
-- System user and directory management
-- Atomic configuration writes
-- Ownership and permission changes
-- Service validation and reloads
-- MySQL administrative operations
-- Cron installation and removal
-- Certificate issue, install, renew, inspect, and revoke operations
-- Backup creation and restore operations
+### Visual direction
 
-The Agent listens only on `/run/webycp/agent.sock` in v1. Socket filesystem
-permissions authenticate the API service. The protocol is explicitly versioned
-so a future controller can use the same semantics over TCP with mTLS.
+- Modern, quiet control-panel interface with strong information hierarchy
+- Light theme based on the referenced soft mint/off-white atmosphere
+- Dark theme based on the referenced deep navy/teal atmosphere
+- Neutral content surfaces with restrained accent color
+- Consistent typography, spacing, radii, borders, shadows, and focus states
+- Dense enough for infrastructure management without looking dated
+- Accessible contrast and complete keyboard focus behavior
+- Responsive sidebar and content without duplicating desktop/mobile markup
 
-The Agent must never accept a raw command string from the REST API.
+Exact color tokens are selected and reviewed in Step 1. Components consume
+semantic tokens such as background, surface, elevated surface, border,
+foreground, muted foreground, accent, success, warning, and danger. Pages must
+not introduce isolated hard-coded palettes.
 
-## 6. Repository Structure
+### Target navigation
 
 ```text
-webycp/
-|-- api/
-|   |-- public.openapi.yaml
-|   `-- agent.openapi.yaml
-|
-|-- web/
-|   |-- src/
-|   |   |-- app/
-|   |   |   |-- (protected)/
-|   |   |   |   |-- (root)/
-|   |   |   |   |-- accounts/
-|   |   |   |   |-- domains/
-|   |   |   |   |-- certificates/
-|   |   |   |   |-- databases/
-|   |   |   |   |-- cron/
-|   |   |   |   |-- backups/
-|   |   |   |   |-- jobs/
-|   |   |   |   `-- profile/
-|   |   |   `-- login/
-|   |   |-- components/
-|   |   |   `-- layout/
-|   |   |-- contracts/
-|   |   |   |-- schema.d.ts
-|   |   |   `-- types.ts
-|   |   |-- lib/
-|   |   |   |-- api.ts
-|   |   |   `-- swr.ts
-|   |   |-- providers/
-|   |   `-- utils/
-|   |       |-- classnames.ts
-|   |       |-- format.ts
-|   |       `-- validation.ts
-|   |-- package.json
-|   `-- next.config.ts
-|
-|-- cmd/
-|   |-- webycp-server/
-|   |   `-- main.go
-|   `-- webycp-agent/
-|       `-- main.go
-|
-|-- internal/
-|   |-- accounts/
-|   |-- audit/
-|   |-- auth/
-|   |-- backups/
-|   |-- certificates/
-|   |-- cron/
-|   |-- databases/
-|   |-- domains/
-|   |-- jobs/
-|   |-- nodes/
-|   |-- agent/
-|   |   |-- client/
-|   |   |-- protocol/
-|   |   `-- server/
-|   |-- drivers/
-|   |   |-- backup/local/
-|   |   |-- certificate/acme/
-|   |   |-- cron/crontab/
-|   |   |-- database/mysql/
-|   |   |-- runtime/phpfpm/
-|   |   `-- web/nginx/
-|   |-- execx/
-|   |-- fsx/
-|   |-- httpapi/
-|   |-- store/sqlite/
-|   `-- validate/
-|
-|-- migrations/
-|-- packaging/
-|   |-- systemd/
-|   `-- ubuntu/
-|-- scripts/
-|-- tests/
-|   |-- contract/
-|   `-- integration/
-|-- go.mod
-|-- Makefile
-|-- plan.md
-`-- README.md
+Overview
+
+Accounts
+|-- Accounts
+|-- Packages
+`-- Templates                         later
+
+Websites
+|-- Websites
+|-- Domains
+|-- Aliases
+`-- Certificates
+
+DNS
+|-- Zones
+|-- Providers
+`-- Nameservers
+
+Databases
+|-- Databases
+|-- Users
+`-- Permissions
+
+File Access                           later
+|-- File Manager
+`-- SFTP / FTP Accounts
+
+Backups
+|-- Plans
+|-- Archives
+|-- Restore
+`-- Destinations
+
+Scheduled Tasks
+|-- Tasks
+`-- Script Library                    later
+
+Monitoring
+|-- Metrics
+|-- Logs
+`-- Alerts                            later
+
+Security                              later
+|-- Overview
+|-- Firewall
+|-- SSH
+`-- Protection
+
+Applications                          later
+|-- Catalog
+|-- Containers
+`-- Compose
+
+Mail                                  later
+|-- Domains
+|-- Mailboxes
+|-- Aliases and Forwarders
+`-- Queue
+
+System
+|-- Servers
+|-- Services
+|-- Jobs
+|-- Updates                           later
+|-- Audit Log
+`-- Settings
 ```
 
-### Reuse Rules
+The sidebar uses expandable groups and clear active states. Unimplemented
+features remain hidden rather than disabled or backed by placeholder pages.
+The panel's own certificate belongs under `System > Settings > Panel SSL`, not
+under hosted website certificates.
 
-- `web/src/utils` contains pure, framework-independent frontend helpers.
-- `web/src/lib` contains configured integrations such as the API client and SWR
-  configuration.
-- Each route loads its initial data in `page.tsx`, passes it to the adjacent
-  client component, and seeds SWR through `fallbackData`.
-- Route-specific mutation forms and controls stay in the route's `actions`
-  directory. Page clients do not issue POST, PATCH, PUT, or DELETE requests.
-- Submitted forms use React Hook Form with `valibotResolver`, the shared
-  `Form` context wrapper, and reusable fields from `web/src/components/form`.
-  Validation belongs in the resolver rather than manual `safeParse` calls in
-  submit handlers.
-- Resource creation forms open in the shared HeroUI `FormModal`; resource pages
-  show compact create actions beside their list headings instead of permanent
-  form sidebars. Async buttons keep their action label visible and use HeroUI
-  `isPending` with a `Spinner`; confirmation dialogs stay open until completion.
-- Resource lists use the shared `Table` and `Paginate` components. Paginated
-  routes parse `page` and `size` from `urlstate-js` during SSR, use the same
-  values in the SWR request key, and return `page`, `size`, `totalItems`, and
-  `totalPages` from SQL-backed API pagination. Routes with multiple tables use
-  dotted URL namespaces such as `plans.page` and `artifacts.size`; API request
-  keys remain the resource's standard `?page=&size=` form.
-- Route-specific formatters, schemas, and hooks stay inside the route.
-- Go does not use a generic `utils` package.
-- Reusable Go behavior uses focused packages such as:
-    - `fsx` for atomic files, permissions, and ownership
-    - `execx` for safe command invocation and bounded output capture
-    - `validate` for shared names, domains, paths, and resource limits
-- A helper is extracted when it has multiple real consumers or when a single
-  implementation is necessary for correctness or security.
+## 6. Target Domain Model
 
-## 7. Domain Model
+### Identity and hosting ownership
 
-The initial schema should contain explicit tables rather than a generic
-entity/value model.
+- `PanelUser`: a person who authenticates to the control panel
+- `Session`: a revocable server-side login session
+- `Account`: a hosting isolation boundary mapped to a managed Linux identity
+- `Package`: resource limits assigned to an Account
+- `AccountMember`: future user-to-account role mapping
 
-### Identity and tenancy
+Panel users and hosting Accounts are separate concepts. Package limits always
+belong to Accounts, never directly to panel users.
 
-- `users`: people who authenticate to the panel
-- `sessions`: revocable server-side sessions
-- `accounts`: hosting isolation and ownership boundary
-- `account_members`: future-compatible user/account membership and role mapping
+### Servers and capabilities
 
-Panel users and Linux hosting accounts are separate concepts. A hosting account
-maps to one managed Linux user in v1.
+- `Server`: a host managed by an Agent; currently one local server
+- `ServerCapability`: installed and available drivers, services, and versions
+- `ServiceState`: desired and observed service state
 
-### Infrastructure
+The UI uses `Server`, not `Node`, to avoid confusion with Node.js. The internal
+transport may continue using node terminology until its dedicated refactor.
 
-- `nodes`: managed hosts; contains one local node in v1
-- `domains`: primary hosted domains
-- `domain_aliases`: aliases attached to a primary domain
-- `databases`: managed customer databases
-- `database_users`: managed MySQL users
-- `database_grants`: explicit access relationships
-- `cron_jobs`: desired scheduled commands and status
-- `certificates`: ACME certificate lifecycle and expiry state
-- `certificate_names`: certificate SAN names
-- `backup_plans`: schedule, retention, and scope
-- `backup_runs`: execution state
-- `backup_artifacts`: stored backup metadata and checksums
-- `jobs`: durable asynchronous operations
-- `job_steps`: safe step-level output and timing
-- `audit_events`: actor, action, resource, result, and timestamp
+### Websites and hostnames
 
-Every managed resource includes a globally unique ID, `node_id`, timestamps,
-desired status, observed status, and a safe last-error field where applicable.
-IDs and timestamps must not depend on one SQLite instance so they remain valid
-after a future PostgreSQL or multi-node migration.
-
-## 8. Driver Model
-
-Interfaces are defined close to the core service that consumes them. Concrete
-host implementations live under focused `internal/agent` capability packages
-and are registered at build time. Go runtime plugins are out of scope.
-
-### Initial capabilities
-
-| Capability     | v1 implementation  | Future implementations              |
-| -------------- | ------------------ | ----------------------------------- |
-| Web server     | Nginx              | Apache, OpenLiteSpeed               |
-| Database       | MySQL              | MariaDB, PostgreSQL                 |
-| Runtime        | PHP-FPM 8.3        | Multiple PHP versions               |
-| Scheduler      | crontab            | systemd timers                      |
-| Certificate    | ACME/Let's Encrypt | Other ACME CAs, manual certificates |
-| Backup storage | Local filesystem   | S3-compatible, Cloudflare R2        |
-
-### Driver requirements
-
-Every mutating driver operation must be:
-
-- Idempotent
-- Context-aware and cancellable where safe
-- Validated before execution
-- Explicit about capabilities
-- Safe to retry or explicitly marked non-retryable
-- Observable through structured results
-- Covered by unit or golden-file tests
-
-The code must not introduce an abstraction for a second implementation before a
-real boundary exists. The v1 interface should cover only operations required by
-the v1 use cases.
-
-## 9. REST and Agent Contracts
-
-### Public API
-
-- Base path: `/api/v1`
-- JSON request and response bodies
-- Consistent error envelope with stable machine-readable codes
-- Pagination and filtering encoded in query parameters
-- `202 Accepted` plus a `jobId` for host-changing operations
-- Request IDs on every response
-- Idempotency keys for retry-sensitive creation operations
-
-Example:
+`Website` is the hosted application/vhost aggregate:
 
 ```text
-POST /api/v1/domains
-  -> validate and authorize
-  -> persist desired domain and job in one SQLite transaction
-  -> return 202 with jobId
-  -> worker dispatches typed operation to the Agent
-  -> observed state and job outcome are persisted
+Website
+|-- accountId
+|-- serverId
+|-- name
+|-- kind: php initially
+|-- documentRoot
+|-- webDriver: nginx initially
+|-- runtimeDriver: phpfpm initially
+|-- runtimeVersion: 8.3 initially
+`-- enabled
 ```
 
-### Agent API
+`WebsiteDomain` represents a hostname binding:
 
-- Separate OpenAPI contract
-- HTTP/JSON over Unix socket in v1
-- No public listener
-- No browser authentication concepts
-- No raw shell or unrestricted filesystem endpoints
-- Version/capability handshake
-- Idempotency key on every mutating operation
-- Bounded and redacted output
+```text
+WebsiteDomain
+|-- websiteId
+|-- hostname
+|-- kind: primary | alias
+`-- enabled
+```
 
-Generated Go and TypeScript types should prevent manual DTO duplication.
+Primary domains and aliases share one normalized global hostname namespace.
+The database and service layer enforce collision rules once rather than
+duplicating domain and alias logic. Redirect bindings are added only when that
+feature is implemented.
 
-## 10. Persistent Jobs and Reconciliation
+PHP version and webserver are explicit per Website. Server-level defaults may
+preselect a form value, but persisted Websites never rely on an empty value to
+mean “use default”.
 
-Host mutations cannot be part of the same atomic transaction as SQLite. The
-system therefore uses desired and observed state:
+When a second Website kind is implemented, its typed configuration is added at
+that time. V1 does not create speculative nullable configuration tables.
 
-1. Validate and authorize the requested change.
-2. Persist desired state and a queued job in one database transaction.
-3. Lock the affected logical resource.
-4. Execute a typed Agent operation.
-5. Validate generated service configuration.
-6. Activate changes atomically.
-7. Persist observed state, job steps, and audit outcome.
-8. On failure, keep the previous known-good host configuration and expose the
-   error without claiming the resource is healthy.
+### Hosted certificates
 
-On restart, interrupted jobs are recovered and reconciled according to their
-idempotency and retry policy. Only independent resources may run concurrently.
+- `Certificate`: lifecycle, issuer, expiry, renewal state, and Website scope
+- `CertificateName`: normalized SAN names covered by a certificate
 
-SWR revalidates on focus and mutations update affected cache keys explicitly.
-Active jobs are not polled continuously. Server-Sent Events may be added later
-without changing the job model.
+Hosted certificates remain separate from the panel listener certificate.
+Certificate jobs derive allowed names from the Website's bindings.
 
-## 11. SSL/TLS Scope for v1
+### DNS
 
-SSL/TLS is a complete v1 requirement for both hosted domains and the panel.
+- `DNSProvider`: driver configuration and encrypted credentials where required
+- `DNSZone`: an authoritative DNS zone owned by an Account
+- `DNSRecord`: a typed record inside a zone
 
-### Hosted domains
+Website bindings and DNS zones are independent resources. Creating a Website
+does not silently create or take ownership of DNS. An explicit assisted flow
+may link them later.
 
-- ACME through Let's Encrypt
-- HTTP-01 challenge
-- DNS preflight before requesting a certificate
-- Primary domain and eligible aliases included as SANs
-- HTTP to HTTPS redirect enabled by default
-- Certificate status and expiry visible in the UI
-- Automatic renewal jobs
-- Atomic certificate and key installation
-- `nginx -t` before every Nginx reload
-- Safe fallback to the last valid configuration
+### Databases
 
-Aliases that do not resolve to the managed node must not block certificates for
-otherwise valid names without a clear user-visible explanation.
+- `Database`
+- `DatabaseUser`
+- `DatabaseGrant`
 
-### Panel certificate
+They remain separate resources even if the common create flow can provision a
+database, user, and grant in one modal.
 
-- Installation starts with an explicitly identified bootstrap state.
-- Once a panel hostname resolves correctly, an ACME certificate is issued.
-- Panel and customer certificate configuration remain isolated.
-- Certificate renewal must not require a full panel reinstall.
+### Scheduled tasks
 
-### Deferred certificate features
+The product resource is `ScheduledTask`; `crontab` is its first driver.
 
-- Wildcard certificates and DNS-01
-- User-provided custom certificates
-- Additional ACME providers
-- External secret managers
+```text
+ScheduledTask
+|-- accountId
+|-- serverId
+|-- kind: command | http | backup | maintenance
+|-- schedule
+|-- target
+|-- runAs
+|-- enabled
+`-- driver: crontab initially
+```
 
-ACME protocol and cryptography must use a maintained implementation. WEBYCP
-must not implement the protocol or certificate primitives from scratch.
+V1 exposes only task kinds that can be validated and safely scoped. The public
+API never accepts unrestricted root commands. Backup plans may reuse the
+scheduler internally while remaining under the Backups section in the UI.
 
-## 12. V1 Functional Scope
+### Backups and operations
+
+- `BackupPlan`: scope, schedule, retention, and destination
+- `BackupRun`: one execution and its result
+- `BackupArtifact`: stored archive metadata and checksum
+- `Job`: durable asynchronous control-plane operation
+- `JobStep`: observable operation phase
+- `AuditEvent`: requested action and final system outcome
+
+## 7. API, Jobs, and Security Rules
+
+- Public endpoints are resource-oriented REST, not `action=` RPC endpoints.
+- Read operations use GET and never expose generic table access.
+- OpenAPI is the source of truth for public and Agent contracts.
+- Host mutations create durable jobs with explicit states.
+- Retried Agent operations are idempotent or detect completed work safely.
+- Authentication uses server-side sessions in `HttpOnly` cookies.
+- Protected mutations require CSRF validation and authorization.
+- Passwords and generated database credentials are never returned twice.
+- Secrets are not written to logs, jobs, audit payloads, or repository files.
+- Host paths are derived from validated resource IDs and trusted roots.
+- Service files are written atomically, validated, activated, and rolled back
+  on failure.
+- All backend timestamps and schedules are stored and executed in UTC.
+- The administrator's timezone affects display only.
+
+## 8. Pre-release Schema Strategy
+
+Nothing is in public production yet, so schema cleanup must favor the final
+model instead of compatibility code.
+
+- Snapshot the development VPS before destructive schema work.
+- Use one canonical model after each refactor.
+- Do not keep legacy endpoints or old/new database representations together.
+- Do not add aliases solely to preserve unfinished frontend code.
+- Rebuild disposable test data when that is cleaner than migration scaffolding.
+- Preserve real test data only when explicitly requested.
+- Squash development migrations into a clean baseline before the first public
+  release.
+- After the first public release, migrations become permanent and backwards
+  compatibility follows a documented policy.
+
+## 9. Version 1 Scope
 
 ### Included
 
-- Installer-generated first-admin credentials and mandatory password change
-- Session authentication and basic admin/user authorization
-- Hosting accounts backed by isolated Linux users
-- Domains, aliases, document roots, and enable/disable state
-- Nginx site configuration
-- Per-account PHP-FPM pools using PHP 8.3
-- ACME certificates and renewal
-- MySQL databases, users, passwords, and grants
-- Cron jobs executed as the hosting account
-- Local scheduled and on-demand backups
-- Restore of files, databases, and WEBYCP resource metadata
-- Retention and artifact checksums
-- Persistent jobs and visible job history
-- Audit log
-- Service and node health
-- Native systemd units and Ubuntu installer
-- Safe upgrade and database migration path
+- Installer-generated administrator credentials and forced password change
+- Administrator profile and display timezone
+- One local Ubuntu 24.04 Server and Agent
+- Hosting Accounts and Packages
+- PHP Websites with domains and aliases
+- Nginx and PHP-FPM 8.3
+- Hosted and panel Let's Encrypt certificates
+- MySQL databases, users, and grants
+- Scheduled Tasks using the crontab driver
+- Local backup plans, archives, verification, and restore
+- DNS zones, records, and one selected initial DNS driver
+- Durable Jobs and Audit Log
+- Native installation, upgrade, rollback, and recovery procedures
 
-### Explicitly excluded
+### Deferred
 
-- Email hosting
-- Authoritative DNS hosting
-- File manager and browser terminal
-- FTP server
-- Firewall management
-- Reseller plans, billing, and subscriptions
-- Containers or per-site virtual machines
-- Multiple managed nodes in production
+- Remote multi-server control
+- Apache and OpenLiteSpeed
+- Multiple PHP versions and non-PHP Website kinds
+- MariaDB, PostgreSQL, MongoDB, and Redis management
+- Mail hosting
+- File Manager and FTP server management
+- Docker, application catalog, and extension marketplace
+- Advanced firewall, WAF, intrusion detection, and malware scanning
 - High-availability control plane
-- Apache and LiteSpeed implementations
-- Multiple installed PHP versions
-- Remote backup storage
-- Wildcard certificate automation
-- AI-controlled infrastructure operations
-
-## 13. Filesystem and Service Layout
-
-Initial target paths:
-
-```text
-/etc/webycp/                         application configuration
-/var/lib/webycp/server/              SQLite and unprivileged durable state
-/home/.webycp-trash/                 root-controlled deleted account data
-/var/lib/webycp/acme/                root-controlled HTTP-01 challenge data
-/etc/letsencrypt/live/webycp-*/      root-controlled certificate material
-/var/backups/webycp/                 local backup artifacts
-/run/webycp/agent.sock               privileged Agent socket
-/home/wcp_<account-id-prefix>/       hosting account home and site data
-/home/wcp_<account-id-prefix>/.webycp-trash/ recoverable deleted site data
-/etc/nginx/webycp/                   WEBYCP-owned Nginx includes
-/etc/php/8.3/fpm/pool.d/webycp-*.conf
-```
-
-Exact paths must be verified against a clean Ubuntu 24.04 installation before
-they become a compatibility contract.
-
-Systemd units:
-
-- `webycp-server.service`
-- `webycp-agent.service`
-- `webycp-web.service`
-
-The installer must never overwrite unrelated user-managed service
-configuration. WEBYCP edits only files and include directories it owns.
-
-## 14. Security Baseline
-
-- API service runs without root privileges.
-- Agent socket is accessible only to the API service group.
-- Session cookies are Secure, HttpOnly, and SameSite protected.
-- State-changing browser requests include CSRF protection.
-- Passwords use a modern password-hashing function with calibrated parameters.
-- Login attempts are rate limited and audited.
-- Sensitive values are redacted from logs, jobs, API errors, and audit metadata.
-- Private keys and host credentials use strict filesystem permissions.
-- MySQL administration prefers local socket authentication.
-- Commands use executable plus argument arrays, never interpolated shell text.
-- Domain names, usernames, paths, cron commands, and resource limits receive
-  dedicated validation.
-- Generated file paths must be contained within approved roots.
-- Destructive operations require exact resource identity and ownership checks.
-- Backups and restores verify checksums and reject path traversal.
-- Dependency and security scanning run in CI.
-
-MFA is desirable for v1 hardening, but must not delay the safe delivery of the
-core resource lifecycle unless promoted to a release requirement.
-
-## 15. Scalability Strategy
-
-### V1: single node
-
-- One API instance
-- One local Agent
-- One SQLite database in WAL mode
-- Local persistent job queue
-- Local backup destination
-
-### Future: multiple managed nodes
-
-- Preserve `node_id` on all resources from the first migration.
-- Replace Unix-socket transport with the same versioned Agent operations over
-  mTLS.
-- Add Agent enrollment, certificate rotation, heartbeats, and capability
-  discovery.
-- Route jobs to node-specific workers.
-- Keep agents deterministic and able to report observed state.
-
-### Future: highly available control plane
-
-- Add a PostgreSQL store implementation behind the existing storage boundary.
-- Move job claiming to PostgreSQL-safe leases.
-- Store artifacts in S3-compatible storage.
-- Run multiple stateless API replicas.
-- Keep sessions and idempotency records in shared storage.
-
-These future paths must influence identifiers, resource ownership, and protocol
-versioning now. They must not cause PostgreSQL, message brokers, Kubernetes, or
-remote Agents to be introduced in v1.
-
-## 16. Testing Strategy
-
-### Local and CI tests
-
-- Go unit tests for core rules and validation
-- Driver tests with fake process and filesystem boundaries
-- Golden-file tests for Nginx and PHP-FPM configuration
-- SQLite migration tests from an empty database and previous schema versions
-- REST and Agent OpenAPI contract tests
-- Frontend unit tests for important utilities and feature behavior
-- Frontend production build verification
-- Race detection for relevant Go packages
-- Static analysis, formatting, and dependency checks
-
-### Integration tests
-
-- Disposable Ubuntu 24.04 environment
-- Real systemd, Nginx, PHP-FPM, MySQL, and cron
-- ACME staging environment before production certificate tests
-- Account, domain, database, cron, certificate, backup, restore, and deletion
-  lifecycle tests
-- Invalid Nginx configuration and rollback tests
-- Agent/API restart and interrupted-job recovery tests
-- Repeated idempotent operation tests
-
-Containers may test isolated components, but they do not replace a VM for final
-host-management tests because systemd and host filesystem behavior are part of
-the product.
-
-### External VPS testing policy
-
-A clean Ubuntu 24.04 VPS supplied by the project owner may be used during the
-integration milestone only after:
-
-1. Access is explicitly confirmed for that test run.
-2. Any password shared through chat is rotated.
-3. A dedicated temporary SSH key is installed.
-4. The OS version and machine identity are verified read-only.
-5. A provider snapshot or other recovery method is confirmed where available.
-6. The exact destructive test scope is stated before execution.
-
-No VPS IP address, password, private key, token, or provider credential may be
-stored in this repository, generated artifacts, logs, or the napkin.
-
-## 17. Delivery Milestones
-
-### M0 — Architecture and project decisions
-
-- [x] Agree on Next.js SSR, Go API, Go Agent, SQLite, and Ubuntu 24.04.
-- [x] Agree on SWR, `reqly-js`, and `urlstate-js`.
-- [x] Include full SSL/TLS lifecycle in v1.
-- [x] Define the initial repository and process boundaries.
-- [x] Choose the public Go module/repository path (`github.com/GVALFER/WEBYCP`).
-- [x] Choose the open-source license (Apache-2.0).
-- [x] Choose npm as the JavaScript package manager.
-
-Verification: the architecture, repository path, package manager, and license
-decisions are recorded before public packaging.
-
-### M1 — Scaffold and developer workflow
-
-- [x] Create the Go module and both commands.
-- [x] Create the Next.js App Router application.
-- [x] Configure HeroUI, Tailwind, Lucide, SWR, `reqly-js`, and `urlstate-js`.
-- [x] Add OpenAPI contracts and code-generation commands.
-- [x] Add lint, Go format, type-check, test, and build commands.
-- [x] Add CI for frontend and Go.
-
-Verification: one command validates the repository, both Go binaries build,
-the frontend production build succeeds, and generated contracts are current.
-
-### M2 — Core control-plane foundation
-
-- [x] Add configuration loading and structured logging.
-- [x] Add SQLite migrations and `sqlc` queries.
-- [x] Add users, sessions, accounts, nodes, jobs, job steps, and audit events.
-- [x] Generate the initial administrator during installation and require a new password.
-- [x] Implement the Agent Unix socket, protocol version, and health handshake.
-- [x] Add the first persistent worker and interrupted-job recovery.
-
-Verification: an authenticated admin can queue a node probe, observe its job
-states, and communicate with an Agent without granting root to the API. Account
-provisioning starts in M3 together with its Linux lifecycle.
-
-### M3 — Accounts, domains, Nginx, and PHP
-
-- [x] Create hosting accounts through an atomic durable job.
-- [x] Reconcile Linux hosting users idempotently through the Agent.
-- [x] Create a symlink-safe owned account directory layout.
-- [x] Add account disable/delete lifecycle.
-- [x] Create and list primary domains through atomic durable jobs.
-- [x] Create symlink-safe document roots owned by the hosting account.
-- [x] Create and list aliases through atomic durable jobs.
-- [x] Add alias enable, disable, and delete lifecycle.
-- [x] Add alias hostname update lifecycle.
-- [x] Generate isolated Nginx HTTP sites.
-- [x] Generate per-account PHP-FPM 8.3 pools.
-- [x] Connect Nginx sites to isolated PHP-FPM Unix sockets.
-- [x] Validate Nginx configuration and roll back before recovery reload.
-- [x] Add domain enable, disable, and recoverable delete reconciliation.
-- [x] Add primary domain hostname update reconciliation.
-
-Verification: a domain serves a PHP test application, repeated reconciliation
-is idempotent, and an invalid update leaves the previous site online.
-
-### M4 — SSL/TLS
-
-- [x] Implement ACME account management.
-- [x] Add DNS preflight and HTTP-01 challenge routing.
-- [x] Issue certificates for domains and eligible aliases.
-- [x] Add panel certificate bootstrap and issuance.
-- [x] Add redirect policy and renewal jobs.
-- [x] Expose expiry and errors in the API and UI.
-
-Verification: staging certificates issue and renew automatically; production
-issuance is then tested once; failed issuance does not break HTTP service or the
-panel.
-
-### M5 — MySQL
-
-- [x] Add database, database user, and grant lifecycle.
-- [x] Generate strong credentials and reveal them safely.
-- [x] Prevent cross-account grants.
-- [x] Add idempotent delete and reconciliation behavior.
-
-Verification: an account can connect only to its granted databases and no
-credential is exposed in logs or job output.
-
-### M6 — Cron
-
-- [x] Add cron validation and CRUD.
-- [x] Install crontabs under the hosting Linux user.
-- [x] Add enable/disable behavior and safe output policy.
-
-Verification: scheduled commands run with the intended UID, environment, and
-working directory and cannot write to another account's data.
-
-### M7 — Local backup and restore
-
-- [x] Define versioned backup manifest format.
-- [x] Back up selected files, databases, and WEBYCP metadata.
-- [x] Add local storage, retention, checksums, and status.
-- [x] Implement restore preview and execution.
-- [x] Test partial and complete restores.
-
-Verification: a deleted test site and database can be restored from a verified
-artifact and served successfully afterward.
-
-### M8 — Hardening and native packaging
-
-- [x] Add systemd sandboxing appropriate to each process.
-- [x] Add production configuration and filesystem permissions.
-- [x] Add reproducible Linux amd64 release archives and SHA-256 checksums.
-- [x] Add install, upgrade, migration, and recovery commands.
-- [x] Add dependency, security, and secret scanning.
-- [x] Document backup, restore, certificate, and Agent recovery procedures.
-
-Verification: installation on a clean Ubuntu 24.04 VM is repeatable, upgrades
-preserve state, and removal does not delete customer data without an explicit
-destructive option.
-
-### M9 — External VPS validation and v1 release candidate
-
-- [ ] Rotate the root password shared through chat.
-- [x] Install and remove a dedicated temporary SSH key.
-- [x] Perform read-only host preflight.
-- [x] Create and verify application-level snapshot/recovery points.
-- [x] Install the release candidate.
-- [x] Validate generated admin credentials and forced rotation on Ubuntu 24.04.
-- [x] Run the complete lifecycle test suite.
-- [x] Review logs, permissions, recovery behavior, and resource cleanup.
-- [x] Remove temporary access after testing.
-
-Verification: all v1 acceptance criteria pass on a fresh Ubuntu 24.04 host and
-the host can be recovered from every intentionally tested failure.
-
-## 18. V1 Definition of Done
-
-Version 1 is complete only when:
-
-- A clean Ubuntu 24.04 server can install WEBYCP reproducibly.
-- The REST API and Agent run under distinct privilege boundaries.
-- An administrator can manage hosting accounts, domains, aliases, PHP sites,
-  MySQL databases, cron jobs, certificates, and local backups.
-- A complete restore has been demonstrated.
-- Certificate issuance and renewal have been demonstrated.
-- All mutations are represented by durable jobs and audit events.
-- Invalid generated configuration cannot replace known-good configuration.
-- Repeated operations are idempotent.
-- No secrets appear in the repository, logs, job output, or API errors.
-- Automated tests and the external Ubuntu 24.04 lifecycle suite pass.
-- Installation, upgrade, backup, restore, and recovery are documented.
-
-The M3–M7 implementation and real Ubuntu acceptance checks are complete. M9
-also verified MySQL isolation, real cron execution, backup retention and full
-restore, ACME failure safety and renewal, service restart recovery, permissions,
-generated administrator rotation and reset, upgrade state preservation, and
-complete cleanup of test resources.
-
-## 19. Immediate Next Step
-
-The hosting lifecycle and administrator acceptance suites are complete. Next,
-rotate the root password that was shared through chat, review and commit the
-candidate from a clean worktree, then create the signed release tag. An
-off-host/provider snapshot remains strongly recommended in addition to the
-verified application-level recovery points.
+
+Deferred features influence boundaries and naming only. They do not justify
+empty pages, placeholder tables, unused interfaces, or speculative code.
+
+## 10. Implementation Roadmap
+
+Each step ends with automated checks, targeted browser validation, and a review
+pause. The next step does not begin without approval.
+
+### Step 0 — Replace the plan
+
+Deliverables:
+
+- Replace the obsolete implementation plan with this product and roadmap plan.
+- Record the agreed architecture, terminology, navigation, and clean-code rules.
+
+Verification:
+
+- Only documentation changes.
+- No frontend, backend, schema, or VPS changes.
+
+### Step 1 — Design system and application shell
+
+Scope is presentation only; existing business behavior remains unchanged.
+
+Deliverables:
+
+- Define reviewed semantic color tokens for light and dark themes.
+- Apply the referenced mint/off-white light atmosphere.
+- Apply the referenced deep navy/teal dark atmosphere.
+- Establish typography, spacing, borders, radii, shadows, and focus rings.
+- Redesign login without loading flashes or form resets.
+- Build the scalable expandable sidebar and responsive shell.
+- Apply the final navigation grouping only to currently implemented pages.
+- Align page headers, cards, tables, pagination, modals, toasts, buttons,
+  loading states, and empty states.
+- Fix existing table header/footer spacing and separator inconsistencies.
+
+Verification:
+
+- Light and dark themes checked on every existing route.
+- Desktop and narrow responsive layouts checked with global Playwright MCP.
+- Keyboard focus and modal behavior checked.
+- No continuous network polling.
+- Frontend lint, typecheck, tests, and production build pass.
+- Stop for visual review.
+
+### Step 2 — Website domain refactor
+
+Deliverables:
+
+- Replace the current hosted `Domain` aggregate with `Website`.
+- Replace separate primary/alias persistence with normalized
+  `WebsiteDomain` bindings.
+- Introduce explicit Website kind, web driver, runtime driver, and version.
+- Rename Go packages, SQL queries, OpenAPI resources, jobs, Agent operations,
+  Next.js routes, and UI copy consistently.
+- Move panel certificate controls to System Settings.
+- Update Nginx, PHP-FPM, certificate, backup, and restore references.
+- Remove obsolete domain endpoints and code in the same step.
+
+Verification:
+
+- Hostname collisions remain transactionally enforced.
+- Website create, enable, disable, delete, domain, alias, SSL, backup, and
+  restore lifecycle pass locally and on the VPS.
+- No dual model or compatibility adapter remains.
+- Stop for architecture and UI review.
+
+### Step 3 — Accounts and Packages
+
+Deliverables:
+
+- Add Package CRUD and Account assignment.
+- Define explicit v1 count limits for Websites, domains, aliases, databases,
+  database users, Scheduled Tasks, and backup retention/storage where it can be
+  truthfully enforced.
+- Enforce limits in the control-plane transaction before a job is queued.
+- Display current usage against each Package limit.
+- Add the Accounts > Packages page and Package assignment actions.
+- Keep Templates hidden until their behavior is defined.
+
+Verification:
+
+- Boundary and over-limit tests for every implemented limit.
+- Concurrent creates cannot bypass a limit.
+- Lowering a Package never deletes resources silently.
+- Existing resources remain usable while new over-limit creates are blocked.
+- Stop for review.
+
+### Step 4 — System capabilities and service settings
+
+Deliverables:
+
+- Expose the Server's installed webserver, runtime, database, scheduler, and
+  backup capabilities.
+- Add System > Servers and System > Services views.
+- Add explicit defaults used only to preselect creation forms.
+- Keep persisted resource driver selections explicit.
+- Keep only Nginx, PHP-FPM 8.3, MySQL, crontab, and local storage selectable
+  until additional drivers really exist.
+
+Verification:
+
+- Observed capabilities match the VPS.
+- Unsupported selections cannot enter API requests or persisted state.
+- Agent/service health failures are visible without aggressive polling.
+- Stop for review.
+
+### Step 5 — DNS foundation
+
+Decision gate before implementation:
+
+- Choose PowerDNS for a self-hosted authoritative DNS service, or
+- choose Cloudflare first for a smaller externally managed DNS integration.
+
+Deliverables after the decision:
+
+- Add typed DNS provider interface and one implementation only.
+- Add DNS zones and common record types.
+- Validate zone ownership, names, record data, TTL, and duplicate rules.
+- Store provider credentials outside ordinary resource payloads and logs.
+- Add DNS > Zones, Providers, and Nameservers where supported.
+- Keep DNS resources separate from Website bindings.
+
+Verification:
+
+- Zone and record lifecycle tested against the selected real provider.
+- Provider failures do not corrupt desired state.
+- No credential appears in logs, jobs, audit events, or API responses.
+- Stop for review.
+
+### Step 6 — Backups and destinations
+
+Deliverables:
+
+- Normalize Backups into Plans, Archives, Restore, and Destinations views.
+- Preserve the existing verified local driver.
+- Define the storage driver contract from real local behavior.
+- Add the first remote destination only after it is selected.
+- Keep restore validation, checksums, ownership repair, and metadata
+  reconciliation mandatory for every destination.
+
+Verification:
+
+- Scheduled and on-demand backups pass.
+- Selective and complete restores pass.
+- Corrupt or incomplete artifacts are rejected.
+- Remote failure and retry behavior is tested if a remote driver is added.
+- Stop for review.
+
+### Step 7 — Scheduled Tasks and operational visibility
+
+Deliverables:
+
+- Rename Cron Jobs to Scheduled Tasks across API, backend, Agent, routes, and
+  UI without retaining the old model.
+- Keep `crontab` as the only initial scheduler driver.
+- Add typed task kinds without exposing unrestricted privileged commands.
+- Add Jobs and Audit Log under System.
+- Separate current status on Overview from historical Monitoring data.
+
+Verification:
+
+- Schedule validation and account isolation tests pass.
+- Creation, update, enable, disable, execution, and deletion pass on the VPS.
+- Audit records connect the administrator request to the final Agent outcome.
+- No default polling is introduced.
+- Stop for review.
+
+### Step 8 — Release stabilization
+
+Deliverables:
+
+- Remove development-only data and obsolete migrations.
+- Squash the schema into the first public baseline.
+- Complete installation, upgrade, rollback, backup, and disaster-recovery
+  documentation.
+- Run security, contract, integration, release artifact, and VPS acceptance
+  checks.
+- Publish the first release candidate only after the full clean install and
+  uninstall lifecycle passes.
+
+Verification:
+
+- A fresh Ubuntu 24.04 VPS can install and reach a healthy panel.
+- Every v1 lifecycle works without manual database or filesystem repair.
+- Upgrade rollback preserves the last working panel.
+- Release archives pass checksum and secret scans.
+
+## 11. Definition of Done for Every Step
+
+A step is complete only when:
+
+1. Its accepted behavior is implemented end to end.
+2. No compatibility hack, placeholder, duplicated path, or abandoned code from
+   that step remains.
+3. Generated contracts and migrations match the implementation.
+4. Relevant automated tests pass.
+5. Browser behavior is checked where UI changed.
+6. VPS behavior is checked where host state changed.
+7. Documentation is updated only for behavior that exists.
+8. The diff is reviewed before the next step begins.
+
+## 12. Immediate Next Step
+
+Begin **Step 1 — Design system and application shell** only after this plan is
+approved. Do not start the Website, Packages, or DNS refactors during the design
+step.
