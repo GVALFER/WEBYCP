@@ -1,7 +1,7 @@
 "use client";
 
 import { valibotResolver } from "@hookform/resolvers/valibot";
-import { Button, Modal } from "@heroui/react";
+import { Button, Modal, Spinner } from "@heroui/react";
 import { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import * as v from "valibot";
@@ -62,10 +62,17 @@ const TextDialogContent = ({
                                     />
                                 </Modal.Body>
                                 <Modal.Footer>
-                                    <Button variant="tertiary" onPress={() => onOpenChange(false)}>
+                                    <Button
+                                        variant="tertiary"
+                                        isDisabled={pending}
+                                        onPress={() => onOpenChange(false)}
+                                    >
                                         Cancel
                                     </Button>
-                                    <Button type="submit" variant="primary" isDisabled={pending}>
+                                    <Button type="submit" variant="primary" isPending={pending}>
+                                        {pending ? (
+                                            <Spinner color="current" size="sm" />
+                                        ) : null}
                                         Save changes
                                     </Button>
                                 </Modal.Footer>

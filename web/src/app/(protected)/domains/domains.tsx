@@ -56,61 +56,64 @@ const Domains = ({
     const currentDomain = domains?.items.find((domain) => domain.id === selectedDomain);
 
     return (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <div className="space-y-6">
-                <section className="panel-card overflow-hidden">
-                    <div className="border-b border-divider px-6 py-5">
+        <div className="space-y-6">
+            <section className="panel-card overflow-hidden">
+                <div className="flex items-start justify-between gap-4 border-b border-divider px-6 py-5">
+                    <div>
                         <h2 className="text-base font-semibold">Domains</h2>
                         <div className="mt-1 text-sm text-foreground-500">
                             Nginx sites and isolated document roots.
                         </div>
                     </div>
-                    <div className="divide-y divide-divider">
-                        {domains?.items.length ? (
-                            domains.items.map((domain) => (
-                                <div
-                                    key={domain.id}
-                                    className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="icon-box">
-                                            <Globe2 className="size-5" aria-hidden="true" />
-                                        </div>
-                                        <div>
-                                            <div className="font-medium">{domain.name}</div>
-                                            <div className="mt-1 text-xs text-foreground-400">
-                                                {accountNames.get(domain.accountId) ??
-                                                    domain.accountId}{" "}
-                                                · PHP {domain.phpVersion}
-                                            </div>
-                                        </div>
+                    <CreateDomain accounts={accounts} />
+                </div>
+                <div className="divide-y divide-divider">
+                    {domains?.items.length ? (
+                        domains.items.map((domain) => (
+                            <div
+                                key={domain.id}
+                                className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="icon-box">
+                                        <Globe2 className="size-5" aria-hidden="true" />
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="hidden text-xs text-foreground-400 sm:block">
-                                            {dt(domain.createdAt)}
+                                    <div>
+                                        <div className="font-medium">{domain.name}</div>
+                                        <div className="mt-1 text-xs text-foreground-400">
+                                            {accountNames.get(domain.accountId) ??
+                                                domain.accountId}{" "}
+                                            · PHP {domain.phpVersion}
                                         </div>
-                                        <span
-                                            className={cn(
-                                                "rounded-full px-2.5 py-1 text-xs capitalize",
-                                                statusClass(domain.status),
-                                            )}
-                                        >
-                                            {domain.status}
-                                        </span>
-                                        <DomainActions domain={domain} />
                                     </div>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="px-6 py-12 text-center text-sm text-foreground-400">
-                                No domains yet.
+                                <div className="flex items-center gap-4">
+                                    <div className="hidden text-xs text-foreground-400 sm:block">
+                                        {dt(domain.createdAt)}
+                                    </div>
+                                    <span
+                                        className={cn(
+                                            "rounded-full px-2.5 py-1 text-xs capitalize",
+                                            statusClass(domain.status),
+                                        )}
+                                    >
+                                        {domain.status}
+                                    </span>
+                                    <DomainActions domain={domain} />
+                                </div>
                             </div>
-                        )}
-                    </div>
-                </section>
+                        ))
+                    ) : (
+                        <div className="px-6 py-12 text-center text-sm text-foreground-400">
+                            No domains yet.
+                        </div>
+                    )}
+                </div>
+            </section>
 
-                <section className="panel-card overflow-hidden">
-                    <div className="border-b border-divider px-6 py-5">
+            <section className="panel-card overflow-hidden">
+                <div className="flex items-start justify-between gap-4 border-b border-divider px-6 py-5">
+                    <div>
                         <h2 className="text-base font-semibold">Aliases</h2>
                         <div className="mt-1 text-sm text-foreground-500">
                             {currentDomain
@@ -118,50 +121,46 @@ const Domains = ({
                                 : "Select an active domain to manage its aliases."}
                         </div>
                     </div>
-                    <div className="divide-y divide-divider">
-                        {aliases?.items.length ? (
-                            aliases.items.map((alias) => (
-                                <div
-                                    key={alias.id}
-                                    className="flex items-center justify-between gap-4 px-6 py-4"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <CornerDownRight
-                                            className="size-4 text-foreground-400"
-                                            aria-hidden="true"
-                                        />
-                                        <div className="font-medium">{alias.name}</div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span
-                                            className={cn(
-                                                "rounded-full px-2.5 py-1 text-xs capitalize",
-                                                statusClass(alias.status),
-                                            )}
-                                        >
-                                            {alias.status}
-                                        </span>
-                                        <AliasActions alias={alias} domainId={selectedDomain} />
-                                    </div>
+                    <CreateAlias
+                        domains={initialDomains}
+                        domainId={selectedDomain}
+                        onDomainChange={setDomainId}
+                    />
+                </div>
+                <div className="divide-y divide-divider">
+                    {aliases?.items.length ? (
+                        aliases.items.map((alias) => (
+                            <div
+                                key={alias.id}
+                                className="flex items-center justify-between gap-4 px-6 py-4"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <CornerDownRight
+                                        className="size-4 text-foreground-400"
+                                        aria-hidden="true"
+                                    />
+                                    <div className="font-medium">{alias.name}</div>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="px-6 py-10 text-center text-sm text-foreground-400">
-                                {selectedDomain ? "No aliases yet." : "No active domain selected."}
+                                <div className="flex items-center gap-2">
+                                    <span
+                                        className={cn(
+                                            "rounded-full px-2.5 py-1 text-xs capitalize",
+                                            statusClass(alias.status),
+                                        )}
+                                    >
+                                        {alias.status}
+                                    </span>
+                                    <AliasActions alias={alias} domainId={selectedDomain} />
+                                </div>
                             </div>
-                        )}
-                    </div>
-                </section>
-            </div>
-
-            <div className="space-y-6">
-                <CreateDomain accounts={accounts} />
-                <CreateAlias
-                    domains={initialDomains}
-                    domainId={selectedDomain}
-                    onDomainChange={setDomainId}
-                />
-            </div>
+                        ))
+                    ) : (
+                        <div className="px-6 py-10 text-center text-sm text-foreground-400">
+                            {selectedDomain ? "No aliases yet." : "No active domain selected."}
+                        </div>
+                    )}
+                </div>
+            </section>
         </div>
     );
 };

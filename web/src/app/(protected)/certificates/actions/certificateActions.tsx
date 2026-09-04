@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, toast } from "@heroui/react";
+import { Button, Spinner, toast } from "@heroui/react";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
@@ -12,12 +12,14 @@ type CertificateActionsProps = {
     certificate: CertificateListResponse["items"][number];
 };
 
+type Action = "redirect" | "renew" | "";
+
 const CertificateActions = ({ certificate }: CertificateActionsProps) => {
-    const [pending, setPending] = useState(false);
+    const [pending, setPending] = useState<Action>("");
     const { mutate } = useSWRConfig();
 
-    const run = async (action: () => Promise<unknown>, success: string) => {
-        setPending(true);
+    const run = async (key: Action, action: () => Promise<unknown>, success: string) => {
+        setPending(key);
 
         try {
             await action();
@@ -28,12 +30,13 @@ const CertificateActions = ({ certificate }: CertificateActionsProps) => {
                 description: await errorMessage(error),
             });
         } finally {
-            setPending(false);
+            setPending("");
         }
     };
 
     const toggleRedirect = () =>
         run(
+            "redirect",
             () =>
                 api
                     .patch(`certificates/${encodeURIComponent(certificate.id)}`, {
@@ -45,6 +48,7 @@ const CertificateActions = ({ certificate }: CertificateActionsProps) => {
 
     const renew = () =>
         run(
+            "renew",
             () =>
                 api
                     .post(`certificates/${encodeURIComponent(certificate.id)}/renew`)
@@ -52,17 +56,19 @@ const CertificateActions = ({ certificate }: CertificateActionsProps) => {
             "Certificate renewal queued",
         );
 
-    const disabled = certificate.status === "pending" || pending;
-
     return (
         <div className="flex items-center gap-2">
             {certificate.kind === "domain" && (
                 <Button
                     size="sm"
                     variant="tertiary"
-                    isDisabled={disabled}
+                    isPending={pending === "redirect"}
+                    isDisabled={certificate.status === "pending" || pending === "renew"}
                     onPress={() => void toggleRedirect()}
                 >
+                    {pending === "redirect" ? (
+                        <Spinner color="current" size="sm" />
+                    ) : null}
                     {certificate.redirectHttps ? "Disable redirect" : "Enable redirect"}
                 </Button>
             )}
@@ -71,10 +77,15 @@ const CertificateActions = ({ certificate }: CertificateActionsProps) => {
                 size="sm"
                 variant="secondary"
                 aria-label={`Renew ${certificate.name}`}
-                isDisabled={disabled}
+                isPending={pending === "renew"}
+                isDisabled={certificate.status === "pending" || pending === "redirect"}
                 onPress={() => void renew()}
             >
-                <RefreshCw className="size-4" />
+                {pending === "renew" ? (
+                    <Spinner color="current" size="sm" />
+                ) : (
+                    <RefreshCw className="size-4" />
+                )}
             </Button>
         </div>
     );

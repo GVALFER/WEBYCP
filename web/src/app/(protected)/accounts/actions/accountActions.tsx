@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, toast } from "@heroui/react";
+import { Button, Spinner, toast } from "@heroui/react";
 import { Power, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
@@ -55,16 +55,21 @@ const AccountActions = ({ account }: AccountActionsProps) => {
                 size="sm"
                 variant="tertiary"
                 aria-label={account.enabled ? `Disable ${account.name}` : `Enable ${account.name}`}
-                isDisabled={disabled}
+                isPending={pending}
+                isDisabled={account.status === "pending"}
                 onPress={() => void run(!account.enabled)}
             >
-                <Power className="size-4" aria-hidden="true" />
+                {pending ? (
+                    <Spinner color="current" size="sm" />
+                ) : (
+                    <Power className="size-4" aria-hidden="true" />
+                )}
             </Button>
             <Confirm
                 title={`Delete ${account.name}?`}
                 description="The account must be empty. Its home directory will be moved to the recovery trash."
                 action="Delete account"
-                onConfirm={() => void run()}
+                onConfirm={() => run()}
             >
                 <Button
                     isIconOnly

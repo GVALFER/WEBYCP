@@ -1,15 +1,15 @@
 "use client";
 
 import { valibotResolver } from "@hookform/resolvers/valibot";
-import { Button, toast } from "@heroui/react";
-import { Plus } from "lucide-react";
-import { useCallback, useTransition } from "react";
+import { toast } from "@heroui/react";
+import { useCallback, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import useSWR, { useSWRConfig } from "swr";
 import * as v from "valibot";
 import { Form } from "@/components/form/form";
 import { FormCheckbox } from "@/components/form/formCheckbox";
 import { FormInput } from "@/components/form/formInput";
+import { FormModal } from "@/components/form/formModal";
 import { FormSelect } from "@/components/form/formSelect";
 import type { AccountListResponse, BackupPlan } from "@/contracts/types";
 import { api } from "@/lib/api";
@@ -50,13 +50,18 @@ type CreateBackupProps = {
 };
 
 const CreateBackup = ({ accounts }: CreateBackupProps) => {
+    const [open, setOpen] = useState(false);
+
+    const [pending, startTransition] = useTransition();
     const { mutate } = useSWRConfig();
+
     const { data } = useSWR<AccountListResponse>("accounts", {
         fallbackData: accounts,
     });
+
     const options =
         data?.items.filter((account) => account.status === "active" && account.enabled) ?? [];
-    const [pending, startTransition] = useTransition();
+
     const form = useForm<FormInputValues, unknown, FormValues>({
         resolver: valibotResolver(formSchema),
         defaultValues: {
@@ -68,6 +73,7 @@ const CreateBackup = ({ accounts }: CreateBackupProps) => {
             includeDatabases: true,
         },
     });
+
     const accountId = useWatch({ control: form.control, name: "accountId" });
     const files = useWatch({ control: form.control, name: "includeFiles" });
     const databases = useWatch({ control: form.control, name: "includeDatabases" });
@@ -79,12 +85,15 @@ const CreateBackup = ({ accounts }: CreateBackupProps) => {
                     await api
                         .post("backup-plans", { json: { ...values, enabled: true } })
                         .json<BackupPlan>();
+
                     await Promise.all([
                         mutate("backup-plans"),
                         mutate("backup-runs"),
                         mutate("backup-artifacts"),
                         mutate("jobs"),
                     ]);
+
+                    setOpen(false);
                     toast.success("Backup plan created");
                 } catch (error) {
                     toast.danger("Backup action failed", {
@@ -98,25 +107,33 @@ const CreateBackup = ({ accounts }: CreateBackupProps) => {
 
     return (
         <Form {...form}>
-            <form className="panel-card h-fit p-6" onSubmit={form.handleSubmit(handleSubmit)}>
-                <h2 className="text-base font-semibold">Create backup plan</h2>
+            <FormModal
+                open={open}
+                title="Create backup plan"
+                description="Creates a scheduled or on-demand local backup plan."
+                triggerLabel="Create backup plan"
+                submitLabel="Create plan"
+                pending={pending}
+                size="lg"
+                submitDisabled={!accountId || (!files && !databases)}
+                onOpenChange={setOpen}
+                onSubmit={form.handleSubmit(handleSubmit)}
+            >
                 <FormSelect
-                    className="mt-5"
                     name="accountId"
                     label="Hosting account"
                     options={options}
+                    empty="No active accounts"
                     required
                 />
-                <FormInput className="mt-4" name="name" label="Name" maxLength={80} required />
+                <FormInput name="name" label="Name" maxLength={80} required />
                 <FormInput
-                    className="mt-4"
                     inputClassName="font-mono"
                     name="schedule"
                     label="Schedule (blank for manual)"
                     maxLength={100}
                 />
                 <FormInput
-                    className="mt-4"
                     name="retentionCount"
                     label="Retention"
                     type="number"
@@ -124,19 +141,11 @@ const CreateBackup = ({ accounts }: CreateBackupProps) => {
                     max="100"
                     required
                 />
-                <FormCheckbox className="mt-5" name="includeFiles" label="Files" />
-                <FormCheckbox className="mt-3" name="includeDatabases" label="Databases" />
-                <Button
-                    className="mt-6"
-                    type="submit"
-                    variant="primary"
-                    fullWidth
-                    isDisabled={!accountId || (!files && !databases) || pending}
-                >
-                    <Plus className="size-4" />
-                    Create plan
-                </Button>
-            </form>
+                <div className="space-y-3 pt-1">
+                    <FormCheckbox name="includeFiles" label="Files" />
+                    <FormCheckbox name="includeDatabases" label="Databases" />
+                </div>
+            </FormModal>
         </Form>
     );
 };

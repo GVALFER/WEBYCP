@@ -269,6 +269,10 @@ webycp/
   `Form` context wrapper, and reusable fields from `web/src/components/form`.
   Validation belongs in the resolver rather than manual `safeParse` calls in
   submit handlers.
+- Resource creation forms open in the shared HeroUI `FormModal`; resource pages
+  show compact create actions beside their list headings instead of permanent
+  form sidebars. Async buttons keep their action label visible and use HeroUI
+  `isPending` with a `Spinner`; confirmation dialogs stay open until completion.
 - Route-specific formatters, schemas, and hooks stay inside the route.
 - Go does not use a generic `utils` package.
 - Reusable Go behavior uses focused packages such as:

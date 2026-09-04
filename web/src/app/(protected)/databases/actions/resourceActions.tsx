@@ -12,9 +12,7 @@ import { Confirm } from "@/components/actions/confirm";
 import { api } from "@/lib/api";
 import { useDatabaseAction } from "./useDatabaseAction";
 
-type Resource =
-    | DatabaseListResponse["items"][number]
-    | DatabaseUserListResponse["items"][number];
+type Resource = DatabaseListResponse["items"][number] | DatabaseUserListResponse["items"][number];
 
 type ResourceActionsProps = {
     kind: "database" | "user";
@@ -51,7 +49,7 @@ const ResourceActions = ({ kind, resource }: ResourceActionsProps) => {
             title={`Delete ${resource.name}?`}
             description={description}
             action="Delete"
-            onConfirm={() => void remove()}
+            onConfirm={remove}
         >
             <Button
                 isIconOnly

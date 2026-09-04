@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, toast } from "@heroui/react";
+import { Button, Spinner, toast } from "@heroui/react";
 import { Power, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
@@ -61,16 +61,21 @@ const CronActions = ({ item }: CronActionsProps) => {
                 size="sm"
                 variant="tertiary"
                 aria-label={item.enabled ? `Disable ${item.name}` : `Enable ${item.name}`}
-                isDisabled={pending || item.status === "pending"}
+                isPending={pending}
+                isDisabled={item.status === "pending"}
                 onPress={() => void toggle()}
             >
-                <Power className="size-4" />
+                {pending ? (
+                    <Spinner color="current" size="sm" />
+                ) : (
+                    <Power className="size-4" />
+                )}
             </Button>
             <Confirm
                 title={`Delete ${item.name}?`}
                 description="The schedule will be removed from the hosting account."
                 action="Delete"
-                onConfirm={() => void remove()}
+                onConfirm={remove}
             >
                 <Button
                     isIconOnly

@@ -1,14 +1,14 @@
 "use client";
 
 import { valibotResolver } from "@hookform/resolvers/valibot";
-import { Button, toast } from "@heroui/react";
-import { Plus } from "lucide-react";
-import { useCallback, useTransition } from "react";
+import { toast } from "@heroui/react";
+import { useCallback, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import useSWR, { useSWRConfig } from "swr";
 import * as v from "valibot";
 import { Form } from "@/components/form/form";
 import { FormInput } from "@/components/form/formInput";
+import { FormModal } from "@/components/form/formModal";
 import { FormSelect } from "@/components/form/formSelect";
 import type { AccountListResponse, CronJobResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
@@ -29,13 +29,17 @@ type CreateCronProps = {
 };
 
 const CreateCron = ({ accounts }: CreateCronProps) => {
+    const [open, setOpen] = useState(false);
+    const [pending, startTransition] = useTransition();
     const { mutate } = useSWRConfig();
+
     const { data } = useSWR<AccountListResponse>("accounts", {
         fallbackData: accounts,
     });
+
     const options =
         data?.items.filter((account) => account.status === "active" && account.enabled) ?? [];
-    const [pending, startTransition] = useTransition();
+
     const form = useForm<FormValues>({
         resolver: valibotResolver(formSchema),
         defaultValues: {
@@ -45,6 +49,7 @@ const CreateCron = ({ accounts }: CreateCronProps) => {
             command: "",
         },
     });
+
     const accountId = useWatch({ control: form.control, name: "accountId" });
 
     const handleSubmit = useCallback(
@@ -61,6 +66,7 @@ const CreateCron = ({ accounts }: CreateCronProps) => {
                         command: "",
                     });
                     await Promise.all([mutate("cron-jobs"), mutate("jobs")]);
+                    setOpen(false);
                     toast.success("Cron job queued for creation");
                 } catch (error) {
                     toast.danger("Action failed", {
@@ -74,18 +80,26 @@ const CreateCron = ({ accounts }: CreateCronProps) => {
 
     return (
         <Form {...form}>
-            <form className="panel-card h-fit p-6" onSubmit={form.handleSubmit(handleSubmit)}>
-                <h2 className="text-base font-semibold">Add cron job</h2>
+            <FormModal
+                open={open}
+                title="Add cron job"
+                description="Runs a command as the hosting account from its home directory."
+                triggerLabel="Add cron job"
+                submitLabel="Add cron job"
+                pending={pending}
+                submitDisabled={!accountId}
+                onOpenChange={setOpen}
+                onSubmit={form.handleSubmit(handleSubmit)}
+            >
                 <FormSelect
-                    className="mt-5"
                     name="accountId"
                     label="Hosting account"
                     options={options}
+                    empty="No active accounts"
                     required
                 />
-                <FormInput className="mt-4" name="name" label="Name" maxLength={80} required />
+                <FormInput name="name" label="Name" maxLength={80} required />
                 <FormInput
-                    className="mt-4"
                     inputClassName="font-mono"
                     name="schedule"
                     label="Schedule"
@@ -93,24 +107,13 @@ const CreateCron = ({ accounts }: CreateCronProps) => {
                     required
                 />
                 <FormInput
-                    className="mt-4"
                     inputClassName="font-mono"
                     name="command"
                     label="Command"
                     maxLength={1_000}
                     required
                 />
-                <Button
-                    className="mt-5"
-                    type="submit"
-                    variant="primary"
-                    fullWidth
-                    isDisabled={!accountId || pending}
-                >
-                    <Plus className="size-4" />
-                    Add cron job
-                </Button>
-            </form>
+            </FormModal>
         </Form>
     );
 };

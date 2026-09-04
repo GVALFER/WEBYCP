@@ -26,7 +26,7 @@ const GrantActions = ({ grant, database, user }: GrantActionsProps) => {
             title="Revoke database access?"
             description={`${user || "This user"} will no longer have access to ${database || "this database"}.`}
             action="Revoke access"
-            onConfirm={() => void remove()}
+            onConfirm={remove}
         >
             <Button
                 isIconOnly

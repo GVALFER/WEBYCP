@@ -1,6 +1,7 @@
 "use client";
 
 import { Database as DatabaseIcon, UserRound } from "lucide-react";
+import type { ReactNode } from "react";
 import useSWR from "swr";
 import type {
     AccountListResponse,
@@ -10,7 +11,9 @@ import type {
 } from "@/contracts/types";
 import { cn } from "@/utils/classnames";
 import { statusClass } from "@/utils/status";
-import CreateResources from "./actions/createResources";
+import CreateDatabase from "./actions/createDatabase";
+import CreateDatabaseUser from "./actions/createDatabaseUser";
+import CreateGrant from "./actions/createGrant";
 import GrantActions from "./actions/grantActions";
 import ResourceActions from "./actions/resourceActions";
 
@@ -38,25 +41,34 @@ const Databases = ({
     });
 
     return (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <div className="space-y-6">
-                <ResourceList
-                    title="MySQL databases"
-                    empty="No databases yet."
-                    items={databases?.items ?? []}
-                    icon={DatabaseIcon}
-                    kind="database"
-                />
-                <ResourceList
-                    title="MySQL users"
-                    empty="No database users yet."
-                    items={users?.items ?? []}
-                    icon={UserRound}
-                    kind="user"
-                />
-                <section className="panel-card p-6">
+        <div className="space-y-6">
+            <ResourceList
+                title="MySQL databases"
+                empty="No databases yet."
+                items={databases?.items ?? []}
+                icon={DatabaseIcon}
+                kind="database"
+                action={<CreateDatabase accounts={accounts} />}
+            />
+            <ResourceList
+                title="MySQL users"
+                empty="No database users yet."
+                items={users?.items ?? []}
+                icon={UserRound}
+                kind="user"
+                action={<CreateDatabaseUser accounts={accounts} />}
+            />
+            <section className="panel-card overflow-hidden">
+                <div className="flex items-center justify-between gap-4 border-b border-divider px-6 py-5">
                     <h2 className="text-base font-semibold">Grants</h2>
-                    <div className="mt-4 space-y-2">
+                    <CreateGrant
+                        accounts={accounts}
+                        databases={initialDatabases}
+                        users={initialUsers}
+                    />
+                </div>
+                <div className="p-6">
+                    <div className="space-y-2">
                         {grants?.items.length ? (
                             grants.items.map((grant) => {
                                 const database = databases?.items.find(
@@ -90,25 +102,18 @@ const Databases = ({
                             </div>
                         )}
                     </div>
-                </section>
-            </div>
-
-            <CreateResources
-                accounts={accounts}
-                databases={initialDatabases}
-                users={initialUsers}
-            />
+                </div>
+            </section>
         </div>
     );
 };
 
 export default Databases;
 
-type Resource =
-    | DatabaseListResponse["items"][number]
-    | DatabaseUserListResponse["items"][number];
+type Resource = DatabaseListResponse["items"][number] | DatabaseUserListResponse["items"][number];
 
 type ResourceListProps = {
+    action: ReactNode;
     title: string;
     empty: string;
     items: Resource[];
@@ -116,10 +121,11 @@ type ResourceListProps = {
     kind: "database" | "user";
 };
 
-const ResourceList = ({ title, empty, items, icon: Icon, kind }: ResourceListProps) => (
+const ResourceList = ({ action, title, empty, items, icon: Icon, kind }: ResourceListProps) => (
     <section className="panel-card overflow-hidden">
-        <div className="border-b border-divider px-6 py-5">
+        <div className="flex items-center justify-between gap-4 border-b border-divider px-6 py-5">
             <h2 className="text-base font-semibold">{title}</h2>
+            {action}
         </div>
         <div className="divide-y divide-divider">
             {items.length ? (

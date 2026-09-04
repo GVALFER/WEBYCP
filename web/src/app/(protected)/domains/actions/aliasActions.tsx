@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, toast } from "@heroui/react";
+import { Button, Spinner, toast } from "@heroui/react";
 import { Pencil, Power, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
@@ -20,6 +20,7 @@ const AliasActions = ({ alias, domainId }: AliasActionsProps) => {
     const [edit, setEdit] = useState(false);
     const [pending, setPending] = useState(false);
     const { mutate } = useSWRConfig();
+
     const aliasesKey = `domains/${encodeURIComponent(domainId)}/aliases`;
     const path = `${aliasesKey}/${encodeURIComponent(alias.id)}`;
 
@@ -49,10 +50,7 @@ const AliasActions = ({ alias, domainId }: AliasActionsProps) => {
         );
 
     const remove = () =>
-        run(
-            () => api.delete(path).json<DomainAliasJobResponse>(),
-            "Alias queued for deletion",
-        );
+        run(() => api.delete(path).json<DomainAliasJobResponse>(), "Alias queued for deletion");
 
     const rename = async (name: string) => {
         if (name === alias.name) {
@@ -61,10 +59,7 @@ const AliasActions = ({ alias, domainId }: AliasActionsProps) => {
         }
 
         await run(
-            () =>
-                api
-                    .patch(path, { json: { name } })
-                    .json<DomainAliasJobResponse>(),
+            () => api.patch(path, { json: { name } }).json<DomainAliasJobResponse>(),
             "Alias rename queued",
         );
         setEdit(false);
@@ -90,16 +85,21 @@ const AliasActions = ({ alias, domainId }: AliasActionsProps) => {
                     size="sm"
                     variant="tertiary"
                     aria-label={alias.enabled ? `Disable ${alias.name}` : `Enable ${alias.name}`}
-                    isDisabled={disabled}
+                    isPending={pending}
+                    isDisabled={alias.status === "pending"}
                     onPress={() => void toggle()}
                 >
-                    <Power className="size-4" aria-hidden="true" />
+                    {pending ? (
+                        <Spinner color="current" size="sm" />
+                    ) : (
+                        <Power className="size-4" aria-hidden="true" />
+                    )}
                 </Button>
                 <Confirm
                     title={`Delete ${alias.name}?`}
                     description="This hostname will stop serving the primary domain."
                     action="Delete alias"
-                    onConfirm={() => void remove()}
+                    onConfirm={remove}
                 >
                     <Button
                         isIconOnly

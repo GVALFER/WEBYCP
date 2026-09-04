@@ -1,14 +1,14 @@
 "use client";
 
 import { valibotResolver } from "@hookform/resolvers/valibot";
-import { Button, toast } from "@heroui/react";
-import { Plus } from "lucide-react";
-import { useCallback, useEffect, useTransition } from "react";
+import { toast } from "@heroui/react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import useSWR, { useSWRConfig } from "swr";
 import * as v from "valibot";
 import { Form } from "@/components/form/form";
 import { FormInput } from "@/components/form/formInput";
+import { FormModal } from "@/components/form/formModal";
 import { FormSelect } from "@/components/form/formSelect";
 import type { DomainAliasJobResponse, DomainListResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
@@ -29,16 +29,21 @@ const formSchema = v.object({
 type FormValues = v.InferOutput<typeof formSchema>;
 
 const CreateAlias = ({ domains, domainId, onDomainChange }: CreateAliasProps) => {
+    const [open, setOpen] = useState(false);
+    const [pending, startTransition] = useTransition();
     const { mutate } = useSWRConfig();
+
     const { data } = useSWR<DomainListResponse>("domains", {
         fallbackData: domains,
     });
+
     const options = data?.items.filter((domain) => domain.status === "active") ?? [];
-    const [pending, startTransition] = useTransition();
+
     const form = useForm<FormValues>({
         resolver: valibotResolver(formSchema),
         defaultValues: { domainId, name: "" },
     });
+
     const selected = useWatch({ control: form.control, name: "domainId" });
 
     useEffect(() => {
@@ -59,6 +64,7 @@ const CreateAlias = ({ domains, domainId, onDomainChange }: CreateAliasProps) =>
                         mutate(`domains/${encodeURIComponent(values.domainId)}/aliases`),
                         mutate("jobs"),
                     ]);
+                    setOpen(false);
                     toast.success("Alias queued for creation");
                 } catch (error) {
                     toast.danger("Alias action failed", {
@@ -71,42 +77,37 @@ const CreateAlias = ({ domains, domainId, onDomainChange }: CreateAliasProps) =>
     );
 
     return (
-        <aside className="panel-card p-6">
-            <h2 className="text-base font-semibold">Add alias</h2>
-            <div className="mt-1 text-sm leading-6 text-foreground-500">
-                Points another hostname at an existing domain.
-            </div>
-            <Form {...form}>
-                <form className="mt-6 space-y-5" onSubmit={form.handleSubmit(handleSubmit)}>
-                    <FormSelect
-                        name="domainId"
-                        label="Primary domain"
-                        options={options}
-                        empty="No active domains"
-                        onValueChange={onDomainChange}
-                        required
-                    />
-                    <FormInput
-                        name="name"
-                        label="Alias name"
-                        placeholder="www.example.com"
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                        maxLength={253}
-                        required
-                    />
-                    <Button
-                        type="submit"
-                        variant="primary"
-                        fullWidth
-                        isDisabled={pending || !selected}
-                    >
-                        <Plus className="size-4" aria-hidden="true" />
-                        {pending ? "Queuing…" : "Add alias"}
-                    </Button>
-                </form>
-            </Form>
-        </aside>
+        <Form {...form}>
+            <FormModal
+                open={open}
+                title="Add alias"
+                description="Points another hostname at an existing domain."
+                triggerLabel="Add alias"
+                submitLabel="Add alias"
+                pending={pending}
+                submitDisabled={!selected}
+                onOpenChange={setOpen}
+                onSubmit={form.handleSubmit(handleSubmit)}
+            >
+                <FormSelect
+                    name="domainId"
+                    label="Primary domain"
+                    options={options}
+                    empty="No active domains"
+                    onValueChange={onDomainChange}
+                    required
+                />
+                <FormInput
+                    name="name"
+                    label="Alias name"
+                    placeholder="www.example.com"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    maxLength={253}
+                    required
+                />
+            </FormModal>
+        </Form>
     );
 };
 

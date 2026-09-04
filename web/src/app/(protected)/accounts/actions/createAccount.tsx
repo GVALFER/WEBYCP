@@ -1,14 +1,14 @@
 "use client";
 
 import { valibotResolver } from "@hookform/resolvers/valibot";
-import { Button, toast } from "@heroui/react";
-import { Plus } from "lucide-react";
-import { useCallback, useTransition } from "react";
+import { toast } from "@heroui/react";
+import { useCallback, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { useSWRConfig } from "swr";
 import * as v from "valibot";
 import { Form } from "@/components/form/form";
 import { FormInput } from "@/components/form/formInput";
+import { FormModal } from "@/components/form/formModal";
 import type { AccountJobResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
@@ -23,6 +23,7 @@ type FormValues = v.InferOutput<typeof formSchema>;
 
 const CreateAccount = ({ nodeId }: CreateAccountProps) => {
     const { mutate } = useSWRConfig();
+    const [open, setOpen] = useState(false);
     const [pending, startTransition] = useTransition();
 
     const form = useForm<FormValues>({
@@ -39,6 +40,7 @@ const CreateAccount = ({ nodeId }: CreateAccountProps) => {
                         .json<AccountJobResponse>();
                     form.reset();
                     await Promise.all([mutate("accounts"), mutate("jobs")]);
+                    setOpen(false);
                     toast.success("Account queued for creation");
                 } catch (error) {
                     toast.danger("Account action failed", {
@@ -52,13 +54,19 @@ const CreateAccount = ({ nodeId }: CreateAccountProps) => {
 
     return (
         <Form {...form}>
-            <form className="mt-6 space-y-5" onSubmit={form.handleSubmit(handleSubmit)}>
+            <FormModal
+                open={open}
+                title="Create account"
+                description="Queues an isolated Linux user on the selected node."
+                triggerLabel="Create account"
+                submitLabel="Create account"
+                pending={pending}
+                submitDisabled={!nodeId}
+                onOpenChange={setOpen}
+                onSubmit={form.handleSubmit(handleSubmit)}
+            >
                 <FormInput name="name" label="Account name" maxLength={80} required />
-                <Button type="submit" variant="primary" fullWidth isDisabled={pending || !nodeId}>
-                    <Plus className="size-4" aria-hidden="true" />
-                    {pending ? "Queuing…" : "Create account"}
-                </Button>
-            </form>
+            </FormModal>
         </Form>
     );
 };

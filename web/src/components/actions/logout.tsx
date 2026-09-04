@@ -1,14 +1,18 @@
 "use client";
 
-import { Button } from "@heroui/react";
+import { Button, Spinner } from "@heroui/react";
 import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { api, setCsrfToken } from "@/lib/api";
 
 const Logout = () => {
     const router = useRouter();
+    const [pending, setPending] = useState(false);
 
     const logout = async () => {
+        setPending(true);
+
         try {
             await api.post("auth/logout");
         } finally {
@@ -24,9 +28,14 @@ const Logout = () => {
             size="sm"
             variant="tertiary"
             aria-label="Sign out"
+            isPending={pending}
             onPress={() => void logout()}
         >
-            <LogOut className="size-4" />
+            {pending ? (
+                <Spinner color="current" size="sm" />
+            ) : (
+                <LogOut className="size-4" />
+            )}
         </Button>
     );
 };

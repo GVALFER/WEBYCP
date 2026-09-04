@@ -1,13 +1,14 @@
 "use client";
 
 import { valibotResolver } from "@hookform/resolvers/valibot";
-import { Button, toast } from "@heroui/react";
-import { useCallback, useTransition } from "react";
+import { toast } from "@heroui/react";
+import { useCallback, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { useSWRConfig } from "swr";
 import * as v from "valibot";
 import { Form } from "@/components/form/form";
 import { FormInput } from "@/components/form/formInput";
+import { FormModal } from "@/components/form/formModal";
 import type { CertificateJobResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
@@ -25,11 +26,16 @@ const formSchema = v.object({
 type FormValues = v.InferOutput<typeof formSchema>;
 
 const CreatePanelCertificate = ({ email }: CreatePanelCertificateProps) => {
+    const [open, setOpen] = useState(false);
     const { mutate } = useSWRConfig();
     const [pending, startTransition] = useTransition();
+
     const form = useForm<FormValues>({
         resolver: valibotResolver(formSchema),
-        defaultValues: { hostname: "", email },
+        defaultValues: {
+            hostname: "",
+            email,
+        },
     });
 
     const handleSubmit = useCallback(
@@ -41,6 +47,7 @@ const CreatePanelCertificate = ({ email }: CreatePanelCertificateProps) => {
                         .json<CertificateJobResponse>();
                     form.reset({ hostname: "", email: values.email });
                     await Promise.all([mutate("certificates"), mutate("jobs")]);
+                    setOpen(false);
                     toast.success("Panel certificate request queued");
                 } catch (error) {
                     toast.danger("Certificate action failed", {
@@ -54,29 +61,25 @@ const CreatePanelCertificate = ({ email }: CreatePanelCertificateProps) => {
 
     return (
         <Form {...form}>
-            <form className="panel-card p-6" onSubmit={form.handleSubmit(handleSubmit)}>
-                <h2 className="text-base font-semibold">Panel certificate</h2>
-                <div className="mt-1 text-sm text-foreground-500">
-                    Use after the hostname resolves to this server.
-                </div>
+            <FormModal
+                open={open}
+                title="Secure the panel"
+                description="Use after the panel hostname resolves to this server."
+                triggerLabel="Secure the panel"
+                triggerText="Panel"
+                submitLabel="Secure panel"
+                pending={pending}
+                onOpenChange={setOpen}
+                onSubmit={form.handleSubmit(handleSubmit)}
+            >
                 <FormInput
-                    className="mt-5"
                     name="hostname"
                     label="Panel hostname"
                     placeholder="panel.example.com"
                     maxLength={253}
                     required
                 />
-                <Button
-                    className="mt-5"
-                    type="submit"
-                    variant="secondary"
-                    fullWidth
-                    isDisabled={pending}
-                >
-                    Secure panel
-                </Button>
-            </form>
+            </FormModal>
         </Form>
     );
 };

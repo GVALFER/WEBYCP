@@ -1,13 +1,14 @@
 "use client";
 
 import { valibotResolver } from "@hookform/resolvers/valibot";
-import { Button, toast } from "@heroui/react";
-import { useCallback, useTransition } from "react";
+import { toast } from "@heroui/react";
+import { useCallback, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import useSWR, { useSWRConfig } from "swr";
 import * as v from "valibot";
 import { Form } from "@/components/form/form";
 import { FormInput } from "@/components/form/formInput";
+import { FormModal } from "@/components/form/formModal";
 import { FormSelect } from "@/components/form/formSelect";
 import type { CertificateJobResponse, DomainListResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
@@ -27,17 +28,23 @@ const formSchema = v.object({
 type FormValues = v.InferOutput<typeof formSchema>;
 
 const CreateCertificate = ({ domains, email }: CreateCertificateProps) => {
+    const [open, setOpen] = useState(false);
+
+    const [pending, startTransition] = useTransition();
     const { mutate } = useSWRConfig();
+
     const { data } = useSWR<DomainListResponse>("domains", {
         fallbackData: domains,
     });
+
     const options =
         data?.items.filter((domain) => domain.status === "active" && domain.enabled) ?? [];
-    const [pending, startTransition] = useTransition();
+
     const form = useForm<FormValues>({
         resolver: valibotResolver(formSchema),
         defaultValues: { domainId: options[0]?.id ?? "", email },
     });
+
     const domainId = useWatch({ control: form.control, name: "domainId" });
 
     const handleSubmit = useCallback(
@@ -50,6 +57,7 @@ const CreateCertificate = ({ domains, email }: CreateCertificateProps) => {
                         })
                         .json<CertificateJobResponse>();
                     await Promise.all([mutate("certificates"), mutate("jobs")]);
+                    setOpen(false);
                     toast.success("Certificate request queued");
                 } catch (error) {
                     toast.danger("Certificate action failed", {
@@ -63,32 +71,27 @@ const CreateCertificate = ({ domains, email }: CreateCertificateProps) => {
 
     return (
         <Form {...form}>
-            <form className="panel-card p-6" onSubmit={form.handleSubmit(handleSubmit)}>
-                <h2 className="text-base font-semibold">Secure a domain</h2>
+            <FormModal
+                open={open}
+                title="Secure a domain"
+                description="Requests a Let's Encrypt certificate for an active domain."
+                triggerLabel="Secure a domain"
+                triggerText="Domain"
+                submitLabel="Issue certificate"
+                pending={pending}
+                submitDisabled={!domainId}
+                onOpenChange={setOpen}
+                onSubmit={form.handleSubmit(handleSubmit)}
+            >
                 <FormSelect
-                    className="mt-5"
                     name="domainId"
                     label="Domain"
                     options={options}
+                    empty="No active domains"
                     required
                 />
-                <FormInput
-                    className="mt-4"
-                    name="email"
-                    label="ACME email"
-                    type="email"
-                    required
-                />
-                <Button
-                    className="mt-5"
-                    type="submit"
-                    variant="primary"
-                    fullWidth
-                    isDisabled={!domainId || pending}
-                >
-                    Issue certificate
-                </Button>
-            </form>
+                <FormInput name="email" label="ACME email" type="email" required />
+            </FormModal>
         </Form>
     );
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, toast } from "@heroui/react";
+import { Button, Spinner, toast } from "@heroui/react";
 import { Play, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
@@ -60,17 +60,21 @@ const BackupPlanActions = ({ plan }: BackupPlanActionsProps) => {
             <Button
                 size="sm"
                 variant="secondary"
-                isDisabled={pending}
+                isPending={pending}
                 onPress={() => void start()}
             >
-                <Play className="size-4" />
+                {pending ? (
+                    <Spinner color="current" size="sm" />
+                ) : (
+                    <Play className="size-4" />
+                )}
                 Run now
             </Button>
             <Confirm
                 title={`Delete ${plan.name}?`}
                 description="The schedule will be removed. Existing backup artifacts will be retained."
                 action="Delete plan"
-                onConfirm={() => void remove()}
+                onConfirm={remove}
             >
                 <Button
                     isIconOnly

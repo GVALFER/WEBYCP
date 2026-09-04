@@ -1,7 +1,7 @@
 "use client";
 
 import { valibotResolver } from "@hookform/resolvers/valibot";
-import { Button, toast } from "@heroui/react";
+import { Button, Spinner, toast } from "@heroui/react";
 import { LockKeyhole } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useTransition } from "react";
@@ -24,6 +24,7 @@ type FormValues = v.InferOutput<typeof formSchema>;
 const LoginForm = () => {
     const router = useRouter();
     const [pending, startTransition] = useTransition();
+
     const form = useForm<FormValues>({
         resolver: valibotResolver(formSchema),
         defaultValues: {
@@ -55,12 +56,7 @@ const LoginForm = () => {
     return (
         <Form {...form}>
             <form className="space-y-5" onSubmit={form.handleSubmit(handleSubmit)}>
-                <FormInput
-                    name="username"
-                    label="Username"
-                    autoComplete="username"
-                    required
-                />
+                <FormInput name="username" label="Username" autoComplete="username" required />
                 <FormInput
                     name="password"
                     label="Password"
@@ -73,10 +69,14 @@ const LoginForm = () => {
                     type="submit"
                     variant="primary"
                     fullWidth
-                    isDisabled={pending}
+                    isPending={pending}
                 >
-                    <LockKeyhole className="size-4" aria-hidden="true" />
-                    {pending ? "Please wait…" : "Sign in"}
+                    {pending ? (
+                        <Spinner color="current" size="sm" />
+                    ) : (
+                        <LockKeyhole className="size-4" aria-hidden="true" />
+                    )}
+                    Sign in
                 </Button>
             </form>
         </Form>

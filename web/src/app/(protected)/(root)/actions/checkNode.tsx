@@ -1,12 +1,11 @@
 "use client";
 
-import { Button, toast } from "@heroui/react";
+import { Button, Spinner, toast } from "@heroui/react";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 import type { Job, NodeListResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
-import { cn } from "@/utils/classnames";
 import { errorMessage } from "@/utils/errors";
 
 type CheckNodeProps = {
@@ -37,10 +36,14 @@ const CheckNode = ({ node }: CheckNodeProps) => {
         <Button
             size="sm"
             variant="secondary"
-            isDisabled={pending}
+            isPending={pending}
             onPress={() => void check()}
         >
-            <RefreshCw className={cn("size-4", pending && "animate-spin")} />
+            {pending ? (
+                <Spinner color="current" size="sm" />
+            ) : (
+                <RefreshCw className="size-4" />
+            )}
             Check agent
         </Button>
     );

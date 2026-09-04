@@ -72,7 +72,7 @@ const BackupArtifactActions = ({ artifact }: BackupArtifactActionsProps) => {
                 title="Restore this backup?"
                 description="The verified manifest will be restored. Existing files and databases may be overwritten."
                 action="Restore backup"
-                onConfirm={() => void restore()}
+                onConfirm={restore}
             >
                 <Button size="sm" variant="secondary" isDisabled={pending}>
                     <ArchiveRestore className="size-4" />
@@ -83,7 +83,7 @@ const BackupArtifactActions = ({ artifact }: BackupArtifactActionsProps) => {
                 title="Delete this backup?"
                 description="The local backup artifact will be permanently deleted."
                 action="Delete backup"
-                onConfirm={() => void remove()}
+                onConfirm={remove}
             >
                 <Button
                     isIconOnly

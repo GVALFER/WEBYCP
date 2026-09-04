@@ -94,7 +94,7 @@
 4. **[2026-09-04] Never poll frontend resources by default**
    Do instead: let SWR fetch on mount and revalidate on focus, then call `mutate` after successful writes.
 5. **[2026-09-04] Avoid native browser dialogs and repeated request feedback**
-   Do instead: use the shared HeroUI `Confirm` component for destructive choices, a HeroUI modal for editable prompts, and HeroUI toasts for action feedback.
+   Do instead: use the shared HeroUI `Confirm` component for destructive choices, a HeroUI modal for editable prompts, and HeroUI toasts for action feedback; keep async button labels stable and show a HeroUI `Spinner` through `isPending` while the action runs.
 6. **[2026-09-04] Resolve the initial session on the server**
    Do instead: fetch `auth/me` in the protected Next.js server layout, redirect before sending HTML, and seed one client session context; use the reqly `401` handler only for expired protected requests and exclude `auth/login` and `auth/me`.
 7. **[2026-09-04] Format panel dates in the administrator timezone**
@@ -104,4 +104,4 @@
 9. **[2026-09-04] Load each route's initial data in its Server Component**
    Do instead: make every route `page.tsx` fetch its initial data on the server, pass typed props to an adjacent Client Component, and seed that component's SWR hooks through `fallbackData`; keep the shared shell in the four `components/layout` files and do not use a `features` directory.
 10. **[2026-09-04] Keep all mutation logic in action components**
-   Do instead: keep page clients focused on SWR fallback and presentation; move every POST, PATCH, PUT, DELETE, pending state, validation, toast, mutate, and mutation button/form into focused components under the adjacent `actions` directory; build submitted forms with React Hook Form, `valibotResolver`, the shared `Form`/field components, and `useTransition`, without manual `safeParse` calls in submit handlers.
+   Do instead: keep page clients focused on SWR fallback and presentation; move every POST, PATCH, PUT, DELETE, pending state, validation, toast, mutate, and mutation button/form into focused components under the adjacent `actions` directory; build submitted forms with React Hook Form, `valibotResolver`, the shared `Form`/field components, and `useTransition`, without manual `safeParse` calls in submit handlers; open resource creation forms in the shared HeroUI modal instead of permanent page sidebars.

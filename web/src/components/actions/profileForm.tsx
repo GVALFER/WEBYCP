@@ -1,7 +1,7 @@
 "use client";
 
 import { valibotResolver } from "@hookform/resolvers/valibot";
-import { Button, toast } from "@heroui/react";
+import { Button, Spinner, toast } from "@heroui/react";
 import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useTransition } from "react";
@@ -162,9 +162,13 @@ export const ProfileForm = ({ forced = false, session }: Props) => {
                 </div>
 
                 <div className="flex justify-end pt-2">
-                    <Button type="submit" variant="primary" isDisabled={pending}>
-                        <Save className="size-4" />
-                        {pending ? "Saving…" : forced ? "Complete setup" : "Save changes"}
+                    <Button type="submit" variant="primary" isPending={pending}>
+                        {pending ? (
+                            <Spinner color="current" size="sm" />
+                        ) : (
+                            <Save className="size-4" />
+                        )}
+                        {forced ? "Complete setup" : "Save changes"}
                     </Button>
                 </div>
             </form>

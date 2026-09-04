@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, toast } from "@heroui/react";
+import { Button, Spinner, toast } from "@heroui/react";
 import { Pencil, Power, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
@@ -91,16 +91,21 @@ const DomainActions = ({ domain }: DomainActionsProps) => {
                     size="sm"
                     variant="tertiary"
                     aria-label={domain.enabled ? `Disable ${domain.name}` : `Enable ${domain.name}`}
-                    isDisabled={disabled}
+                    isPending={pending}
+                    isDisabled={domain.status === "pending"}
                     onPress={() => void toggle()}
                 >
-                    <Power className="size-4" aria-hidden="true" />
+                    {pending ? (
+                        <Spinner color="current" size="sm" />
+                    ) : (
+                        <Power className="size-4" aria-hidden="true" />
+                    )}
                 </Button>
                 <Confirm
                     title={`Delete ${domain.name}?`}
                     description="Its document root will be moved to the recovery trash."
                     action="Delete domain"
-                    onConfirm={() => void remove()}
+                    onConfirm={remove}
                 >
                     <Button
                         isIconOnly
