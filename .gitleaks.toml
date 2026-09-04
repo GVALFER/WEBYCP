@@ -4,9 +4,9 @@ useDefault = true
 [[allowlists]]
 description = "Next.js generated build keys"
 paths = [
-  '''(^|/)web/\.next/cache/\.(previewinfo|rscinfo)$''',
-  '''(^|/)web/\.next/(standalone/\.next/)?prerender-manifest\.json$''',
-  '''(^|/)web/\.next/(standalone/\.next/)?server/server-reference-manifest\.json$''',
+  '''(^|/)web/\.next/(dev/)?cache/\.(previewinfo|rscinfo)$''',
+  '''(^|/)web/\.next/(dev/|standalone/\.next/)?prerender-manifest\.json$''',
+  '''(^|/)web/\.next/(dev/|standalone/\.next/)?server/server-reference-manifest\.json$''',
 ]
 
 [[allowlists]]

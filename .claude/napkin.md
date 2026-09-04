@@ -11,7 +11,9 @@
 
 1. **[2026-09-04] Release builds require Node.js 24 and Docker Buildx**
    Do instead: verify `node --version` before release, select the installed NVM Node 24 when needed, and build the pinned Linux amd64 Next.js standalone runtime through Docker.
-2. **[2026-09-04] Browser QA may clean tracked screenshot artifacts**
+2. **[2026-09-04] Gitleaks must recognize Next.js dev build keys**
+   Do instead: allowlist only the exact generated `.next/dev` key and manifest paths alongside their production equivalents; never bypass the working-tree secret scan.
+3. **[2026-09-04] Browser QA may clean tracked screenshot artifacts**
    Do instead: compare `git status` before and after Playwright, then restore only exact artifacts removed by the browser session.
 
 ## Execution & Validation (Highest Priority)
