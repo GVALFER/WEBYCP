@@ -22,12 +22,12 @@ const ProtectedLayout = async ({ children }: Readonly<{ children: ReactNode }>) 
             {session.user.mustChangePassword ? (
                 <Setup />
             ) : (
-                <div className="min-h-screen bg-background text-foreground">
-                    <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-divider lg:block">
+                <div className="app-shell min-h-screen text-foreground">
+                    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[17rem] lg:block">
                         <Sidebar />
                     </aside>
 
-                    <div className="flex min-h-screen flex-col lg:pl-64">
+                    <div className="flex min-h-screen flex-col lg:pl-[17rem]">
                         <Header />
                         <Content className="flex-1">{children}</Content>
                         <Footer />

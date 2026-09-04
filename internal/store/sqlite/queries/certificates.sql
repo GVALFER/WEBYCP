@@ -1,22 +1,25 @@
 -- name: ListCertificates :many
 SELECT certificates.* FROM certificates
-LEFT JOIN domains ON domains.id = certificates.domain_id
-LEFT JOIN account_members ON account_members.account_id = domains.account_id
-WHERE ? OR certificates.kind = 'panel' OR account_members.user_id = ?
+LEFT JOIN websites ON websites.id = certificates.website_id
+LEFT JOIN account_members ON account_members.account_id = websites.account_id
+WHERE (sqlc.arg(kind) = '' OR certificates.kind = sqlc.arg(kind))
+  AND (sqlc.arg(is_admin) OR account_members.user_id = sqlc.arg(user_id))
 GROUP BY certificates.id
 ORDER BY certificates.created_at DESC;
 
 -- name: CountCertificates :one
 SELECT COUNT(DISTINCT certificates.id) FROM certificates
-LEFT JOIN domains ON domains.id = certificates.domain_id
-LEFT JOIN account_members ON account_members.account_id = domains.account_id
-WHERE sqlc.arg(is_admin) OR certificates.kind = 'panel' OR account_members.user_id = sqlc.arg(user_id);
+LEFT JOIN websites ON websites.id = certificates.website_id
+LEFT JOIN account_members ON account_members.account_id = websites.account_id
+WHERE (sqlc.arg(kind) = '' OR certificates.kind = sqlc.arg(kind))
+  AND (sqlc.arg(is_admin) OR account_members.user_id = sqlc.arg(user_id));
 
 -- name: ListCertificatesPage :many
 SELECT certificates.* FROM certificates
-LEFT JOIN domains ON domains.id = certificates.domain_id
-LEFT JOIN account_members ON account_members.account_id = domains.account_id
-WHERE sqlc.arg(is_admin) OR certificates.kind = 'panel' OR account_members.user_id = sqlc.arg(user_id)
+LEFT JOIN websites ON websites.id = certificates.website_id
+LEFT JOIN account_members ON account_members.account_id = websites.account_id
+WHERE (sqlc.arg(kind) = '' OR certificates.kind = sqlc.arg(kind))
+  AND (sqlc.arg(is_admin) OR account_members.user_id = sqlc.arg(user_id))
 GROUP BY certificates.id
 ORDER BY certificates.created_at DESC
 LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
@@ -24,15 +27,15 @@ LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
 -- name: GetCertificate :one
 SELECT * FROM certificates WHERE id = ? LIMIT 1;
 
--- name: GetDomainCertificate :one
-SELECT * FROM certificates WHERE domain_id = ? LIMIT 1;
+-- name: GetWebsiteCertificate :one
+SELECT * FROM certificates WHERE website_id = ? LIMIT 1;
 
 -- name: GetPanelCertificate :one
 SELECT * FROM certificates WHERE kind = 'panel' LIMIT 1;
 
 -- name: CreateCertificate :one
 INSERT INTO certificates (
-    id, domain_id, node_id, kind, name, email, status, redirect_https,
+    id, website_id, node_id, kind, name, email, status, redirect_https,
     created_at, updated_at
 ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
 RETURNING *;

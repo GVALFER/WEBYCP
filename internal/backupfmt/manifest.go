@@ -2,7 +2,7 @@ package backupfmt
 
 import "time"
 
-const Version = 1
+const Version = 2
 
 type Entry struct {
 	Path     string `json:"path"`
@@ -24,24 +24,29 @@ type Manifest struct {
 type Metadata struct {
 	Version   int        `json:"version"`
 	AccountID string     `json:"accountId"`
-	Domains   []Domain   `json:"domains"`
+	Websites  []Website  `json:"websites"`
 	Databases []Database `json:"databases"`
 	CronJobs  []CronJob  `json:"cronJobs"`
 }
 
-type Domain struct {
-	ID         string  `json:"id"`
-	NodeID     string  `json:"nodeId"`
-	Name       string  `json:"name"`
-	PHPVersion string  `json:"phpVersion"`
-	Enabled    bool    `json:"enabled"`
-	Aliases    []Alias `json:"aliases"`
+type Website struct {
+	ID             string          `json:"id"`
+	NodeID         string          `json:"nodeId"`
+	Name           string          `json:"name"`
+	Kind           string          `json:"kind"`
+	DocumentRoot   string          `json:"documentRoot"`
+	WebDriver      string          `json:"webDriver"`
+	RuntimeDriver  string          `json:"runtimeDriver"`
+	RuntimeVersion string          `json:"runtimeVersion"`
+	Enabled        bool            `json:"enabled"`
+	Domains        []WebsiteDomain `json:"domains"`
 }
 
-type Alias struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Enabled bool   `json:"enabled"`
+type WebsiteDomain struct {
+	ID       string `json:"id"`
+	Hostname string `json:"hostname"`
+	Kind     string `json:"kind"`
+	Enabled  bool   `json:"enabled"`
 }
 
 type Database struct {

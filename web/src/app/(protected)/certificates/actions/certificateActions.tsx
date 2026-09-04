@@ -59,7 +59,7 @@ const CertificateActions = ({ certificate }: CertificateActionsProps) => {
 
     return (
         <div className="flex items-center gap-2">
-            {certificate.kind === "domain" && (
+            {certificate.kind === "website" && (
                 <Button
                     size="sm"
                     variant="tertiary"
@@ -67,9 +67,7 @@ const CertificateActions = ({ certificate }: CertificateActionsProps) => {
                     isDisabled={certificate.status === "pending" || pending === "renew"}
                     onPress={() => void toggleRedirect()}
                 >
-                    {pending === "redirect" ? (
-                        <Spinner color="current" size="sm" />
-                    ) : null}
+                    {pending === "redirect" ? <Spinner color="current" size="sm" /> : null}
                     {certificate.redirectHttps ? "Disable redirect" : "Enable redirect"}
                 </Button>
             )}

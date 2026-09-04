@@ -4,7 +4,7 @@ import { UserRound } from "lucide-react";
 import useSWR from "swr";
 import { Table, type TableColumn } from "@/components/table/table";
 import { useTable } from "@/components/table/useTable";
-import type { AccountListResponse, NodeListResponse } from "@/contracts/types";
+import type { AccountListResponse, NodeListResponse, PackageListResponse } from "@/contracts/types";
 import { useTimezone } from "@/hooks/useDate";
 import { cn } from "@/utils/classnames";
 import { statusClass } from "@/utils/status";
@@ -14,24 +14,27 @@ import CreateAccount from "./actions/createAccount";
 type AccountsProps = {
     accounts: AccountListResponse;
     nodes: NodeListResponse;
+    packages: PackageListResponse;
 };
 
 type Account = AccountListResponse["items"][number];
 
-const Accounts = ({ accounts, nodes }: AccountsProps) => {
+const Accounts = ({ accounts, nodes, packages }: AccountsProps) => {
     const { dt } = useTimezone();
-
     const table = useTable(accounts.pagination);
 
     const { data } = useSWR<AccountListResponse>(`accounts${table.query}`, {
         fallbackData: table.isInitialQuery ? accounts : undefined,
     });
-
     const { data: nodesData } = useSWR<NodeListResponse>("nodes", {
         fallbackData: nodes,
     });
+    const { data: packagesData } = useSWR<PackageListResponse>("packages?page=1&size=100", {
+        fallbackData: packages,
+    });
 
     const nodeId = nodesData?.items[0]?.id ?? "";
+    const packageItems = packagesData?.items ?? [];
 
     const columns: TableColumn<Account>[] = [
         {
@@ -49,6 +52,50 @@ const Accounts = ({ accounts, nodes }: AccountsProps) => {
                             {account.systemUser}
                         </div>
                     </div>
+                </div>
+            ),
+        },
+        {
+            id: "package",
+            label: "Package",
+            render: ({ package: value }) => (
+                <div>
+                    <div className="font-medium">{value.name}</div>
+                    <div className="mt-1 text-xs text-foreground-400">
+                        {value.accountCount} assigned
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: "usage",
+            label: "Usage",
+            cellClassName: "min-w-72",
+            render: ({ package: value, usage }) => (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-foreground-500">
+                    <Usage label="Websites" used={usage.websites} limit={value.limits.websites} />
+                    <Usage label="Domains" used={usage.domains} limit={value.limits.domains} />
+                    <Usage label="Aliases" used={usage.aliases} limit={value.limits.aliases} />
+                    <Usage
+                        label="Databases"
+                        used={usage.databases}
+                        limit={value.limits.databases}
+                    />
+                    <Usage
+                        label="DB users"
+                        used={usage.databaseUsers}
+                        limit={value.limits.databaseUsers}
+                    />
+                    <Usage
+                        label="Tasks"
+                        used={usage.scheduledTasks}
+                        limit={value.limits.scheduledTasks}
+                    />
+                    <Usage
+                        label="Backup plans"
+                        used={usage.backupPlans}
+                        limit={value.limits.backupPlans}
+                    />
                 </div>
             ),
         },
@@ -77,7 +124,13 @@ const Accounts = ({ accounts, nodes }: AccountsProps) => {
             label: "Actions",
             headerClassName: "text-end",
             cellClassName: "w-px whitespace-nowrap",
-            render: (account) => <AccountActions account={account} />,
+            render: (account) => (
+                <AccountActions
+                    account={account}
+                    packageId={account.package.id}
+                    packages={packageItems}
+                />
+            ),
         },
     ];
 
@@ -90,11 +143,26 @@ const Accounts = ({ accounts, nodes }: AccountsProps) => {
                         Isolated Linux identities owned by panel users.
                     </div>
                 </div>
-                <CreateAccount nodeId={nodeId} />
+                <CreateAccount nodeId={nodeId} packages={packageItems} />
             </div>
             <Table table={table} columns={columns} data={data} />
         </section>
     );
 };
+
+type UsageProps = {
+    label: string;
+    used: number;
+    limit: number;
+};
+
+const Usage = ({ label, used, limit }: UsageProps) => (
+    <div className={cn("flex justify-between gap-2", used >= limit && "text-warning")}>
+        <span>{label}</span>
+        <span className="font-medium tabular-nums text-foreground">
+            {used}/{limit}
+        </span>
+    </div>
+);
 
 export default Accounts;

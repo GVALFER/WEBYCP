@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/packages"
 	"github.com/GVALFER/WEBYCP/internal/pagination"
 )
 
@@ -27,12 +28,19 @@ type Account struct {
 	UpdatedAt  time.Time
 }
 
+type Overview struct {
+	Account
+	Package packages.Package
+	Usage   packages.Usage
+}
+
 type Repository interface {
-	CreateProvision(context.Context, Account, string, jobs.Job) (Account, jobs.Job, error)
+	CreateProvision(context.Context, Account, string, string, jobs.Job) (Account, jobs.Job, error)
 	Account(context.Context, string) (Account, error)
 	AccountMember(context.Context, string, string) (bool, error)
 	Accounts(context.Context, string, bool) ([]Account, error)
-	AccountPage(context.Context, string, bool, pagination.Query) (pagination.Result[Account], error)
+	AccountOverview(context.Context, string) (Overview, error)
+	AccountPage(context.Context, string, bool, pagination.Query) (pagination.Result[Overview], error)
 	QueueAction(context.Context, string, bool, jobs.Job) (Account, jobs.Job, error)
 	ResourceCount(context.Context, string) (int64, error)
 	UpdateStatus(context.Context, string, string) error

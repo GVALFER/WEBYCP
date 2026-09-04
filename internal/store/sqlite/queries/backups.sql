@@ -122,18 +122,24 @@ LIMIT -1 OFFSET ?;
 -- name: DeleteBackupArtifact :exec
 DELETE FROM backup_artifacts WHERE id = ?;
 
--- name: UpsertRestoredDomain :exec
-INSERT INTO domains (id, account_id, node_id, name, status, php_version, enabled, created_at, updated_at)
-VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)
-ON CONFLICT(id) DO UPDATE SET name = excluded.name, status = 'active',
-    php_version = excluded.php_version, enabled = excluded.enabled, updated_at = excluded.updated_at;
+-- name: UpsertRestoredWebsite :exec
+INSERT INTO websites (
+    id, account_id, node_id, name, kind, document_root, web_driver,
+    runtime_driver, runtime_version, status, enabled, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind,
+    document_root = excluded.document_root, web_driver = excluded.web_driver,
+    runtime_driver = excluded.runtime_driver, runtime_version = excluded.runtime_version,
+    status = excluded.status, enabled = excluded.enabled, updated_at = excluded.updated_at;
 
--- name: UpsertRestoredAlias :exec
-INSERT INTO domain_aliases (id, domain_id, name, status, enabled, created_at, updated_at)
-VALUES (?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?, ?)
-ON CONFLICT(id) DO UPDATE SET name = excluded.name,
-    status = CASE WHEN excluded.enabled = 1 THEN 'active' ELSE 'disabled' END,
-    enabled = excluded.enabled, updated_at = excluded.updated_at;
+-- name: UpsertRestoredWebsiteDomain :exec
+INSERT INTO website_domains (
+    id, website_id, hostname, kind, status, enabled, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET hostname = excluded.hostname, kind = excluded.kind,
+    status = excluded.status, enabled = excluded.enabled, updated_at = excluded.updated_at;
 
 -- name: UpsertRestoredDatabase :exec
 INSERT INTO databases (id, account_id, node_id, name, system_name, status, created_at, updated_at)

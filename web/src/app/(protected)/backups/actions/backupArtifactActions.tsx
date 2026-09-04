@@ -4,11 +4,7 @@ import { Button, toast } from "@heroui/react";
 import { ArchiveRestore, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
-import type {
-    BackupArtifactListResponse,
-    BackupManifest,
-    Job,
-} from "@/contracts/types";
+import type { BackupArtifactListResponse, BackupManifest, Job } from "@/contracts/types";
 import { Confirm } from "@/components/actions/confirm";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
@@ -57,12 +53,9 @@ const BackupArtifactActions = ({ artifact }: BackupArtifactActionsProps) => {
         }, "Restore queued");
 
     const remove = () =>
-        run(
-            async () => {
-                await api.delete(`backup-artifacts/${encodeURIComponent(artifact.id)}`);
-            },
-            "Backup artifact deleted",
-        );
+        run(async () => {
+            await api.delete(`backup-artifacts/${encodeURIComponent(artifact.id)}`);
+        }, "Backup artifact deleted");
 
     return (
         <div className="flex items-center gap-2">

@@ -33,6 +33,30 @@ func (e AccountStatus) Valid() bool {
 	}
 }
 
+// Defines values for AccountOverviewStatus.
+const (
+	AccountOverviewStatusActive   AccountOverviewStatus = "active"
+	AccountOverviewStatusDisabled AccountOverviewStatus = "disabled"
+	AccountOverviewStatusError    AccountOverviewStatus = "error"
+	AccountOverviewStatusPending  AccountOverviewStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the AccountOverviewStatus enum.
+func (e AccountOverviewStatus) Valid() bool {
+	switch e {
+	case AccountOverviewStatusActive:
+		return true
+	case AccountOverviewStatusDisabled:
+		return true
+	case AccountOverviewStatusError:
+		return true
+	case AccountOverviewStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for BackupRunStatus.
 const (
 	BackupRunStatusFailed    BackupRunStatus = "failed"
@@ -59,16 +83,16 @@ func (e BackupRunStatus) Valid() bool {
 
 // Defines values for CertificateKind.
 const (
-	CertificateKindDomain CertificateKind = "domain"
-	CertificateKindPanel  CertificateKind = "panel"
+	CertificateKindPanel   CertificateKind = "panel"
+	CertificateKindWebsite CertificateKind = "website"
 )
 
 // Valid indicates whether the value is a known member of the CertificateKind enum.
 func (e CertificateKind) Valid() bool {
 	switch e {
-	case CertificateKindDomain:
-		return true
 	case CertificateKindPanel:
+		return true
+	case CertificateKindWebsite:
 		return true
 	default:
 		return false
@@ -90,6 +114,66 @@ func (e CertificateStatus) Valid() bool {
 	case CertificateStatusError:
 		return true
 	case CertificateStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateWebsiteRequestKind.
+const (
+	CreateWebsiteRequestKindPhp CreateWebsiteRequestKind = "php"
+)
+
+// Valid indicates whether the value is a known member of the CreateWebsiteRequestKind enum.
+func (e CreateWebsiteRequestKind) Valid() bool {
+	switch e {
+	case CreateWebsiteRequestKindPhp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateWebsiteRequestRuntimeDriver.
+const (
+	CreateWebsiteRequestRuntimeDriverPhpfpm CreateWebsiteRequestRuntimeDriver = "phpfpm"
+)
+
+// Valid indicates whether the value is a known member of the CreateWebsiteRequestRuntimeDriver enum.
+func (e CreateWebsiteRequestRuntimeDriver) Valid() bool {
+	switch e {
+	case CreateWebsiteRequestRuntimeDriverPhpfpm:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateWebsiteRequestRuntimeVersion.
+const (
+	CreateWebsiteRequestRuntimeVersionN83 CreateWebsiteRequestRuntimeVersion = "8.3"
+)
+
+// Valid indicates whether the value is a known member of the CreateWebsiteRequestRuntimeVersion enum.
+func (e CreateWebsiteRequestRuntimeVersion) Valid() bool {
+	switch e {
+	case CreateWebsiteRequestRuntimeVersionN83:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateWebsiteRequestWebDriver.
+const (
+	CreateWebsiteRequestWebDriverNginx CreateWebsiteRequestWebDriver = "nginx"
+)
+
+// Valid indicates whether the value is a known member of the CreateWebsiteRequestWebDriver enum.
+func (e CreateWebsiteRequestWebDriver) Valid() bool {
+	switch e {
+	case CreateWebsiteRequestWebDriverNginx:
 		return true
 	default:
 		return false
@@ -177,54 +261,6 @@ func (e DatabaseUserStatus) Valid() bool {
 	case DatabaseUserStatusError:
 		return true
 	case DatabaseUserStatusPending:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DomainStatus.
-const (
-	DomainStatusActive   DomainStatus = "active"
-	DomainStatusDisabled DomainStatus = "disabled"
-	DomainStatusError    DomainStatus = "error"
-	DomainStatusPending  DomainStatus = "pending"
-)
-
-// Valid indicates whether the value is a known member of the DomainStatus enum.
-func (e DomainStatus) Valid() bool {
-	switch e {
-	case DomainStatusActive:
-		return true
-	case DomainStatusDisabled:
-		return true
-	case DomainStatusError:
-		return true
-	case DomainStatusPending:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DomainAliasStatus.
-const (
-	DomainAliasStatusActive   DomainAliasStatus = "active"
-	DomainAliasStatusDisabled DomainAliasStatus = "disabled"
-	DomainAliasStatusError    DomainAliasStatus = "error"
-	DomainAliasStatusPending  DomainAliasStatus = "pending"
-)
-
-// Valid indicates whether the value is a known member of the DomainAliasStatus enum.
-func (e DomainAliasStatus) Valid() bool {
-	switch e {
-	case DomainAliasStatusActive:
-		return true
-	case DomainAliasStatusDisabled:
-		return true
-	case DomainAliasStatusError:
-		return true
-	case DomainAliasStatusPending:
 		return true
 	default:
 		return false
@@ -348,6 +384,168 @@ func (e UserRole) Valid() bool {
 	}
 }
 
+// Defines values for WebsiteKind.
+const (
+	WebsiteKindPhp WebsiteKind = "php"
+)
+
+// Valid indicates whether the value is a known member of the WebsiteKind enum.
+func (e WebsiteKind) Valid() bool {
+	switch e {
+	case WebsiteKindPhp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebsiteRuntimeDriver.
+const (
+	WebsiteRuntimeDriverPhpfpm WebsiteRuntimeDriver = "phpfpm"
+)
+
+// Valid indicates whether the value is a known member of the WebsiteRuntimeDriver enum.
+func (e WebsiteRuntimeDriver) Valid() bool {
+	switch e {
+	case WebsiteRuntimeDriverPhpfpm:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebsiteRuntimeVersion.
+const (
+	WebsiteRuntimeVersionN83 WebsiteRuntimeVersion = "8.3"
+)
+
+// Valid indicates whether the value is a known member of the WebsiteRuntimeVersion enum.
+func (e WebsiteRuntimeVersion) Valid() bool {
+	switch e {
+	case WebsiteRuntimeVersionN83:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebsiteStatus.
+const (
+	WebsiteStatusActive   WebsiteStatus = "active"
+	WebsiteStatusDisabled WebsiteStatus = "disabled"
+	WebsiteStatusError    WebsiteStatus = "error"
+	WebsiteStatusPending  WebsiteStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the WebsiteStatus enum.
+func (e WebsiteStatus) Valid() bool {
+	switch e {
+	case WebsiteStatusActive:
+		return true
+	case WebsiteStatusDisabled:
+		return true
+	case WebsiteStatusError:
+		return true
+	case WebsiteStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebsiteWebDriver.
+const (
+	WebsiteWebDriverNginx WebsiteWebDriver = "nginx"
+)
+
+// Valid indicates whether the value is a known member of the WebsiteWebDriver enum.
+func (e WebsiteWebDriver) Valid() bool {
+	switch e {
+	case WebsiteWebDriverNginx:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebsiteDomainKind.
+const (
+	WebsiteDomainKindAlias   WebsiteDomainKind = "alias"
+	WebsiteDomainKindPrimary WebsiteDomainKind = "primary"
+)
+
+// Valid indicates whether the value is a known member of the WebsiteDomainKind enum.
+func (e WebsiteDomainKind) Valid() bool {
+	switch e {
+	case WebsiteDomainKindAlias:
+		return true
+	case WebsiteDomainKindPrimary:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebsiteDomainStatus.
+const (
+	WebsiteDomainStatusActive   WebsiteDomainStatus = "active"
+	WebsiteDomainStatusDisabled WebsiteDomainStatus = "disabled"
+	WebsiteDomainStatusError    WebsiteDomainStatus = "error"
+	WebsiteDomainStatusPending  WebsiteDomainStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the WebsiteDomainStatus enum.
+func (e WebsiteDomainStatus) Valid() bool {
+	switch e {
+	case WebsiteDomainStatusActive:
+		return true
+	case WebsiteDomainStatusDisabled:
+		return true
+	case WebsiteDomainStatusError:
+		return true
+	case WebsiteDomainStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListCertificatesParamsKind.
+const (
+	ListCertificatesParamsKindPanel   ListCertificatesParamsKind = "panel"
+	ListCertificatesParamsKindWebsite ListCertificatesParamsKind = "website"
+)
+
+// Valid indicates whether the value is a known member of the ListCertificatesParamsKind enum.
+func (e ListCertificatesParamsKind) Valid() bool {
+	switch e {
+	case ListCertificatesParamsKindPanel:
+		return true
+	case ListCertificatesParamsKindWebsite:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListWebsiteDomainsParamsKind.
+const (
+	ListWebsiteDomainsParamsKindAlias   ListWebsiteDomainsParamsKind = "alias"
+	ListWebsiteDomainsParamsKindPrimary ListWebsiteDomainsParamsKind = "primary"
+)
+
+// Valid indicates whether the value is a known member of the ListWebsiteDomainsParamsKind enum.
+func (e ListWebsiteDomainsParamsKind) Valid() bool {
+	switch e {
+	case ListWebsiteDomainsParamsKindAlias:
+		return true
+	case ListWebsiteDomainsParamsKindPrimary:
+		return true
+	default:
+		return false
+	}
+}
+
 // Account defines model for Account.
 type Account struct {
 	CreatedAt  time.Time     `json:"createdAt"`
@@ -371,8 +569,30 @@ type AccountJobResponse struct {
 
 // AccountListResponse defines model for AccountListResponse.
 type AccountListResponse struct {
-	Items      []Account  `json:"items"`
-	Pagination Pagination `json:"pagination"`
+	Items      []AccountOverview `json:"items"`
+	Pagination Pagination        `json:"pagination"`
+}
+
+// AccountOverview defines model for AccountOverview.
+type AccountOverview struct {
+	CreatedAt  time.Time             `json:"createdAt"`
+	Enabled    bool                  `json:"enabled"`
+	Id         string                `json:"id"`
+	Name       string                `json:"name"`
+	NodeId     string                `json:"nodeId"`
+	Package    Package               `json:"package"`
+	Status     AccountOverviewStatus `json:"status"`
+	SystemUser string                `json:"systemUser"`
+	UpdatedAt  time.Time             `json:"updatedAt"`
+	Usage      PackageUsage          `json:"usage"`
+}
+
+// AccountOverviewStatus defines model for AccountOverview.Status.
+type AccountOverviewStatus string
+
+// AssignAccountPackageRequest defines model for AssignAccountPackageRequest.
+type AssignAccountPackageRequest struct {
+	PackageId string `json:"packageId"`
 }
 
 // AuthResponse defines model for AuthResponse.
@@ -474,7 +694,6 @@ type BackupRunResponse struct {
 // Certificate defines model for Certificate.
 type Certificate struct {
 	CreatedAt     time.Time           `json:"createdAt"`
-	DomainId      *string             `json:"domainId,omitempty"`
 	Email         openapi_types.Email `json:"email"`
 	Error         string              `json:"error"`
 	ExpiresAt     *time.Time          `json:"expiresAt,omitempty"`
@@ -486,6 +705,7 @@ type Certificate struct {
 	RedirectHttps bool                `json:"redirectHttps"`
 	Status        CertificateStatus   `json:"status"`
 	UpdatedAt     time.Time           `json:"updatedAt"`
+	WebsiteId     *string             `json:"websiteId,omitempty"`
 }
 
 // CertificateKind defines model for Certificate.Kind.
@@ -508,8 +728,9 @@ type CertificateListResponse struct {
 
 // CreateAccountRequest defines model for CreateAccountRequest.
 type CreateAccountRequest struct {
-	Name   string `json:"name"`
-	NodeId string `json:"nodeId"`
+	Name      string `json:"name"`
+	NodeId    string `json:"nodeId"`
+	PackageId string `json:"packageId"`
 }
 
 // CreateDatabaseRequest defines model for CreateDatabaseRequest.
@@ -524,16 +745,33 @@ type CreateDatabaseUserRequest struct {
 	Name      string `json:"name"`
 }
 
-// CreateDomainAliasRequest defines model for CreateDomainAliasRequest.
-type CreateDomainAliasRequest struct {
-	Name string `json:"name"`
+// CreateWebsiteDomainRequest defines model for CreateWebsiteDomainRequest.
+type CreateWebsiteDomainRequest struct {
+	Hostname string `json:"hostname"`
 }
 
-// CreateDomainRequest defines model for CreateDomainRequest.
-type CreateDomainRequest struct {
-	AccountId string `json:"accountId"`
-	Name      string `json:"name"`
+// CreateWebsiteRequest defines model for CreateWebsiteRequest.
+type CreateWebsiteRequest struct {
+	AccountId      string                             `json:"accountId"`
+	Kind           CreateWebsiteRequestKind           `json:"kind"`
+	Name           string                             `json:"name"`
+	PrimaryDomain  string                             `json:"primaryDomain"`
+	RuntimeDriver  CreateWebsiteRequestRuntimeDriver  `json:"runtimeDriver"`
+	RuntimeVersion CreateWebsiteRequestRuntimeVersion `json:"runtimeVersion"`
+	WebDriver      CreateWebsiteRequestWebDriver      `json:"webDriver"`
 }
+
+// CreateWebsiteRequestKind defines model for CreateWebsiteRequest.Kind.
+type CreateWebsiteRequestKind string
+
+// CreateWebsiteRequestRuntimeDriver defines model for CreateWebsiteRequest.RuntimeDriver.
+type CreateWebsiteRequestRuntimeDriver string
+
+// CreateWebsiteRequestRuntimeVersion defines model for CreateWebsiteRequest.RuntimeVersion.
+type CreateWebsiteRequestRuntimeVersion string
+
+// CreateWebsiteRequestWebDriver defines model for CreateWebsiteRequest.WebDriver.
+type CreateWebsiteRequestWebDriver string
 
 // CronJob defines model for CronJob.
 type CronJob struct {
@@ -645,60 +883,6 @@ type DatabaseUserListResponse struct {
 	Pagination Pagination     `json:"pagination"`
 }
 
-// Domain defines model for Domain.
-type Domain struct {
-	AccountId  string       `json:"accountId"`
-	CreatedAt  time.Time    `json:"createdAt"`
-	Enabled    bool         `json:"enabled"`
-	Id         string       `json:"id"`
-	Name       string       `json:"name"`
-	NodeId     string       `json:"nodeId"`
-	PhpVersion string       `json:"phpVersion"`
-	Status     DomainStatus `json:"status"`
-	UpdatedAt  time.Time    `json:"updatedAt"`
-}
-
-// DomainStatus defines model for Domain.Status.
-type DomainStatus string
-
-// DomainAlias defines model for DomainAlias.
-type DomainAlias struct {
-	CreatedAt time.Time         `json:"createdAt"`
-	DomainId  string            `json:"domainId"`
-	Enabled   bool              `json:"enabled"`
-	Id        string            `json:"id"`
-	Name      string            `json:"name"`
-	Status    DomainAliasStatus `json:"status"`
-	UpdatedAt time.Time         `json:"updatedAt"`
-}
-
-// DomainAliasStatus defines model for DomainAlias.Status.
-type DomainAliasStatus string
-
-// DomainAliasJobResponse defines model for DomainAliasJobResponse.
-type DomainAliasJobResponse struct {
-	Alias DomainAlias `json:"alias"`
-	Job   Job         `json:"job"`
-}
-
-// DomainAliasListResponse defines model for DomainAliasListResponse.
-type DomainAliasListResponse struct {
-	Items      []DomainAlias `json:"items"`
-	Pagination Pagination    `json:"pagination"`
-}
-
-// DomainJobResponse defines model for DomainJobResponse.
-type DomainJobResponse struct {
-	Domain Domain `json:"domain"`
-	Job    Job    `json:"job"`
-}
-
-// DomainListResponse defines model for DomainListResponse.
-type DomainListResponse struct {
-	Items      []Domain   `json:"items"`
-	Pagination Pagination `json:"pagination"`
-}
-
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
 	Code    string             `json:"code"`
@@ -803,6 +987,45 @@ type NodeListResponse struct {
 	Items []Node `json:"items"`
 }
 
+// Package defines model for Package.
+type Package struct {
+	AccountCount int64         `json:"accountCount"`
+	CreatedAt    time.Time     `json:"createdAt"`
+	Id           string        `json:"id"`
+	Limits       PackageLimits `json:"limits"`
+	Name         string        `json:"name"`
+	UpdatedAt    time.Time     `json:"updatedAt"`
+}
+
+// PackageLimits defines model for PackageLimits.
+type PackageLimits struct {
+	Aliases         int64 `json:"aliases"`
+	BackupPlans     int64 `json:"backupPlans"`
+	BackupRetention int64 `json:"backupRetention"`
+	DatabaseUsers   int64 `json:"databaseUsers"`
+	Databases       int64 `json:"databases"`
+	Domains         int64 `json:"domains"`
+	ScheduledTasks  int64 `json:"scheduledTasks"`
+	Websites        int64 `json:"websites"`
+}
+
+// PackageListResponse defines model for PackageListResponse.
+type PackageListResponse struct {
+	Items      []Package  `json:"items"`
+	Pagination Pagination `json:"pagination"`
+}
+
+// PackageUsage defines model for PackageUsage.
+type PackageUsage struct {
+	Aliases        int64 `json:"aliases"`
+	BackupPlans    int64 `json:"backupPlans"`
+	DatabaseUsers  int64 `json:"databaseUsers"`
+	Databases      int64 `json:"databases"`
+	Domains        int64 `json:"domains"`
+	ScheduledTasks int64 `json:"scheduledTasks"`
+	Websites       int64 `json:"websites"`
+}
+
 // Pagination defines model for Pagination.
 type Pagination struct {
 	Page       int   `json:"page"`
@@ -823,12 +1046,6 @@ type UpdateCertificateRequest struct {
 	RedirectHttps bool `json:"redirectHttps"`
 }
 
-// UpdateDomainRequest defines model for UpdateDomainRequest.
-type UpdateDomainRequest struct {
-	Enabled *bool   `json:"enabled,omitempty"`
-	Name    *string `json:"name,omitempty"`
-}
-
 // UpdateEnabledRequest defines model for UpdateEnabledRequest.
 type UpdateEnabledRequest struct {
 	Enabled bool `json:"enabled"`
@@ -844,6 +1061,17 @@ type UpdateProfileRequest struct {
 	Username        string              `json:"username"`
 }
 
+// UpdateWebsiteDomainRequest defines model for UpdateWebsiteDomainRequest.
+type UpdateWebsiteDomainRequest struct {
+	Enabled  *bool   `json:"enabled,omitempty"`
+	Hostname *string `json:"hostname,omitempty"`
+}
+
+// UpdateWebsiteRequest defines model for UpdateWebsiteRequest.
+type UpdateWebsiteRequest struct {
+	Enabled bool `json:"enabled"`
+}
+
 // User defines model for User.
 type User struct {
 	CreatedAt          time.Time           `json:"createdAt"`
@@ -857,6 +1085,85 @@ type User struct {
 
 // UserRole defines model for User.Role.
 type UserRole string
+
+// Website defines model for Website.
+type Website struct {
+	AccountId      string                `json:"accountId"`
+	CreatedAt      time.Time             `json:"createdAt"`
+	DocumentRoot   string                `json:"documentRoot"`
+	Enabled        bool                  `json:"enabled"`
+	Id             string                `json:"id"`
+	Kind           WebsiteKind           `json:"kind"`
+	Name           string                `json:"name"`
+	NodeId         string                `json:"nodeId"`
+	RuntimeDriver  WebsiteRuntimeDriver  `json:"runtimeDriver"`
+	RuntimeVersion WebsiteRuntimeVersion `json:"runtimeVersion"`
+	Status         WebsiteStatus         `json:"status"`
+	UpdatedAt      time.Time             `json:"updatedAt"`
+	WebDriver      WebsiteWebDriver      `json:"webDriver"`
+}
+
+// WebsiteKind defines model for Website.Kind.
+type WebsiteKind string
+
+// WebsiteRuntimeDriver defines model for Website.RuntimeDriver.
+type WebsiteRuntimeDriver string
+
+// WebsiteRuntimeVersion defines model for Website.RuntimeVersion.
+type WebsiteRuntimeVersion string
+
+// WebsiteStatus defines model for Website.Status.
+type WebsiteStatus string
+
+// WebsiteWebDriver defines model for Website.WebDriver.
+type WebsiteWebDriver string
+
+// WebsiteDomain defines model for WebsiteDomain.
+type WebsiteDomain struct {
+	CreatedAt time.Time           `json:"createdAt"`
+	Enabled   bool                `json:"enabled"`
+	Hostname  string              `json:"hostname"`
+	Id        string              `json:"id"`
+	Kind      WebsiteDomainKind   `json:"kind"`
+	Status    WebsiteDomainStatus `json:"status"`
+	UpdatedAt time.Time           `json:"updatedAt"`
+	WebsiteId string              `json:"websiteId"`
+}
+
+// WebsiteDomainKind defines model for WebsiteDomain.Kind.
+type WebsiteDomainKind string
+
+// WebsiteDomainStatus defines model for WebsiteDomain.Status.
+type WebsiteDomainStatus string
+
+// WebsiteDomainCollection defines model for WebsiteDomainCollection.
+type WebsiteDomainCollection struct {
+	Items []WebsiteDomain `json:"items"`
+}
+
+// WebsiteDomainJobResponse defines model for WebsiteDomainJobResponse.
+type WebsiteDomainJobResponse struct {
+	Domain WebsiteDomain `json:"domain"`
+	Job    Job           `json:"job"`
+}
+
+// WebsiteDomainListResponse defines model for WebsiteDomainListResponse.
+type WebsiteDomainListResponse struct {
+	Items      []WebsiteDomain `json:"items"`
+	Pagination Pagination      `json:"pagination"`
+}
+
+// WebsiteJobResponse defines model for WebsiteJobResponse.
+type WebsiteJobResponse struct {
+	Job     Job     `json:"job"`
+	Website Website `json:"website"`
+}
+
+// WebsiteListResponse defines model for WebsiteListResponse.
+type WebsiteListResponse struct {
+	Items      []Website  `json:"items"`
+	Pagination Pagination `json:"pagination"`
+}
 
 // WriteBackupPlanRequest defines model for WriteBackupPlanRequest.
 type WriteBackupPlanRequest struct {
@@ -878,11 +1185,14 @@ type WriteCronJobRequest struct {
 	Schedule  string `json:"schedule"`
 }
 
+// WritePackageRequest defines model for WritePackageRequest.
+type WritePackageRequest struct {
+	Limits PackageLimits `json:"limits"`
+	Name   string        `json:"name"`
+}
+
 // AccountID defines model for AccountID.
 type AccountID = string
-
-// AliasID defines model for AliasID.
-type AliasID = string
 
 // BackupArtifactID defines model for BackupArtifactID.
 type BackupArtifactID = string
@@ -905,20 +1215,26 @@ type DatabaseID = string
 // DatabaseUserID defines model for DatabaseUserID.
 type DatabaseUserID = string
 
-// DomainID defines model for DomainID.
-type DomainID = string
-
 // JobID defines model for JobID.
 type JobID = string
 
 // NodeID defines model for NodeID.
 type NodeID = string
 
+// PackageID defines model for PackageID.
+type PackageID = string
+
 // Page defines model for Page.
 type Page = int
 
 // PageSize defines model for PageSize.
 type PageSize = int
+
+// WebsiteDomainID defines model for WebsiteDomainID.
+type WebsiteDomainID = string
+
+// WebsiteID defines model for WebsiteID.
+type WebsiteID = string
 
 // BadRequestError defines model for BadRequestError.
 type BadRequestError = ErrorResponse
@@ -959,6 +1275,11 @@ type DeleteAccountParams struct {
 
 // SetAccountParams defines parameters for SetAccount.
 type SetAccountParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// AssignAccountPackageParams defines parameters for AssignAccountPackage.
+type AssignAccountPackageParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
@@ -1022,9 +1343,13 @@ type ListBackupRunsParams struct {
 
 // ListCertificatesParams defines parameters for ListCertificates.
 type ListCertificatesParams struct {
-	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
-	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+	Kind *ListCertificatesParamsKind `form:"kind,omitempty" json:"kind,omitempty"`
+	Page *Page                       `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize                   `form:"size,omitempty" json:"size,omitempty"`
 }
+
+// ListCertificatesParamsKind defines parameters for ListCertificates.
+type ListCertificatesParamsKind string
 
 // IssuePanelCertificateParams defines parameters for IssuePanelCertificate.
 type IssuePanelCertificateParams struct {
@@ -1110,53 +1435,6 @@ type CreateDatabaseGrantParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
-// ListDomainsParams defines parameters for ListDomains.
-type ListDomainsParams struct {
-	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
-	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
-}
-
-// CreateDomainParams defines parameters for CreateDomain.
-type CreateDomainParams struct {
-	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
-}
-
-// DeleteDomainParams defines parameters for DeleteDomain.
-type DeleteDomainParams struct {
-	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
-}
-
-// SetDomainParams defines parameters for SetDomain.
-type SetDomainParams struct {
-	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
-}
-
-// ListDomainAliasesParams defines parameters for ListDomainAliases.
-type ListDomainAliasesParams struct {
-	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
-	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
-}
-
-// CreateDomainAliasParams defines parameters for CreateDomainAlias.
-type CreateDomainAliasParams struct {
-	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
-}
-
-// DeleteDomainAliasParams defines parameters for DeleteDomainAlias.
-type DeleteDomainAliasParams struct {
-	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
-}
-
-// SetDomainAliasParams defines parameters for SetDomainAlias.
-type SetDomainAliasParams struct {
-	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
-}
-
-// IssueDomainCertificateParams defines parameters for IssueDomainCertificate.
-type IssueDomainCertificateParams struct {
-	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
-}
-
 // ListJobsParams defines parameters for ListJobs.
 type ListJobsParams struct {
 	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
@@ -1168,11 +1446,86 @@ type ProbeNodeParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
+// ListPackagesParams defines parameters for ListPackages.
+type ListPackagesParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
+
+// CreatePackageParams defines parameters for CreatePackage.
+type CreatePackageParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// DeletePackageParams defines parameters for DeletePackage.
+type DeletePackageParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// UpdatePackageParams defines parameters for UpdatePackage.
+type UpdatePackageParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// ListWebsiteDomainsParams defines parameters for ListWebsiteDomains.
+type ListWebsiteDomainsParams struct {
+	Kind ListWebsiteDomainsParamsKind `form:"kind" json:"kind"`
+	Page *Page                        `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize                    `form:"size,omitempty" json:"size,omitempty"`
+}
+
+// ListWebsiteDomainsParamsKind defines parameters for ListWebsiteDomains.
+type ListWebsiteDomainsParamsKind string
+
+// DeleteWebsiteDomainParams defines parameters for DeleteWebsiteDomain.
+type DeleteWebsiteDomainParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// SetWebsiteDomainParams defines parameters for SetWebsiteDomain.
+type SetWebsiteDomainParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// ListWebsitesParams defines parameters for ListWebsites.
+type ListWebsitesParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
+
+// CreateWebsiteParams defines parameters for CreateWebsite.
+type CreateWebsiteParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// DeleteWebsiteParams defines parameters for DeleteWebsite.
+type DeleteWebsiteParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// SetWebsiteParams defines parameters for SetWebsite.
+type SetWebsiteParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// IssueWebsiteCertificateParams defines parameters for IssueWebsiteCertificate.
+type IssueWebsiteCertificateParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// CreateWebsiteDomainParams defines parameters for CreateWebsiteDomain.
+type CreateWebsiteDomainParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
 // CreateAccountJSONRequestBody defines body for CreateAccount for application/json ContentType.
 type CreateAccountJSONRequestBody = CreateAccountRequest
 
 // SetAccountJSONRequestBody defines body for SetAccount for application/json ContentType.
 type SetAccountJSONRequestBody = UpdateEnabledRequest
+
+// AssignAccountPackageJSONRequestBody defines body for AssignAccountPackage for application/json ContentType.
+type AssignAccountPackageJSONRequestBody = AssignAccountPackageRequest
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
@@ -1207,17 +1560,23 @@ type CreateDatabaseUserJSONRequestBody = CreateDatabaseUserRequest
 // CreateDatabaseJSONRequestBody defines body for CreateDatabase for application/json ContentType.
 type CreateDatabaseJSONRequestBody = CreateDatabaseRequest
 
-// CreateDomainJSONRequestBody defines body for CreateDomain for application/json ContentType.
-type CreateDomainJSONRequestBody = CreateDomainRequest
+// CreatePackageJSONRequestBody defines body for CreatePackage for application/json ContentType.
+type CreatePackageJSONRequestBody = WritePackageRequest
 
-// SetDomainJSONRequestBody defines body for SetDomain for application/json ContentType.
-type SetDomainJSONRequestBody = UpdateDomainRequest
+// UpdatePackageJSONRequestBody defines body for UpdatePackage for application/json ContentType.
+type UpdatePackageJSONRequestBody = WritePackageRequest
 
-// CreateDomainAliasJSONRequestBody defines body for CreateDomainAlias for application/json ContentType.
-type CreateDomainAliasJSONRequestBody = CreateDomainAliasRequest
+// SetWebsiteDomainJSONRequestBody defines body for SetWebsiteDomain for application/json ContentType.
+type SetWebsiteDomainJSONRequestBody = UpdateWebsiteDomainRequest
 
-// SetDomainAliasJSONRequestBody defines body for SetDomainAlias for application/json ContentType.
-type SetDomainAliasJSONRequestBody = UpdateDomainRequest
+// CreateWebsiteJSONRequestBody defines body for CreateWebsite for application/json ContentType.
+type CreateWebsiteJSONRequestBody = CreateWebsiteRequest
 
-// IssueDomainCertificateJSONRequestBody defines body for IssueDomainCertificate for application/json ContentType.
-type IssueDomainCertificateJSONRequestBody = IssueCertificateRequest
+// SetWebsiteJSONRequestBody defines body for SetWebsite for application/json ContentType.
+type SetWebsiteJSONRequestBody = UpdateWebsiteRequest
+
+// IssueWebsiteCertificateJSONRequestBody defines body for IssueWebsiteCertificate for application/json ContentType.
+type IssueWebsiteCertificateJSONRequestBody = IssueCertificateRequest
+
+// CreateWebsiteDomainJSONRequestBody defines body for CreateWebsiteDomain for application/json ContentType.
+type CreateWebsiteDomainJSONRequestBody = CreateWebsiteDomainRequest

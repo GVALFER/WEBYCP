@@ -16,6 +16,9 @@ const RootLayout = async ({ children }: Readonly<{ children: ReactNode }>) => {
 
     return (
         <html lang="en" data-theme={theme} style={{ colorScheme: theme }}>
+            <head>
+                <meta name="theme-color" content={theme === "dark" ? "#07191f" : "#f2fbf8"} />
+            </head>
             <body>
                 <AppProviders theme={theme}>{children}</AppProviders>
             </body>

@@ -1,33 +1,26 @@
 "use client";
 
-import { Button } from "@heroui/react";
-import { Moon, Server, Sun } from "lucide-react";
-import { useTheme } from "@/lib/theme";
+import { ShieldCheck } from "lucide-react";
+import { ThemeToggle } from "@/components/actions/themeToggle";
+import { Brand } from "@/components/brand";
 import { useSession } from "@/providers/SessionProvider";
 import { ProfileForm } from "./actions/profileForm";
 
 export const Setup = () => {
     const session = useSession();
-    const { theme, toggleTheme } = useTheme();
-
-    const ThemeIcon = theme === "dark" ? Sun : Moon;
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-background px-5 py-10 text-foreground">
-            <Button
-                className="fixed top-5 right-5"
-                isIconOnly
-                variant="tertiary"
-                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-                onPress={toggleTheme}
-            >
-                <ThemeIcon className="size-4" />
-            </Button>
-            <section className="panel-card w-full max-w-2xl overflow-hidden">
-                <div className="border-b border-divider px-6 py-6 sm:px-8">
+        <div className="auth-shell flex min-h-screen flex-col text-foreground">
+            <header className="flex items-center justify-between px-5 py-5 sm:px-8 sm:py-7">
+                <Brand />
+                <ThemeToggle />
+            </header>
+            <main className="flex flex-1 items-center justify-center px-5 py-10 sm:px-8">
+                <section className="auth-card w-full max-w-2xl overflow-hidden">
+                    <div className="border-b border-divider px-6 py-6 sm:px-8">
                     <div className="flex items-center gap-3">
-                        <div className="flex size-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-                            <Server className="size-5" />
+                        <div className="flex size-10 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent">
+                            <ShieldCheck className="size-5" aria-hidden="true" />
                         </div>
                         <div>
                             <div className="font-semibold">Complete administrator setup</div>
@@ -36,11 +29,12 @@ export const Setup = () => {
                             </div>
                         </div>
                     </div>
-                </div>
-                <div className="px-6 py-6 sm:px-8">
-                    <ProfileForm forced session={session} />
-                </div>
-            </section>
+                    </div>
+                    <div className="px-6 py-6 sm:px-8">
+                        <ProfileForm forced session={session} />
+                    </div>
+                </section>
+            </main>
         </div>
     );
 };

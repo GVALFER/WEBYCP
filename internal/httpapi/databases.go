@@ -155,6 +155,9 @@ func (h *handler) writeDatabaseError(w http.ResponseWriter, r *http.Request, err
 	if writeValidationError(w, err) {
 		return
 	}
+	if writeLimitError(w, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		writeError(w, http.StatusNotFound, "not_found", "Database resource not found")

@@ -26,6 +26,44 @@ type AccountMember struct {
 	CreatedAt int64  `json:"created_at"`
 }
 
+type AccountOverview struct {
+	ID                  string         `json:"id"`
+	NodeID              sql.NullString `json:"node_id"`
+	Name                string         `json:"name"`
+	SystemUser          string         `json:"system_user"`
+	Status              string         `json:"status"`
+	CreatedAt           int64          `json:"created_at"`
+	UpdatedAt           int64          `json:"updated_at"`
+	Enabled             int64          `json:"enabled"`
+	PackageID           string         `json:"package_id"`
+	PackageName         string         `json:"package_name"`
+	PackageCreatedAt    int64          `json:"package_created_at"`
+	PackageUpdatedAt    int64          `json:"package_updated_at"`
+	PackageAccountCount int64          `json:"package_account_count"`
+	MaxWebsites         int64          `json:"max_websites"`
+	MaxDomains          int64          `json:"max_domains"`
+	MaxAliases          int64          `json:"max_aliases"`
+	MaxDatabases        int64          `json:"max_databases"`
+	MaxDatabaseUsers    int64          `json:"max_database_users"`
+	MaxScheduledTasks   int64          `json:"max_scheduled_tasks"`
+	MaxBackupPlans      int64          `json:"max_backup_plans"`
+	MaxBackupRetention  int64          `json:"max_backup_retention"`
+	UsedWebsites        int64          `json:"used_websites"`
+	UsedDomains         int64          `json:"used_domains"`
+	UsedAliases         int64          `json:"used_aliases"`
+	UsedDatabases       int64          `json:"used_databases"`
+	UsedDatabaseUsers   int64          `json:"used_database_users"`
+	UsedScheduledTasks  int64          `json:"used_scheduled_tasks"`
+	UsedBackupPlans     int64          `json:"used_backup_plans"`
+}
+
+type AccountPackage struct {
+	AccountID string `json:"account_id"`
+	PackageID string `json:"package_id"`
+	CreatedAt int64  `json:"created_at"`
+	UpdatedAt int64  `json:"updated_at"`
+}
+
 type AuditEvent struct {
 	ID           string         `json:"id"`
 	UserID       sql.NullString `json:"user_id"`
@@ -79,7 +117,7 @@ type BackupRun struct {
 
 type Certificate struct {
 	ID            string         `json:"id"`
-	DomainID      sql.NullString `json:"domain_id"`
+	WebsiteID     sql.NullString `json:"website_id"`
 	NodeID        string         `json:"node_id"`
 	Kind          string         `json:"kind"`
 	Name          string         `json:"name"`
@@ -141,30 +179,6 @@ type DatabaseUser struct {
 	UpdatedAt  int64  `json:"updated_at"`
 }
 
-type Domain struct {
-	ID           string         `json:"id"`
-	AccountID    string         `json:"account_id"`
-	NodeID       string         `json:"node_id"`
-	Name         string         `json:"name"`
-	Status       string         `json:"status"`
-	PhpVersion   string         `json:"php_version"`
-	CreatedAt    int64          `json:"created_at"`
-	UpdatedAt    int64          `json:"updated_at"`
-	Enabled      int64          `json:"enabled"`
-	PreviousName sql.NullString `json:"previous_name"`
-}
-
-type DomainAlias struct {
-	ID           string         `json:"id"`
-	DomainID     string         `json:"domain_id"`
-	Name         string         `json:"name"`
-	Status       string         `json:"status"`
-	CreatedAt    int64          `json:"created_at"`
-	UpdatedAt    int64          `json:"updated_at"`
-	Enabled      int64          `json:"enabled"`
-	PreviousName sql.NullString `json:"previous_name"`
-}
-
 type Job struct {
 	ID          string         `json:"id"`
 	NodeID      sql.NullString `json:"node_id"`
@@ -201,6 +215,37 @@ type Node struct {
 	UpdatedAt  int64         `json:"updated_at"`
 }
 
+type Package struct {
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	MaxWebsites        int64  `json:"max_websites"`
+	MaxDomains         int64  `json:"max_domains"`
+	MaxAliases         int64  `json:"max_aliases"`
+	MaxDatabases       int64  `json:"max_databases"`
+	MaxDatabaseUsers   int64  `json:"max_database_users"`
+	MaxScheduledTasks  int64  `json:"max_scheduled_tasks"`
+	MaxBackupPlans     int64  `json:"max_backup_plans"`
+	MaxBackupRetention int64  `json:"max_backup_retention"`
+	CreatedAt          int64  `json:"created_at"`
+	UpdatedAt          int64  `json:"updated_at"`
+}
+
+type PackageOverview struct {
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	MaxWebsites        int64  `json:"max_websites"`
+	MaxDomains         int64  `json:"max_domains"`
+	MaxAliases         int64  `json:"max_aliases"`
+	MaxDatabases       int64  `json:"max_databases"`
+	MaxDatabaseUsers   int64  `json:"max_database_users"`
+	MaxScheduledTasks  int64  `json:"max_scheduled_tasks"`
+	MaxBackupPlans     int64  `json:"max_backup_plans"`
+	MaxBackupRetention int64  `json:"max_backup_retention"`
+	CreatedAt          int64  `json:"created_at"`
+	UpdatedAt          int64  `json:"updated_at"`
+	AccountCount       int64  `json:"account_count"`
+}
+
 type Session struct {
 	ID        string `json:"id"`
 	UserID    string `json:"user_id"`
@@ -221,4 +266,32 @@ type User struct {
 	Username           string `json:"username"`
 	MustChangePassword int64  `json:"must_change_password"`
 	Timezone           string `json:"timezone"`
+}
+
+type Website struct {
+	ID             string `json:"id"`
+	AccountID      string `json:"account_id"`
+	NodeID         string `json:"node_id"`
+	Name           string `json:"name"`
+	Kind           string `json:"kind"`
+	DocumentRoot   string `json:"document_root"`
+	WebDriver      string `json:"web_driver"`
+	RuntimeDriver  string `json:"runtime_driver"`
+	RuntimeVersion string `json:"runtime_version"`
+	Status         string `json:"status"`
+	Enabled        int64  `json:"enabled"`
+	CreatedAt      int64  `json:"created_at"`
+	UpdatedAt      int64  `json:"updated_at"`
+}
+
+type WebsiteDomain struct {
+	ID               string         `json:"id"`
+	WebsiteID        string         `json:"website_id"`
+	Hostname         string         `json:"hostname"`
+	Kind             string         `json:"kind"`
+	Status           string         `json:"status"`
+	Enabled          int64          `json:"enabled"`
+	PreviousHostname sql.NullString `json:"previous_hostname"`
+	CreatedAt        int64          `json:"created_at"`
+	UpdatedAt        int64          `json:"updated_at"`
 }

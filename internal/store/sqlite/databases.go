@@ -20,6 +20,9 @@ func (s *Store) CreateDatabase(
 	}
 	defer tx.Rollback()
 	q := s.queries.WithTx(tx)
+	if err := requireCapacity(ctx, tx, value.AccountID, limitDatabases); err != nil {
+		return databases.Database{}, jobs.Job{}, err
+	}
 	exists, err := q.DatabaseNameExists(ctx, dbgen.DatabaseNameExistsParams{AccountID: value.AccountID, Name: value.Name})
 	if err != nil {
 		return databases.Database{}, jobs.Job{}, err
@@ -125,6 +128,9 @@ func (s *Store) CreateUser(
 	}
 	defer tx.Rollback()
 	q := s.queries.WithTx(tx)
+	if err := requireCapacity(ctx, tx, value.AccountID, limitDatabaseUsers); err != nil {
+		return databases.User{}, jobs.Job{}, err
+	}
 	exists, err := q.DatabaseUserNameExists(ctx, dbgen.DatabaseUserNameExistsParams{AccountID: value.AccountID, Name: value.Name})
 	if err != nil {
 		return databases.User{}, jobs.Job{}, err

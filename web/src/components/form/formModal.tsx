@@ -14,7 +14,9 @@ type Props = {
     submitLabel: string;
     title: string;
     triggerLabel: string;
+    triggerIcon?: ReactNode;
     triggerText?: string;
+    triggerVariant?: ComponentProps<typeof Button>["variant"];
     onOpenChange: (open: boolean) => void;
     onSubmit: ComponentProps<"form">["onSubmit"];
 };
@@ -29,7 +31,9 @@ export const FormModal = ({
     submitLabel,
     title,
     triggerLabel,
+    triggerIcon,
     triggerText,
+    triggerVariant = "primary",
     onOpenChange,
     onSubmit,
 }: Props) => (
@@ -37,11 +41,11 @@ export const FormModal = ({
         <Button
             isIconOnly={!triggerText}
             size="sm"
-            variant="primary"
+            variant={triggerVariant}
             aria-label={triggerLabel}
             onPress={() => onOpenChange(true)}
         >
-            <Plus className="size-4" aria-hidden="true" />
+            {triggerIcon ?? <Plus className="size-4" aria-hidden="true" />}
             {triggerText}
         </Button>
 

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
@@ -58,24 +60,57 @@ func (s *Store) BackupPlan(ctx context.Context, id string) (backups.Plan, error)
 }
 
 func (s *Store) CreateBackupPlan(ctx context.Context, value backups.Plan) (backups.Plan, error) {
-	row, err := s.queries.CreateBackupPlan(ctx, dbgen.CreateBackupPlanParams{
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return backups.Plan{}, err
+	}
+	defer tx.Rollback()
+	q := s.queries.WithTx(tx)
+	if err := requireCapacity(ctx, tx, value.AccountID, limitBackupPlans); err != nil {
+		return backups.Plan{}, err
+	}
+	if err := requireRetention(ctx, tx, value.AccountID, value.RetentionCount, 0); err != nil {
+		return backups.Plan{}, err
+	}
+	row, err := q.CreateBackupPlan(ctx, dbgen.CreateBackupPlanParams{
 		ID: value.ID, AccountID: value.AccountID, NodeID: value.NodeID, Name: value.Name,
 		Schedule: value.Schedule, RetentionCount: value.RetentionCount,
 		IncludeFiles: boolValue(value.IncludeFiles), IncludeDatabases: boolValue(value.IncludeDatabases),
 		Enabled: boolValue(value.Enabled), NextRunAt: nullTime(value.NextRunAt),
 		CreatedAt: timeValue(value.CreatedAt), UpdatedAt: timeValue(value.UpdatedAt),
 	})
-	return backupPlanValue(row), err
+	if err != nil {
+		return backups.Plan{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return backups.Plan{}, err
+	}
+	return backupPlanValue(row), nil
 }
 
-func (s *Store) UpdateBackupPlan(ctx context.Context, value backups.Plan) (backups.Plan, error) {
-	row, err := s.queries.UpdateBackupPlan(ctx, dbgen.UpdateBackupPlanParams{
+func (s *Store) UpdateBackupPlan(ctx context.Context, value backups.Plan, currentRetention int64) (backups.Plan, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return backups.Plan{}, err
+	}
+	defer tx.Rollback()
+	q := s.queries.WithTx(tx)
+	if err := requireRetention(ctx, tx, value.AccountID, value.RetentionCount, currentRetention); err != nil {
+		return backups.Plan{}, err
+	}
+	row, err := q.UpdateBackupPlan(ctx, dbgen.UpdateBackupPlanParams{
 		Name: value.Name, Schedule: value.Schedule, RetentionCount: value.RetentionCount,
 		IncludeFiles: boolValue(value.IncludeFiles), IncludeDatabases: boolValue(value.IncludeDatabases),
 		Enabled: boolValue(value.Enabled), NextRunAt: nullTime(value.NextRunAt),
 		UpdatedAt: timeValue(value.UpdatedAt), ID: value.ID,
 	})
-	return backupPlanValue(row), err
+	if err != nil {
+		return backups.Plan{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return backups.Plan{}, err
+	}
+	return backupPlanValue(row), nil
 }
 
 func (s *Store) DeleteBackupPlan(ctx context.Context, id string) error {
@@ -274,37 +309,67 @@ func (s *Store) RestoreMetadata(ctx context.Context, value backupfmt.Metadata) e
 		return err
 	}
 	now := time.Now().UTC()
-	for _, domain := range value.Domains {
-		name, nameErr := validate.Domain(domain.Name)
-		if validate.ID("domainId", domain.ID) != nil || !account.NodeID.Valid || domain.NodeID != account.NodeID.String || nameErr != nil || name != domain.Name || domain.PHPVersion != "8.3" {
-			return fmt.Errorf("restored domain metadata is invalid")
+	for _, website := range value.Websites {
+		if validate.ID("websiteId", website.ID) != nil || !account.NodeID.Valid || website.NodeID != account.NodeID.String || website.Kind != "php" || website.WebDriver != "nginx" || website.RuntimeDriver != "phpfpm" || website.RuntimeVersion != "8.3" {
+			return fmt.Errorf("restored website metadata is invalid")
 		}
-		current, getErr := q.GetDomain(ctx, domain.ID)
+		if _, err := validate.ResourceName(website.Name); err != nil {
+			return fmt.Errorf("restored website metadata is invalid")
+		}
+		base := filepath.Join("/home", account.SystemUser, "web")
+		rel, relErr := filepath.Rel(base, filepath.Clean(website.DocumentRoot))
+		parts := strings.Split(rel, string(filepath.Separator))
+		if relErr != nil || filepath.IsAbs(rel) || len(parts) != 2 || parts[0] == "" || parts[0] == ".." || parts[1] != "public_html" {
+			return fmt.Errorf("restored website document root is invalid")
+		}
+		current, getErr := q.GetWebsite(ctx, website.ID)
 		if getErr == nil && current.AccountID != value.AccountID {
-			return fmt.Errorf("restored domain belongs to another account")
+			return fmt.Errorf("restored website belongs to another account")
 		}
 		if getErr != nil && !errors.Is(getErr, sql.ErrNoRows) {
 			return getErr
 		}
-		if err := q.UpsertRestoredDomain(ctx, dbgen.UpsertRestoredDomainParams{ID: domain.ID, AccountID: value.AccountID, NodeID: domain.NodeID, Name: domain.Name, PhpVersion: domain.PHPVersion, Enabled: boolValue(domain.Enabled), CreatedAt: timeValue(now), UpdatedAt: timeValue(now)}); err != nil {
+		if errors.Is(getErr, sql.ErrNoRows) {
+			if err := requireCapacity(ctx, tx, value.AccountID, limitWebsites); err != nil {
+				return err
+			}
+		}
+		enabled := boolValue(website.Enabled)
+		if err := q.UpsertRestoredWebsite(ctx, dbgen.UpsertRestoredWebsiteParams{ID: website.ID, AccountID: value.AccountID, NodeID: website.NodeID, Name: website.Name, Kind: website.Kind, DocumentRoot: website.DocumentRoot, WebDriver: website.WebDriver, RuntimeDriver: website.RuntimeDriver, RuntimeVersion: website.RuntimeVersion, Column10: enabled, Enabled: enabled, CreatedAt: timeValue(now), UpdatedAt: timeValue(now)}); err != nil {
 			return err
 		}
-		for _, alias := range domain.Aliases {
-			name, nameErr := validate.Domain(alias.Name)
-			if validate.ID("aliasId", alias.ID) != nil || nameErr != nil || name != alias.Name {
-				return fmt.Errorf("restored alias metadata is invalid")
+		primary := 0
+		for _, domain := range website.Domains {
+			hostname, hostnameErr := validate.Domain(domain.Hostname)
+			if validate.ID("websiteDomainId", domain.ID) != nil || hostnameErr != nil || hostname != domain.Hostname || (domain.Kind != "primary" && domain.Kind != "alias") {
+				return fmt.Errorf("restored website domain metadata is invalid")
 			}
-			current, getErr := q.GetDomainAlias(ctx, alias.ID)
-			if getErr == nil && current.DomainID != domain.ID {
-				return fmt.Errorf("restored alias belongs to another domain")
+			if domain.Kind == "primary" {
+				primary++
+			}
+			current, getErr := q.GetWebsiteDomain(ctx, domain.ID)
+			if getErr == nil && current.WebsiteID != website.ID {
+				return fmt.Errorf("restored domain belongs to another website")
 			}
 			if getErr != nil && !errors.Is(getErr, sql.ErrNoRows) {
 				return getErr
 			}
-			enabled := boolValue(alias.Enabled)
-			if err := q.UpsertRestoredAlias(ctx, dbgen.UpsertRestoredAliasParams{ID: alias.ID, DomainID: domain.ID, Name: alias.Name, Column4: enabled, Enabled: enabled, CreatedAt: timeValue(now), UpdatedAt: timeValue(now)}); err != nil {
+			if errors.Is(getErr, sql.ErrNoRows) {
+				kind := limitAliases
+				if domain.Kind == "primary" {
+					kind = limitDomains
+				}
+				if err := requireCapacity(ctx, tx, value.AccountID, kind); err != nil {
+					return err
+				}
+			}
+			domainEnabled := boolValue(domain.Enabled)
+			if err := q.UpsertRestoredWebsiteDomain(ctx, dbgen.UpsertRestoredWebsiteDomainParams{ID: domain.ID, WebsiteID: website.ID, Hostname: domain.Hostname, Kind: domain.Kind, Column5: domainEnabled, Enabled: domainEnabled, CreatedAt: timeValue(now), UpdatedAt: timeValue(now)}); err != nil {
 				return err
 			}
+		}
+		if primary != 1 {
+			return fmt.Errorf("restored website must have one primary domain")
 		}
 	}
 	for _, database := range value.Databases {
@@ -318,6 +383,11 @@ func (s *Store) RestoreMetadata(ctx context.Context, value backupfmt.Metadata) e
 		}
 		if getErr != nil && !errors.Is(getErr, sql.ErrNoRows) {
 			return getErr
+		}
+		if errors.Is(getErr, sql.ErrNoRows) {
+			if err := requireCapacity(ctx, tx, value.AccountID, limitDatabases); err != nil {
+				return err
+			}
 		}
 		if err := q.UpsertRestoredDatabase(ctx, dbgen.UpsertRestoredDatabaseParams{ID: database.ID, AccountID: value.AccountID, NodeID: database.NodeID, Name: database.Name, SystemName: database.SystemName, CreatedAt: timeValue(now), UpdatedAt: timeValue(now)}); err != nil {
 			return err
@@ -342,6 +412,11 @@ func (s *Store) RestoreMetadata(ctx context.Context, value backupfmt.Metadata) e
 		}
 		if getErr != nil && !errors.Is(getErr, sql.ErrNoRows) {
 			return getErr
+		}
+		if errors.Is(getErr, sql.ErrNoRows) {
+			if err := requireCapacity(ctx, tx, value.AccountID, limitScheduledTasks); err != nil {
+				return err
+			}
 		}
 		enabled := boolValue(cron.Enabled)
 		if err := q.UpsertRestoredCronJob(ctx, dbgen.UpsertRestoredCronJobParams{ID: cron.ID, AccountID: value.AccountID, NodeID: cron.NodeID, Name: cron.Name, Schedule: cron.Schedule, Command: cron.Command, Enabled: enabled, Column8: enabled, CreatedAt: timeValue(now), UpdatedAt: timeValue(now)}); err != nil {

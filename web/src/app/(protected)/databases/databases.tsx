@@ -44,14 +44,12 @@ const Databases = ({
     const usersTable = useTable(initialUsers.pagination, "users");
     const grantsTable = useTable(initialGrants.pagination, "grants");
 
-    const { data: databases } = useSWR<DatabaseListResponse>(
-        `databases${databasesTable.query}`,
-        { fallbackData: databasesTable.isInitialQuery ? initialDatabases : undefined },
-    );
-    const { data: users } = useSWR<DatabaseUserListResponse>(
-        `database-users${usersTable.query}`,
-        { fallbackData: usersTable.isInitialQuery ? initialUsers : undefined },
-    );
+    const { data: databases } = useSWR<DatabaseListResponse>(`databases${databasesTable.query}`, {
+        fallbackData: databasesTable.isInitialQuery ? initialDatabases : undefined,
+    });
+    const { data: users } = useSWR<DatabaseUserListResponse>(`database-users${usersTable.query}`, {
+        fallbackData: usersTable.isInitialQuery ? initialUsers : undefined,
+    });
     const { data: grants } = useSWR<DatabaseGrantListResponse>(
         `database-grants${grantsTable.query}`,
         { fallbackData: grantsTable.isInitialQuery ? initialGrants : undefined },
@@ -87,8 +85,7 @@ const Databases = ({
         {
             id: "database",
             label: "Database",
-            render: (grant) =>
-                databaseNames.get(grant.databaseId) ?? grant.databaseId,
+            render: (grant) => databaseNames.get(grant.databaseId) ?? grant.databaseId,
         },
         {
             id: "status",

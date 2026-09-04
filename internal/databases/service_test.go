@@ -12,6 +12,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/auth"
 	"github.com/GVALFER/WEBYCP/internal/databases"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/packages"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite"
 )
 
@@ -34,7 +35,7 @@ func TestGrantCannotCrossAccountBoundary(t *testing.T) {
 	}
 	first := createAccount(t, ctx, store, node.ID, "0123456789abcdef0123456789abcdef", "First", now)
 	second := createAccount(t, ctx, store, node.ID, "abcdef0123456789abcdef0123456789", "Second", now)
-	accountService := accounts.NewService(store, store, nil, func() {})
+	accountService := accounts.NewService(store, store, nil, packages.NewService(store), func() {})
 	service := databases.NewService(store, accountService, store, nil, func() {})
 	database, _, err := service.CreateDatabase(ctx, first.ID, "app", "user-1", true)
 	if err != nil {
@@ -83,7 +84,7 @@ func createAccount(t *testing.T, ctx context.Context, store *sqlite.Store, nodeI
 	value, _, err := store.CreateProvision(ctx, accounts.Account{
 		ID: id, NodeID: nodeID, Name: name, SystemUser: "wcp_" + id[:12],
 		Status: "pending", Enabled: true, CreatedAt: now, UpdatedAt: now,
-	}, "user-1", jobs.Job{
+	}, "user-1", packages.DefaultID, jobs.Job{
 		ID: "job-" + id, NodeID: nodeID, UserID: "user-1", Kind: jobs.KindAccountCreate,
 		Payload: "{}", MaxAttempts: 1, CreatedAt: now,
 	})

@@ -44,7 +44,15 @@ export const FormInput = ({
                 className={inputClassName}
                 value={value ?? ""}
                 onBlur={onBlur}
-                onChange={onChange}
+                onChange={(event) =>
+                    onChange(
+                        props.type === "number"
+                            ? event.target.value === ""
+                                ? undefined
+                                : event.target.valueAsNumber
+                            : event,
+                    )
+                }
             />
             <ErrorMessage>{fieldState.error?.message}</ErrorMessage>
         </TextField>

@@ -15,6 +15,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/certificates"
 	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
+	"github.com/GVALFER/WEBYCP/internal/websites"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -83,45 +84,27 @@ func (c *Client) accountAction(
 	}, "account action")
 }
 
-func (c *Client) EnsureDomain(
-	ctx context.Context,
-	socket, accountID, systemUser, domainID, name, phpVersion string,
-	aliases []string,
-) error {
-	return c.postJSON(ctx, socket, "/agent/v1/domains", agentapi.EnsureDomainRequest{
-		AccountId: accountID, SystemUser: systemUser, DomainId: domainID,
-		Name: name, PhpVersion: agentapi.EnsureDomainRequestPhpVersion(phpVersion), Aliases: aliases,
-	}, "domain reconcile")
+func (c *Client) EnsureWebsite(ctx context.Context, socket string, spec websites.Spec) error {
+	return c.postJSON(ctx, socket, "/agent/v1/websites", websiteRequest(spec), "website reconcile")
 }
 
-func (c *Client) DisableDomain(
-	ctx context.Context,
-	socket, accountID, systemUser, domainID string,
-) error {
-	return c.postJSON(ctx, socket, "/agent/v1/domains/disable", agentapi.DisableDomainRequest{
-		AccountId: accountID, SystemUser: systemUser, DomainId: domainID,
-	}, "domain disable")
+func (c *Client) DisableWebsite(ctx context.Context, socket string, spec websites.Spec) error {
+	return c.postJSON(ctx, socket, "/agent/v1/websites/disable", websiteRequest(spec), "website disable")
 }
 
-func (c *Client) DeleteDomain(
-	ctx context.Context,
-	socket, accountID, systemUser, domainID, name string,
-) error {
-	return c.postJSON(ctx, socket, "/agent/v1/domains/delete", agentapi.DeleteDomainRequest{
-		AccountId: accountID, SystemUser: systemUser, DomainId: domainID, Name: name,
-	}, "domain delete")
+func (c *Client) DeleteWebsite(ctx context.Context, socket string, spec websites.Spec) error {
+	return c.postJSON(ctx, socket, "/agent/v1/websites/delete", websiteRequest(spec), "website delete")
 }
 
-func (c *Client) RenameDomain(
-	ctx context.Context,
-	socket, accountID, systemUser, domainID, currentName, name, phpVersion string,
-	aliases []string,
-) error {
-	return c.postJSON(ctx, socket, "/agent/v1/domains/rename", agentapi.RenameDomainRequest{
-		AccountId: accountID, SystemUser: systemUser, DomainId: domainID,
-		CurrentName: currentName, Name: name,
-		PhpVersion: agentapi.RenameDomainRequestPhpVersion(phpVersion), Aliases: aliases,
-	}, "domain rename")
+func websiteRequest(spec websites.Spec) agentapi.WebsiteRequest {
+	return agentapi.WebsiteRequest{
+		AccountId: spec.AccountID, SystemUser: spec.SystemUser, WebsiteId: spec.WebsiteID,
+		DocumentRoot: spec.DocumentRoot, Kind: agentapi.WebsiteRequestKind(spec.Kind),
+		WebDriver:      agentapi.WebsiteRequestWebDriver(spec.WebDriver),
+		RuntimeDriver:  agentapi.WebsiteRequestRuntimeDriver(spec.RuntimeDriver),
+		RuntimeVersion: agentapi.WebsiteRequestRuntimeVersion(spec.RuntimeVersion),
+		PrimaryDomain:  spec.PrimaryDomain, Aliases: spec.Aliases,
+	}
 }
 
 func (c *Client) postJSON(
@@ -186,8 +169,8 @@ func (c *Client) IssueCertificate(ctx context.Context, socket string, request ce
 		CertificateId: request.CertificateID, Kind: agentapi.IssueCertificateRequestKind(request.Kind),
 		Name: request.Name, Names: request.Names, Email: openapi_types.Email(request.Email), RedirectHttps: request.RedirectHTTPS,
 	}
-	if request.DomainID != "" {
-		body.DomainId = &request.DomainID
+	if request.WebsiteID != "" {
+		body.WebsiteId = &request.WebsiteID
 	}
 	if request.AccountID != "" {
 		body.AccountId = &request.AccountID
@@ -195,9 +178,12 @@ func (c *Client) IssueCertificate(ctx context.Context, socket string, request ce
 	if request.SystemUser != "" {
 		body.SystemUser = &request.SystemUser
 	}
-	if request.PHPVersion != "" {
-		version := agentapi.IssueCertificateRequestPhpVersion(request.PHPVersion)
-		body.PhpVersion = &version
+	if request.DocumentRoot != "" {
+		body.DocumentRoot = &request.DocumentRoot
+	}
+	if request.RuntimeVersion != "" {
+		version := agentapi.IssueCertificateRequestRuntimeVersion(request.RuntimeVersion)
+		body.RuntimeVersion = &version
 	}
 	var result agentapi.CertificateResult
 	if err := c.jsonResult(ctx, socket, http.MethodPost, "/agent/v1/certificates", body, &result, "certificate issue"); err != nil {

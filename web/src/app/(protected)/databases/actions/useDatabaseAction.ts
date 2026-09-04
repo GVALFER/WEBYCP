@@ -11,13 +11,20 @@ export const useDatabaseAction = () => {
     const { mutate } = useSWRConfig();
 
     const run = useCallback(
-        async <T,>(action: () => Promise<T>, success: string) => {
+        async <T>(action: () => Promise<T>, success: string, usage = false) => {
             setPending(true);
 
             try {
                 const response = await action();
                 await mutate((key) =>
-                    isPageKey(key, "databases", "database-users", "database-grants", "jobs"),
+                    isPageKey(
+                        key,
+                        "databases",
+                        "database-users",
+                        "database-grants",
+                        ...(usage ? ["accounts"] : []),
+                        "jobs",
+                    ),
                 );
                 toast.success(success);
                 return response;

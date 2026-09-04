@@ -9,6 +9,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/idgen"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
+	"github.com/GVALFER/WEBYCP/internal/packages"
 	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
@@ -17,6 +18,7 @@ type Service struct {
 	repository Repository
 	nodes      nodes.Repository
 	agent      Agent
+	packages   *packages.Service
 	notify     func()
 }
 
@@ -24,18 +26,19 @@ type createPayload struct {
 	AccountID string `json:"accountId"`
 }
 
-func NewService(repository Repository, nodeRepository nodes.Repository, agent Agent, notify func()) *Service {
+func NewService(repository Repository, nodeRepository nodes.Repository, agent Agent, packageService *packages.Service, notify func()) *Service {
 	return &Service{
 		repository: repository,
 		nodes:      nodeRepository,
 		agent:      agent,
+		packages:   packageService,
 		notify:     notify,
 	}
 }
 
 func (s *Service) Create(
 	ctx context.Context,
-	name, nodeID, ownerID string,
+	name, nodeID, packageID, ownerID string,
 ) (Account, jobs.Job, error) {
 	normalizedName, err := validate.AccountName(name)
 	if err != nil {
@@ -48,6 +51,9 @@ func (s *Service) Create(
 	}
 	if _, err := s.nodes.Node(ctx, nodeID); err != nil {
 		return Account{}, jobs.Job{}, fmt.Errorf("get account node: %w", err)
+	}
+	if _, err := s.packages.Package(ctx, packageID); err != nil {
+		return Account{}, jobs.Job{}, fmt.Errorf("get account package: %w", err)
 	}
 
 	accountID, err := idgen.ID()
@@ -72,7 +78,7 @@ func (s *Service) Create(
 		ID: jobID, NodeID: nodeID, UserID: ownerID, Kind: jobs.KindAccountCreate,
 		Status: "queued", Payload: string(payload), MaxAttempts: 2, CreatedAt: now,
 	}
-	account, job, err = s.repository.CreateProvision(ctx, account, ownerID, job)
+	account, job, err = s.repository.CreateProvision(ctx, account, ownerID, packageID, job)
 	if err != nil {
 		return Account{}, jobs.Job{}, fmt.Errorf("create account provision: %w", err)
 	}
@@ -156,8 +162,18 @@ func (s *Service) Accounts(ctx context.Context, userID string, admin bool) ([]Ac
 
 func (s *Service) AccountPage(
 	ctx context.Context, userID string, admin bool, query pagination.Query,
-) (pagination.Result[Account], error) {
+) (pagination.Result[Overview], error) {
 	return s.repository.AccountPage(ctx, userID, admin, query)
+}
+
+func (s *Service) AssignPackage(ctx context.Context, id, packageID, userID string, admin bool) (Overview, error) {
+	if _, err := s.Account(ctx, id, userID, admin); err != nil {
+		return Overview{}, err
+	}
+	if err := s.packages.Assign(ctx, id, packageID); err != nil {
+		return Overview{}, err
+	}
+	return s.repository.AccountOverview(ctx, id)
 }
 
 func (s *Service) Account(ctx context.Context, id, userID string, admin bool) (Account, error) {

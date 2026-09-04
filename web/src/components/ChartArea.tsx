@@ -13,7 +13,6 @@ import {
     YAxis,
 } from "recharts";
 
-// Interfaces para tipagem forte
 interface ChartDataPoint {
     [key: string]: string | number | null | undefined;
 }
@@ -66,6 +65,76 @@ type ChartAreaProps = {
     formatTooltipValue?: (value: number, name: string) => [string, string];
 };
 
+type AreaTooltipProps = TooltipProps & {
+    formatLabel?: ChartAreaProps["formatXAxisTick"];
+    formatValue?: ChartAreaProps["formatTooltipValue"];
+    unit?: string;
+};
+
+const AreaTooltip = ({
+    active,
+    payload,
+    label,
+    formatLabel,
+    formatValue,
+    unit,
+}: AreaTooltipProps) => {
+    if (!active || !payload?.length) return null;
+
+    return (
+        <div className="rounded-xl border border-divider bg-overlay/92 p-3 shadow-lg backdrop-blur-sm">
+            <div className="mb-2 text-sm text-muted">
+                {formatLabel && label !== undefined ? formatLabel(label) : label}
+            </div>
+            {payload.map((entry) => {
+                const [value, name] = formatValue
+                    ? formatValue(entry.value, entry.name)
+                    : [unit ? `${entry.value}${unit}` : entry.value.toString(), entry.name];
+
+                return (
+                    <div key={entry.dataKey} className="flex items-center gap-2">
+                        <span
+                            className="size-3 rounded-full"
+                            style={{ backgroundColor: entry.color }}
+                        />
+                        <span className="text-sm">
+                            {name}: {value}
+                        </span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+type AreaLegendProps = {
+    areas: AreaConfig[];
+    hidden: Set<string>;
+    onToggle: (dataKey: string) => void;
+};
+
+const AreaLegend = ({ areas, hidden, onToggle }: AreaLegendProps) => (
+    <div className="mt-4 flex flex-wrap justify-center gap-4">
+        {areas.map((area) => (
+            <button
+                key={area.dataKey}
+                type="button"
+                className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-1 text-sm text-muted transition-colors hover:bg-surface-secondary",
+                    hidden.has(area.dataKey) && "opacity-50",
+                )}
+                onClick={() => onToggle(area.dataKey)}
+            >
+                <span
+                    className="size-3 rounded-full"
+                    style={{ backgroundColor: area.color }}
+                />
+                {area.name}
+            </button>
+        ))}
+    </div>
+);
+
 const ChartArea = ({
     className,
     data = [],
@@ -108,71 +177,6 @@ const ChartArea = ({
         },
         [toggleArea],
     );
-
-    const CustomTooltip = useCallback(
-        ({ active, payload, label }: TooltipProps) => {
-            if (!active || !payload || !payload.length) {
-                return null;
-            }
-
-            return (
-                <div className="bg-surface/70 rounded p-3 shadow-lg backdrop-blur-sm">
-                    <p className="text-muted text-sm mb-2">
-                        {formatXAxisTick && label !== undefined ? formatXAxisTick(label) : label}
-                    </p>
-                    {payload.map((entry: TooltipPayloadEntry, index: number) => {
-                        const [formattedValue, formattedName] = formatTooltipValue
-                            ? formatTooltipValue(entry.value, entry.name)
-                            : [
-                                  yAxisUnit ? `${entry.value}${yAxisUnit}` : entry.value.toString(),
-                                  entry.name,
-                              ];
-
-                        return (
-                            <div key={index} className="flex items-center gap-2">
-                                <div
-                                    className="w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: entry.color }}
-                                />
-                                <span className="text-sm">
-                                    {formattedName}: {formattedValue}
-                                </span>
-                            </div>
-                        );
-                    })}
-                </div>
-            );
-        },
-        [formatXAxisTick, formatTooltipValue, yAxisUnit],
-    );
-
-    const CustomLegend = useCallback(() => {
-        if (!showLegend) return null;
-
-        return (
-            <div className="flex flex-wrap justify-center gap-4 mt-4">
-                {areas.map((area) => {
-                    const isHidden = hiddenAreas.has(area.dataKey);
-                    return (
-                        <button
-                            key={area.dataKey}
-                            onClick={() => handleLegendClick(area.dataKey)}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-1 rounded-md transition-all hover:bg-gray-800/50",
-                                isHidden && "opacity-50",
-                            )}
-                        >
-                            <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: area.color }}
-                            />
-                            <span className="text-muted text-sm">{area.name}</span>
-                        </button>
-                    );
-                })}
-            </div>
-        );
-    }, [areas, hiddenAreas, handleLegendClick, showLegend]);
 
     if (!data || data.length === 0) {
         return (
@@ -263,7 +267,13 @@ const ChartArea = ({
 
                         {showTooltip && (
                             <Tooltip
-                                content={<CustomTooltip />}
+                                content={
+                                    <AreaTooltip
+                                        formatLabel={formatXAxisTick}
+                                        formatValue={formatTooltipValue}
+                                        unit={yAxisUnit}
+                                    />
+                                }
                                 cursor={{
                                     stroke: "#6B7280",
                                     strokeWidth: 1,
@@ -295,7 +305,13 @@ const ChartArea = ({
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
-            <CustomLegend />
+            {showLegend && (
+                <AreaLegend
+                    areas={areas}
+                    hidden={hiddenAreas}
+                    onToggle={handleLegendClick}
+                />
+            )}
         </div>
     );
 };

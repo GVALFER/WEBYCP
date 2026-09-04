@@ -45,7 +45,7 @@ const TextDialogContent = ({
 
     return (
         <Modal isOpen onOpenChange={onOpenChange}>
-            <Modal.Backdrop>
+            <Modal.Backdrop variant="blur">
                 <Modal.Container placement="center" size="sm">
                     <Modal.Dialog>
                         <Form {...form}>

@@ -48,7 +48,7 @@ func New(web TLSDriver) *Driver {
 }
 
 func (d *Driver) Issue(ctx context.Context, request certificate.Request) (certificate.Result, error) {
-	if validate.ID("certificateId", request.ID) != nil || (request.Kind != "domain" && request.Kind != "panel") {
+	if validate.ID("certificateId", request.ID) != nil || (request.Kind != "website" && request.Kind != "panel") {
 		return certificate.Result{}, &validate.Error{Field: "certificateId", Message: "The certificate identity is invalid"}
 	}
 	name, err := validate.Domain(request.Name)
@@ -95,12 +95,17 @@ func (d *Driver) Issue(ctx context.Context, request certificate.Request) (certif
 	if request.Kind == "panel" {
 		err = d.web.EnsurePanelTLS(ctx, request.Name, fullchain, privateKey)
 	} else {
-		if validate.ID("domainId", request.DomainID) != nil || validate.ID("accountId", request.AccountID) != nil || validate.SystemUser(request.SystemUser) != nil || request.SystemUser != "wcp_"+request.AccountID[:12] || request.PHPVersion != "8.3" {
-			return certificate.Result{}, &validate.Error{Field: "domainId", Message: "The hosted domain identity is invalid"}
+		if validate.ID("websiteId", request.WebsiteID) != nil || validate.ID("accountId", request.AccountID) != nil || validate.SystemUser(request.SystemUser) != nil || request.SystemUser != "wcp_"+request.AccountID[:12] || request.RuntimeVersion != "8.3" {
+			return certificate.Result{}, &validate.Error{Field: "websiteId", Message: "The hosted website identity is invalid"}
+		}
+		base := filepath.Join(d.home, request.SystemUser, "web")
+		rel, relErr := filepath.Rel(base, filepath.Clean(request.DocumentRoot))
+		if relErr != nil || rel == "." || filepath.IsAbs(rel) || rel == ".." || len(rel) < len("x/public_html") || filepath.Base(rel) != "public_html" || filepath.Dir(rel) == "." || filepath.Dir(filepath.Dir(rel)) != "." {
+			return certificate.Result{}, &validate.Error{Field: "documentRoot", Message: "The website document root is invalid"}
 		}
 		site := webserver.Site{
-			ID: request.DomainID, Name: request.Name, Aliases: eligible[1:],
-			Root:      filepath.Join(d.home, request.SystemUser, "web", request.Name, "public_html"),
+			ID: request.WebsiteID, Name: request.Name, Aliases: eligible[1:],
+			Root:      request.DocumentRoot,
 			PHPSocket: filepath.Join("/run/php", "webycp-8.3-"+request.AccountID+".sock"),
 		}
 		err = d.web.EnsureTLS(ctx, site, fullchain, privateKey, request.RedirectHTTPS)

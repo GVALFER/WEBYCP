@@ -13,19 +13,19 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
 	"github.com/GVALFER/WEBYCP/internal/databases"
-	"github.com/GVALFER/WEBYCP/internal/domains"
 	"github.com/GVALFER/WEBYCP/internal/idgen"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
 	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/validate"
+	"github.com/GVALFER/WEBYCP/internal/websites"
 	robfigcron "github.com/robfig/cron/v3"
 )
 
 type Service struct {
 	repository Repository
 	accounts   *accounts.Service
-	domains    *domains.Service
+	websites   *websites.Service
 	databases  *databases.Service
 	cron       *cronjob.Service
 	certs      CertificateReconciler
@@ -43,8 +43,8 @@ type restorePayload struct {
 	Scope      RestoreScope `json:"scope"`
 }
 
-func NewService(repository Repository, accounts *accounts.Service, domains *domains.Service, databases *databases.Service, cron *cronjob.Service, certs CertificateReconciler, nodes nodes.Repository, agent Agent, notify func()) *Service {
-	return &Service{repository: repository, accounts: accounts, domains: domains, databases: databases, cron: cron, certs: certs, nodes: nodes, agent: agent, notify: notify}
+func NewService(repository Repository, accounts *accounts.Service, websites *websites.Service, databases *databases.Service, cron *cronjob.Service, certs CertificateReconciler, nodes nodes.Repository, agent Agent, notify func()) *Service {
+	return &Service{repository: repository, accounts: accounts, websites: websites, databases: databases, cron: cron, certs: certs, nodes: nodes, agent: agent, notify: notify}
 }
 
 func (s *Service) Plans(ctx context.Context, userID string, admin bool) ([]Plan, error) {
@@ -91,7 +91,7 @@ func (s *Service) UpdatePlan(ctx context.Context, id string, value Plan, userID 
 	}
 	value.UpdatedAt = time.Now().UTC()
 	value.NextRunAt = nextRun(value.Schedule, value.Enabled, value.UpdatedAt)
-	return s.repository.UpdateBackupPlan(ctx, value)
+	return s.repository.UpdateBackupPlan(ctx, value, current.RetentionCount)
 }
 
 func (s *Service) DeletePlan(ctx context.Context, id, userID string, admin bool) error {
@@ -276,20 +276,25 @@ func (s *Service) RestoreJob(ctx context.Context, job jobs.Job) error {
 		if err := s.cron.Reconcile(ctx, account.ID); err != nil {
 			return fmt.Errorf("reconcile restored cron: %w", err)
 		}
-		for _, domain := range value.Domains {
-			if !domain.Enabled {
+		for _, website := range value.Websites {
+			if !website.Enabled {
 				continue
 			}
-			aliases := make([]string, 0, len(domain.Aliases))
-			for _, alias := range domain.Aliases {
-				if alias.Enabled {
-					aliases = append(aliases, alias.Name)
+			spec := websites.Spec{AccountID: account.ID, SystemUser: account.SystemUser, WebsiteID: website.ID, DocumentRoot: website.DocumentRoot, Kind: website.Kind, WebDriver: website.WebDriver, RuntimeDriver: website.RuntimeDriver, RuntimeVersion: website.RuntimeVersion}
+			for _, domain := range website.Domains {
+				if !domain.Enabled {
+					continue
+				}
+				if domain.Kind == "primary" {
+					spec.PrimaryDomain = domain.Hostname
+				} else {
+					spec.Aliases = append(spec.Aliases, domain.Hostname)
 				}
 			}
-			if err := s.agent.EnsureDomain(ctx, node.Endpoint, account.ID, account.SystemUser, domain.ID, domain.Name, domain.PHPVersion, aliases); err != nil {
-				return fmt.Errorf("reconcile restored domain: %w", err)
+			if err := s.agent.EnsureWebsite(ctx, node.Endpoint, spec); err != nil {
+				return fmt.Errorf("reconcile restored website: %w", err)
 			}
-			if err := s.certs.ReconcileDomain(ctx, domain.ID); err != nil {
+			if err := s.certs.ReconcileWebsite(ctx, website.ID); err != nil {
 				return fmt.Errorf("reconcile restored certificate: %w", err)
 			}
 		}
@@ -326,24 +331,24 @@ func (s *Service) queue(ctx context.Context, plan Plan, userID string) (Run, job
 }
 
 func (s *Service) metadata(ctx context.Context, accountID string, includeDatabases bool) (string, []string, error) {
-	value := backupfmt.Metadata{Version: backupfmt.Version, AccountID: accountID, Domains: []backupfmt.Domain{}, Databases: []backupfmt.Database{}, CronJobs: []backupfmt.CronJob{}}
-	domainValues, err := s.domains.Domains(ctx, "", true)
+	value := backupfmt.Metadata{Version: backupfmt.Version, AccountID: accountID, Websites: []backupfmt.Website{}, Databases: []backupfmt.Database{}, CronJobs: []backupfmt.CronJob{}}
+	websiteValues, err := s.websites.Websites(ctx, "", true)
 	if err != nil {
 		return "", nil, err
 	}
-	for _, domain := range domainValues {
-		if domain.AccountID != accountID {
+	for _, website := range websiteValues {
+		if website.AccountID != accountID {
 			continue
 		}
-		item := backupfmt.Domain{ID: domain.ID, NodeID: domain.NodeID, Name: domain.Name, PHPVersion: domain.PHPVersion, Enabled: domain.Enabled, Aliases: []backupfmt.Alias{}}
-		aliases, err := s.domains.Aliases(ctx, domain.ID, "", true)
+		item := backupfmt.Website{ID: website.ID, NodeID: website.NodeID, Name: website.Name, Kind: website.Kind, DocumentRoot: website.DocumentRoot, WebDriver: website.WebDriver, RuntimeDriver: website.RuntimeDriver, RuntimeVersion: website.RuntimeVersion, Enabled: website.Enabled, Domains: []backupfmt.WebsiteDomain{}}
+		domains, err := s.websites.Domains(ctx, website.ID, "", true)
 		if err != nil {
 			return "", nil, err
 		}
-		for _, alias := range aliases {
-			item.Aliases = append(item.Aliases, backupfmt.Alias{ID: alias.ID, Name: alias.Name, Enabled: alias.Enabled})
+		for _, domain := range domains {
+			item.Domains = append(item.Domains, backupfmt.WebsiteDomain{ID: domain.ID, Hostname: domain.Hostname, Kind: domain.Kind, Enabled: domain.Enabled})
 		}
-		value.Domains = append(value.Domains, item)
+		value.Websites = append(value.Websites, item)
 	}
 	databaseValues, err := s.databases.Databases(ctx, "", true)
 	if err != nil {

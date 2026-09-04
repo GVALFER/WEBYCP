@@ -9,7 +9,7 @@ import {
     pageNames,
     pagePath,
     type PageQuery,
-} from "./pagination";
+} from "@/utils/pagination";
 
 export type PageProps = {
     searchParams: Promise<Record<string, string | string[] | undefined>>;

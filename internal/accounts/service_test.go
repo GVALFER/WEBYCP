@@ -15,6 +15,7 @@ import (
 	agentserver "github.com/GVALFER/WEBYCP/internal/agent/server"
 	"github.com/GVALFER/WEBYCP/internal/auth"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/packages"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite"
 )
 
@@ -57,12 +58,12 @@ func TestCreateProvisionsAccount(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	worker := jobs.NewWorker(store, store, logger)
 	agent := agentclient.New(time.Second)
-	service := accounts.NewService(store, store, agent, worker.Notify)
+	service := accounts.NewService(store, store, agent, packages.NewService(store), worker.Notify)
 	worker.Handle(jobs.KindAccountCreate, service.Provision)
 	done := make(chan error, 1)
 	go func() { done <- worker.Run(ctx) }()
 
-	account, job, err := service.Create(ctx, "Example Hosting", node.ID, "user-1")
+	account, job, err := service.Create(ctx, "Example Hosting", node.ID, packages.DefaultID, "user-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +75,7 @@ func TestCreateProvisionsAccount(t *testing.T) {
 		t.Fatalf("system user = %q, want %q", manager.user, account.SystemUser)
 	}
 
-	_, _, err = service.Create(ctx, "example hosting", node.ID, "user-1")
+	_, _, err = service.Create(ctx, "example hosting", node.ID, packages.DefaultID, "user-1")
 	if !errors.Is(err, accounts.ErrNameExists) {
 		t.Fatalf("expected duplicate name error, got %v", err)
 	}

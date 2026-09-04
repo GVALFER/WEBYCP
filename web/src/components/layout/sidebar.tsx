@@ -1,110 +1,184 @@
 "use client";
 
-import { Button } from "@heroui/react";
+import type { LucideIcon } from "lucide-react";
 import {
+    Archive,
+    CalendarClock,
+    ChevronDown,
+    CircleUserRound,
+    Code2,
     Clock3,
     Database,
     Globe2,
     HardDrive,
     LayoutDashboard,
     ListTodo,
+    Link2,
     LockKeyhole,
-    Moon,
-    Server,
-    Sun,
-    UserRoundCog,
+    PackageOpen,
+    Settings2,
     Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTheme } from "@/lib/theme";
+import { useState } from "react";
+import { Brand } from "@/components/brand";
 import { useSession } from "@/providers/SessionProvider";
 import { cn } from "@/utils/classnames";
 import Logout from "../actions/logout";
 
-export const pages = [
-    {
-        href: "/",
-        label: "Overview",
-        title: "Overview",
-        description: "Server health and recent control-plane activity.",
-        icon: LayoutDashboard,
-        group: "Workspace",
-    },
-    {
-        href: "/accounts",
-        label: "Accounts",
-        title: "Accounts",
-        description: "Isolated hosting identities and system users.",
-        icon: Users,
-        group: "Hosting",
-    },
-    {
-        href: "/domains",
-        label: "Domains",
-        title: "Domains",
-        description: "Nginx sites, aliases and document roots.",
-        icon: Globe2,
-        group: "Hosting",
-    },
-    {
-        href: "/certificates",
-        label: "SSL / TLS",
-        title: "SSL / TLS",
-        description: "Certificates, renewals and HTTPS policy.",
-        icon: LockKeyhole,
-        group: "Hosting",
-    },
-    {
-        href: "/databases",
-        label: "Databases",
-        title: "Databases",
-        description: "MySQL databases, users and access grants.",
-        icon: Database,
-        group: "Hosting",
-    },
-    {
-        href: "/cron",
-        label: "Cron jobs",
-        title: "Cron jobs",
-        description: "Scheduled commands for hosting accounts.",
-        icon: Clock3,
-        group: "Automation",
-    },
-    {
-        href: "/backups",
-        label: "Backups",
-        title: "Backups",
-        description: "Plans, verified artifacts and restores.",
-        icon: HardDrive,
-        group: "Automation",
-    },
-    {
-        href: "/jobs",
-        label: "Jobs",
-        title: "Jobs",
-        description: "Durable operations executed by the local agent.",
-        icon: ListTodo,
-        group: "System",
-    },
-    {
-        href: "/profile",
-        label: "Profile",
-        title: "Profile",
-        description: "Administrator identity and sign-in credentials.",
-        icon: UserRoundCog,
-        group: "System",
-    },
-] as const;
+type Page = {
+    description: string;
+    href: string;
+    icon: LucideIcon;
+    label: string;
+    title: string;
+};
 
-const groups = ["Workspace", "Hosting", "Automation", "System"] as const;
+type Group = {
+    children: Page[];
+    icon: LucideIcon;
+    label: string;
+};
+
+const overview: Page = {
+    href: "/",
+    label: "Overview",
+    title: "Overview",
+    description: "Server health and recent control-plane activity.",
+    icon: LayoutDashboard,
+};
+
+const groups: Group[] = [
+    {
+        label: "Accounts",
+        icon: Users,
+        children: [
+            {
+                href: "/accounts",
+                label: "Accounts",
+                title: "Accounts",
+                description: "Isolated hosting identities and system users.",
+                icon: CircleUserRound,
+            },
+            {
+                href: "/packages",
+                label: "Packages",
+                title: "Packages",
+                description: "Resource limits assigned to hosting accounts.",
+                icon: PackageOpen,
+            },
+        ],
+    },
+    {
+        label: "Websites",
+        icon: Globe2,
+        children: [
+            {
+                href: "/websites",
+                label: "Websites",
+                title: "Websites",
+                description: "Sites, document roots and runtime stacks.",
+                icon: Code2,
+            },
+            {
+                href: "/domains",
+                label: "Domains",
+                title: "Domains",
+                description: "Primary hostnames assigned to websites.",
+                icon: Globe2,
+            },
+            {
+                href: "/aliases",
+                label: "Aliases",
+                title: "Aliases",
+                description: "Additional hostnames assigned to websites.",
+                icon: Link2,
+            },
+            {
+                href: "/certificates",
+                label: "Certificates",
+                title: "SSL / TLS",
+                description: "Certificates, renewals and HTTPS policy.",
+                icon: LockKeyhole,
+            },
+        ],
+    },
+    {
+        label: "Databases",
+        icon: Database,
+        children: [
+            {
+                href: "/databases",
+                label: "Databases",
+                title: "Databases",
+                description: "MySQL databases, users and access grants.",
+                icon: Database,
+            },
+        ],
+    },
+    {
+        label: "Backups",
+        icon: HardDrive,
+        children: [
+            {
+                href: "/backups",
+                label: "Backups",
+                title: "Backups",
+                description: "Plans, verified artifacts and restores.",
+                icon: Archive,
+            },
+        ],
+    },
+    {
+        label: "Scheduled Tasks",
+        icon: CalendarClock,
+        children: [
+            {
+                href: "/cron",
+                label: "Tasks",
+                title: "Scheduled Tasks",
+                description: "Scheduled commands for hosting accounts.",
+                icon: Clock3,
+            },
+        ],
+    },
+    {
+        label: "System",
+        icon: Settings2,
+        children: [
+            {
+                href: "/jobs",
+                label: "Jobs",
+                title: "Jobs",
+                description: "Durable operations executed by the local agent.",
+                icon: ListTodo,
+            },
+            {
+                href: "/profile",
+                label: "Profile",
+                title: "Profile",
+                description: "Administrator identity and sign-in credentials.",
+                icon: CircleUserRound,
+            },
+            {
+                href: "/settings",
+                label: "Settings",
+                title: "Settings",
+                description: "Panel-wide services and configuration.",
+                icon: Settings2,
+            },
+        ],
+    },
+];
+
+export const pages = [overview, ...groups.flatMap((group) => group.children)];
+
+const isActive = (pathname: string, href: string) =>
+    href === "/" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
 export const getPage = (pathname: string) =>
-    pages.find((item) =>
-        item.href === "/"
-            ? pathname === item.href
-            : pathname === item.href || pathname.startsWith(`${item.href}/`),
-    ) ?? pages[0];
+    pages.find((page) => isActive(pathname, page.href)) ?? overview;
 
 type SidebarProps = {
     onNavigate?: () => void;
@@ -113,98 +187,148 @@ type SidebarProps = {
 export const Sidebar = ({ onNavigate }: SidebarProps) => {
     const session = useSession();
     const pathname = usePathname();
-    const { theme, toggleTheme } = useTheme();
-    const ThemeIcon = theme === "dark" ? Sun : Moon;
-    const current = getPage(pathname);
 
     return (
-        <div className="flex h-full min-h-0 flex-col bg-surface p-4 text-surface-foreground">
-            <div className="flex h-14 items-center gap-3 px-2">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-lg shadow-accent/20">
-                    <Server className="size-4" aria-hidden="true" />
-                </div>
-                <div>
-                    <div className="font-semibold tracking-tight">WEBYCP</div>
-                    <div className="text-[10px] font-medium tracking-[0.16em] text-foreground-400 uppercase">
-                        Control panel
-                    </div>
-                </div>
-            </div>
+        <div className="sidebar-shell flex h-full min-h-0 flex-col px-3 py-4 text-surface-foreground">
+            <Brand className="h-13 px-2" />
 
-            <nav
-                className="mt-6 flex-1 space-y-6 overflow-y-auto px-1"
-                aria-label="Main navigation"
-            >
-                {groups.map((group) => (
-                    <div key={group}>
-                        <div className="mb-2 px-3 text-[10px] font-semibold tracking-[0.16em] text-foreground-400 uppercase">
-                            {group}
-                        </div>
-                        <div className="space-y-1">
-                            {pages
-                                .filter((item) => item.group === group)
-                                .map((item) => {
-                                    const Icon = item.icon;
-                                    const active = item.href === current.href;
+            <nav className="mt-5 flex-1 overflow-y-auto px-1" aria-label="Main navigation">
+                <NavLink page={overview} active={pathname === "/"} onNavigate={onNavigate} />
 
-                                    return (
-                                        <Link
-                                            key={item.href}
-                                            href={item.href}
-                                            prefetch={false}
-                                            aria-current={active ? "page" : undefined}
-                                            className={cn(
-                                                "group flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition",
-                                                active
-                                                    ? "bg-accent/12 text-accent"
-                                                    : "text-foreground-500 hover:bg-surface-secondary hover:text-foreground",
-                                            )}
-                                            onClick={onNavigate}
-                                        >
-                                            <Icon
-                                                className={cn(
-                                                    "size-4 transition",
-                                                    active
-                                                        ? "text-accent"
-                                                        : "text-foreground-400 group-hover:text-foreground",
-                                                )}
-                                                aria-hidden="true"
-                                            />
-                                            {item.label}
-                                        </Link>
-                                    );
-                                })}
-                        </div>
-                    </div>
-                ))}
+                <div className="mt-5 space-y-1.5">
+                    {groups.map((group) => (
+                        <NavGroup
+                            key={group.label}
+                            group={group}
+                            pathname={pathname}
+                            onNavigate={onNavigate}
+                        />
+                    ))}
+                </div>
             </nav>
 
-            <div className="mt-4 rounded-2xl border border-divider bg-surface-secondary/60 p-3">
-                <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent">
-                        {session.user.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">{session.user.name}</div>
-                        <div className="truncate text-xs text-foreground-400">
-                            @{session.user.username}
-                        </div>
-                    </div>
-                </div>
-                <div className="mt-3 flex gap-2 border-t border-divider pt-3">
-                    <Button
-                        fullWidth
-                        size="sm"
-                        variant="tertiary"
-                        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-                        onPress={toggleTheme}
+            <div className="mt-4 border-t border-divider px-1 pt-4">
+                <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+                    <Link
+                        href="/profile"
+                        prefetch={false}
+                        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                        onClick={onNavigate}
                     >
-                        <ThemeIcon className="size-4" />
-                        {theme === "dark" ? "Light theme" : "Dark theme"}
-                    </Button>
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent/12 text-sm font-semibold text-accent">
+                            {session.user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium">{session.user.name}</div>
+                            <div className="truncate text-[11px] text-foreground-400">
+                                @{session.user.username}
+                            </div>
+                        </div>
+                    </Link>
                     <Logout />
                 </div>
             </div>
         </div>
+    );
+};
+
+type NavGroupProps = {
+    group: Group;
+    pathname: string;
+    onNavigate?: () => void;
+};
+
+const NavGroup = ({ group, pathname, onNavigate }: NavGroupProps) => {
+    const active = group.children.some((page) => isActive(pathname, page.href));
+    const [expanded, setExpanded] = useState(false);
+    const open = active || expanded;
+    const Icon = group.icon;
+
+    return (
+        <div>
+            <button
+                className={cn(
+                    "flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+                    active
+                        ? "text-foreground"
+                        : "text-foreground-500 hover:bg-surface-secondary/70 hover:text-foreground",
+                )}
+                type="button"
+                aria-expanded={open}
+                onClick={() => {
+                    if (!active) setExpanded((current) => !current);
+                }}
+            >
+                <Icon
+                    className={cn("size-[1.1rem]", active ? "text-accent" : "text-foreground-400")}
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                />
+                <span className="flex-1 text-start">{group.label}</span>
+                <ChevronDown
+                    className={cn(
+                        "size-4 text-foreground-400 transition-transform",
+                        open && "rotate-180",
+                    )}
+                    aria-hidden="true"
+                />
+            </button>
+
+            {open && (
+                <div className="relative ml-[1.3rem] border-l border-divider py-1 pl-[1.15rem]">
+                    {group.children.map((page) => (
+                        <NavLink
+                            key={page.href}
+                            page={page}
+                            active={isActive(pathname, page.href)}
+                            nested
+                            onNavigate={onNavigate}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+type NavLinkProps = {
+    active: boolean;
+    nested?: boolean;
+    page: Page;
+    onNavigate?: () => void;
+};
+
+const NavLink = ({ active, nested = false, page, onNavigate }: NavLinkProps) => {
+    const Icon = page.icon;
+
+    return (
+        <Link
+            href={page.href}
+            prefetch={false}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+                "group relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+                active
+                    ? "bg-accent/10 text-accent"
+                    : "text-foreground-500 hover:bg-surface-secondary/70 hover:text-foreground",
+            )}
+            onClick={onNavigate}
+        >
+            {nested && (
+                <span
+                    className={cn(
+                        "absolute top-1/2 -left-[1.42rem] size-2 -translate-y-1/2 rounded-full border-2 border-surface",
+                        active ? "bg-accent" : "bg-border",
+                    )}
+                    aria-hidden="true"
+                />
+            )}
+            <Icon
+                className={cn("size-4", active ? "text-accent" : "text-foreground-400")}
+                strokeWidth={1.8}
+                aria-hidden="true"
+            />
+            <span>{page.label}</span>
+        </Link>
     );
 };

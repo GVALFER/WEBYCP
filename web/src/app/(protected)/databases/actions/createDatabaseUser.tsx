@@ -60,6 +60,7 @@ const CreateDatabaseUser = ({ accounts }: CreateDatabaseUserProps) => {
                             .post("database-users", { json: values })
                             .json<DatabaseUserJobResponse>(),
                     "Database user queued for creation",
+                    true,
                 );
                 if (response) {
                     form.reset({ accountId: values.accountId, name: "" });

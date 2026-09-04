@@ -46,19 +46,19 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/ErrorResponse"
-    /agent/v1/domains:
+    /agent/v1/websites:
         post:
-            operationId: ensureDomain
-            summary: Ensure a domain directory and web server site exist
+            operationId: ensureWebsite
+            summary: Ensure a website document root, runtime and web server site exist
             requestBody:
                 required: true
                 content:
                     application/json:
                         schema:
-                            $ref: "#/components/schemas/EnsureDomainRequest"
+                            $ref: "#/components/schemas/WebsiteRequest"
             responses:
                 "204":
-                    description: The domain filesystem and web server site are reconciled.
+                    description: The website filesystem, runtime and web server site are reconciled.
                 "400":
                     description: The request body is malformed.
                     content:
@@ -66,30 +66,30 @@ paths:
                             schema:
                                 $ref: "#/components/schemas/ErrorResponse"
                 "422":
-                    description: The requested domain identity is invalid.
+                    description: The requested website is invalid.
                     content:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/ErrorResponse"
                 "500":
-                    description: The domain could not be reconciled.
+                    description: The website could not be reconciled.
                     content:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/ErrorResponse"
-    /agent/v1/domains/disable:
+    /agent/v1/websites/disable:
         post:
-            operationId: disableDomain
-            summary: Disable a domain web server site
+            operationId: disableWebsite
+            summary: Disable a website web server site
             requestBody:
                 required: true
                 content:
                     application/json:
                         schema:
-                            $ref: "#/components/schemas/DisableDomainRequest"
+                            $ref: "#/components/schemas/WebsiteRequest"
             responses:
                 "204":
-                    description: The domain web server site is disabled.
+                    description: The website web server site is disabled.
                 "400":
                     description: The request body is malformed.
                     content:
@@ -97,30 +97,30 @@ paths:
                             schema:
                                 $ref: "#/components/schemas/ErrorResponse"
                 "422":
-                    description: The requested domain identity is invalid.
+                    description: The requested website is invalid.
                     content:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/ErrorResponse"
                 "500":
-                    description: The domain could not be disabled.
+                    description: The website could not be disabled.
                     content:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/ErrorResponse"
-    /agent/v1/domains/delete:
+    /agent/v1/websites/delete:
         post:
-            operationId: deleteDomain
-            summary: Delete a domain site and quarantine its document root
+            operationId: deleteWebsite
+            summary: Delete a website and quarantine its document root
             requestBody:
                 required: true
                 content:
                     application/json:
                         schema:
-                            $ref: "#/components/schemas/DeleteDomainRequest"
+                            $ref: "#/components/schemas/WebsiteRequest"
             responses:
                 "204":
-                    description: The domain is deleted and its document root is quarantined.
+                    description: The website is deleted and its document root is quarantined.
                 "400":
                     description: The request body is malformed.
                     content:
@@ -128,44 +128,13 @@ paths:
                             schema:
                                 $ref: "#/components/schemas/ErrorResponse"
                 "422":
-                    description: The requested domain identity is invalid.
+                    description: The requested website is invalid.
                     content:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/ErrorResponse"
                 "500":
-                    description: The domain could not be deleted.
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/ErrorResponse"
-    /agent/v1/domains/rename:
-        post:
-            operationId: renameDomain
-            summary: Rename a domain document root and web server site
-            requestBody:
-                required: true
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/RenameDomainRequest"
-            responses:
-                "204":
-                    description: The domain document root and site use the new name.
-                "400":
-                    description: The request body is malformed.
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/ErrorResponse"
-                "422":
-                    description: The requested domain identity is invalid.
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/ErrorResponse"
-                "500":
-                    description: The domain could not be renamed.
+                    description: The website could not be deleted.
                     content:
                         application/json:
                             schema:
@@ -453,91 +422,30 @@ components:
             properties:
                 accountId: { type: string }
                 systemUser: { type: string }
-        EnsureDomainRequest:
+        WebsiteRequest:
             type: object
             additionalProperties: false
             required:
                 - accountId
                 - systemUser
-                - domainId
-                - name
-                - phpVersion
+                - websiteId
+                - documentRoot
+                - kind
+                - webDriver
+                - runtimeDriver
+                - runtimeVersion
+                - primaryDomain
                 - aliases
             properties:
-                accountId:
-                    type: string
-                systemUser:
-                    type: string
-                domainId:
-                    type: string
-                name:
-                    type: string
-                phpVersion:
-                    type: string
-                    enum:
-                        - "8.3"
-                aliases:
-                    type: array
-                    maxItems: 100
-                    items:
-                        type: string
-        DisableDomainRequest:
-            type: object
-            additionalProperties: false
-            required:
-                - accountId
-                - systemUser
-                - domainId
-            properties:
-                accountId:
-                    type: string
-                systemUser:
-                    type: string
-                domainId:
-                    type: string
-        DeleteDomainRequest:
-            type: object
-            additionalProperties: false
-            required:
-                - accountId
-                - systemUser
-                - domainId
-                - name
-            properties:
-                accountId:
-                    type: string
-                systemUser:
-                    type: string
-                domainId:
-                    type: string
-                name:
-                    type: string
-        RenameDomainRequest:
-            type: object
-            additionalProperties: false
-            required:
-                - accountId
-                - systemUser
-                - domainId
-                - currentName
-                - name
-                - phpVersion
-                - aliases
-            properties:
-                accountId:
-                    type: string
-                systemUser:
-                    type: string
-                domainId:
-                    type: string
-                currentName:
-                    type: string
-                name:
-                    type: string
-                phpVersion:
-                    type: string
-                    enum:
-                        - "8.3"
+                accountId: { type: string }
+                systemUser: { type: string }
+                websiteId: { type: string }
+                documentRoot: { type: string }
+                kind: { type: string, enum: [php] }
+                webDriver: { type: string, enum: [nginx] }
+                runtimeDriver: { type: string, enum: [phpfpm] }
+                runtimeVersion: { type: string, enum: ["8.3"] }
+                primaryDomain: { type: string }
                 aliases:
                     type: array
                     maxItems: 100
@@ -549,10 +457,11 @@ components:
             required: [certificateId, kind, name, names, email, redirectHttps]
             properties:
                 certificateId: { type: string }
-                kind: { type: string, enum: [domain, panel] }
-                domainId: { type: string }
+                kind: { type: string, enum: [website, panel] }
+                websiteId: { type: string }
                 accountId: { type: string }
                 systemUser: { type: string }
+                documentRoot: { type: string }
                 name: { type: string }
                 names:
                     type: array
@@ -560,7 +469,7 @@ components:
                     maxItems: 101
                     items: { type: string }
                 email: { type: string, format: email }
-                phpVersion: { type: string, enum: ["8.3"] }
+                runtimeVersion: { type: string, enum: ["8.3"] }
                 redirectHttps: { type: boolean }
         CertificateResult:
             type: object

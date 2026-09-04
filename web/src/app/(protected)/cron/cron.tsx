@@ -27,7 +27,7 @@ const Cron = ({ accounts, jobs }: CronProps) => {
     const columns: TableColumn<CronJob>[] = [
         {
             id: "job",
-            label: "Cron job",
+            label: "Task",
             isRowHeader: true,
             render: (job) => (
                 <div className="flex min-w-0 items-center gap-4">
@@ -76,7 +76,7 @@ const Cron = ({ accounts, jobs }: CronProps) => {
         <section className="panel-card overflow-hidden">
             <div className="flex items-start justify-between gap-4 px-6 py-5">
                 <div>
-                    <h2 className="text-base font-semibold">Cron jobs</h2>
+                    <h2 className="text-base font-semibold">Scheduled tasks</h2>
                     <div className="mt-1 text-sm text-foreground-500">
                         Commands run as the hosting account from its home directory.
                     </div>

@@ -2,8 +2,7 @@
 
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/utils/classnames";
-import { Spinner } from "@heroui/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface ChartDataPoint {
@@ -57,6 +56,76 @@ type ChartBarsProps = {
     maxBarSize?: number;
 };
 
+type BarTooltipProps = TooltipProps & {
+    formatLabel?: ChartBarsProps["formatTooltipLabel"];
+    formatValue?: ChartBarsProps["formatTooltipValue"];
+    unit?: string;
+};
+
+const BarTooltip = ({
+    active,
+    payload,
+    label,
+    formatLabel,
+    formatValue,
+    unit,
+}: BarTooltipProps) => {
+    if (!active || !payload?.length) return null;
+
+    return (
+        <div className="rounded-xl border border-divider bg-overlay/92 p-3 shadow-lg backdrop-blur-sm">
+            <div className="mb-2 text-sm text-muted">
+                {formatLabel && label !== undefined ? formatLabel(label) : label}
+            </div>
+            {payload.map((entry) => {
+                const [value, name] = formatValue
+                    ? formatValue(entry.value, entry.name)
+                    : [unit ? `${entry.value}${unit}` : entry.value.toString(), entry.name];
+
+                return (
+                    <div key={entry.dataKey} className="flex items-center gap-2">
+                        <span
+                            className="size-3 rounded-sm"
+                            style={{ backgroundColor: entry.color }}
+                        />
+                        <span className="text-sm">
+                            {name}: {value}
+                        </span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+type BarLegendProps = {
+    bars: BarConfig[];
+    hidden: Set<string>;
+    onToggle: (dataKey: string) => void;
+};
+
+const BarLegend = ({ bars, hidden, onToggle }: BarLegendProps) => (
+    <div className="mt-4 flex flex-wrap justify-center gap-4">
+        {bars.map((bar) => (
+            <button
+                key={bar.dataKey}
+                type="button"
+                className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-1 text-sm text-muted transition-colors hover:bg-surface-secondary",
+                    hidden.has(bar.dataKey) && "opacity-50",
+                )}
+                onClick={() => onToggle(bar.dataKey)}
+            >
+                <span
+                    className="size-3 rounded-sm"
+                    style={{ backgroundColor: bar.color }}
+                />
+                {bar.name}
+            </button>
+        ))}
+    </div>
+);
+
 const ChartBars = ({
     className,
     data = [],
@@ -74,7 +143,6 @@ const ChartBars = ({
     formatTooltipLabel,
     maxBarSize = 80,
 }: ChartBarsProps) => {
-    const [isClient, setIsClient] = useState(false);
     const [hiddenBars, setHiddenBars] = useState<Set<string>>(new Set());
     const { theme } = useTheme();
 
@@ -101,77 +169,6 @@ const ChartBars = ({
         [toggleBar],
     );
 
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
-
-    const CustomTooltip = useCallback(
-        ({ active, payload, label }: TooltipProps) => {
-            if (!active || !payload || !payload.length) {
-                return null;
-            }
-
-            return (
-                <div className="bg-surface/70 rounded p-3 shadow-lg backdrop-blur-sm">
-                    <p className="text-muted text-sm mb-2">
-                        {formatTooltipLabel && label !== undefined
-                            ? formatTooltipLabel(label)
-                            : label}
-                    </p>
-                    {payload.map((entry: TooltipPayloadEntry, index: number) => {
-                        const [formattedValue, formattedName] = formatTooltipValue
-                            ? formatTooltipValue(entry.value, entry.name)
-                            : [
-                                  yAxisUnit ? `${entry.value}${yAxisUnit}` : entry.value.toString(),
-                                  entry.name,
-                              ];
-
-                        return (
-                            <div key={index} className="flex items-center gap-2">
-                                <div
-                                    className="w-3 h-3 rounded-sm"
-                                    style={{ backgroundColor: entry.color }}
-                                />
-                                <span className="text-sm">
-                                    {formattedName}: {formattedValue}
-                                </span>
-                            </div>
-                        );
-                    })}
-                </div>
-            );
-        },
-        [formatTooltipValue, formatTooltipLabel, yAxisUnit],
-    );
-
-    const CustomLegend = useCallback(() => {
-        if (!showLegend) return null;
-
-        return (
-            <div className="flex flex-wrap justify-center gap-4 mt-4">
-                {bars.map((bar) => {
-                    const isHidden = hiddenBars.has(bar.dataKey);
-                    return (
-                        <button
-                            key={bar.dataKey}
-                            onClick={() => handleLegendClick(bar.dataKey)}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-1 rounded-md transition-all hover:bg-gray-800/50",
-                                isHidden && "opacity-50",
-                            )}
-                        >
-                            <div
-                                className="w-3 h-3 rounded-sm"
-                                style={{ backgroundColor: bar.color }}
-                            />
-                            <span className="text-muted text-sm">{bar.name}</span>
-                        </button>
-                    );
-                })}
-            </div>
-        );
-    }, [bars, hiddenBars, handleLegendClick, showLegend]);
-
     if (!data || data.length === 0) {
         return (
             <div
@@ -181,17 +178,6 @@ const ChartBars = ({
                 )}
             >
                 <div className="text-muted text-sm">No data available</div>
-            </div>
-        );
-    }
-
-    if (!isClient) {
-        return (
-            <div
-                className="flex items-center justify-center rounded animate-pulse"
-                style={{ height: height }}
-            >
-                <Spinner />
             </div>
         );
     }
@@ -272,7 +258,13 @@ const ChartBars = ({
 
                         {showTooltip && (
                             <Tooltip
-                                content={<CustomTooltip />}
+                                content={
+                                    <BarTooltip
+                                        formatLabel={formatTooltipLabel}
+                                        formatValue={formatTooltipValue}
+                                        unit={yAxisUnit}
+                                    />
+                                }
                                 cursor={{
                                     fill:
                                         theme === "dark"
@@ -295,7 +287,9 @@ const ChartBars = ({
                     </BarChart>
                 </ResponsiveContainer>
             </div>
-            <CustomLegend />
+            {showLegend && (
+                <BarLegend bars={bars} hidden={hiddenBars} onToggle={handleLegendClick} />
+            )}
         </div>
     );
 };

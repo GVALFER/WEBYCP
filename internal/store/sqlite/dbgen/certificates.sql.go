@@ -27,18 +27,20 @@ func (q *Queries) CertificatePendingJobExists(ctx context.Context, payload strin
 
 const countCertificates = `-- name: CountCertificates :one
 SELECT COUNT(DISTINCT certificates.id) FROM certificates
-LEFT JOIN domains ON domains.id = certificates.domain_id
-LEFT JOIN account_members ON account_members.account_id = domains.account_id
-WHERE ?1 OR certificates.kind = 'panel' OR account_members.user_id = ?2
+LEFT JOIN websites ON websites.id = certificates.website_id
+LEFT JOIN account_members ON account_members.account_id = websites.account_id
+WHERE (?1 = '' OR certificates.kind = ?1)
+  AND (?2 OR account_members.user_id = ?3)
 `
 
 type CountCertificatesParams struct {
+	Kind    interface{} `json:"kind"`
 	IsAdmin interface{} `json:"is_admin"`
 	UserID  string      `json:"user_id"`
 }
 
 func (q *Queries) CountCertificates(ctx context.Context, arg CountCertificatesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countCertificates, arg.IsAdmin, arg.UserID)
+	row := q.db.QueryRowContext(ctx, countCertificates, arg.Kind, arg.IsAdmin, arg.UserID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -46,15 +48,15 @@ func (q *Queries) CountCertificates(ctx context.Context, arg CountCertificatesPa
 
 const createCertificate = `-- name: CreateCertificate :one
 INSERT INTO certificates (
-    id, domain_id, node_id, kind, name, email, status, redirect_https,
+    id, website_id, node_id, kind, name, email, status, redirect_https,
     created_at, updated_at
 ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
-RETURNING id, domain_id, node_id, kind, name, email, status, redirect_https, expires_at, renew_after, error, created_at, updated_at
+RETURNING id, website_id, node_id, kind, name, email, status, redirect_https, expires_at, renew_after, error, created_at, updated_at
 `
 
 type CreateCertificateParams struct {
 	ID            string         `json:"id"`
-	DomainID      sql.NullString `json:"domain_id"`
+	WebsiteID     sql.NullString `json:"website_id"`
 	NodeID        string         `json:"node_id"`
 	Kind          string         `json:"kind"`
 	Name          string         `json:"name"`
@@ -67,7 +69,7 @@ type CreateCertificateParams struct {
 func (q *Queries) CreateCertificate(ctx context.Context, arg CreateCertificateParams) (Certificate, error) {
 	row := q.db.QueryRowContext(ctx, createCertificate,
 		arg.ID,
-		arg.DomainID,
+		arg.WebsiteID,
 		arg.NodeID,
 		arg.Kind,
 		arg.Name,
@@ -79,7 +81,7 @@ func (q *Queries) CreateCertificate(ctx context.Context, arg CreateCertificatePa
 	var i Certificate
 	err := row.Scan(
 		&i.ID,
-		&i.DomainID,
+		&i.WebsiteID,
 		&i.NodeID,
 		&i.Kind,
 		&i.Name,
@@ -114,7 +116,7 @@ func (q *Queries) DeleteCertificateNames(ctx context.Context, certificateID stri
 }
 
 const getCertificate = `-- name: GetCertificate :one
-SELECT id, domain_id, node_id, kind, name, email, status, redirect_https, expires_at, renew_after, error, created_at, updated_at FROM certificates WHERE id = ? LIMIT 1
+SELECT id, website_id, node_id, kind, name, email, status, redirect_https, expires_at, renew_after, error, created_at, updated_at FROM certificates WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetCertificate(ctx context.Context, id string) (Certificate, error) {
@@ -122,32 +124,7 @@ func (q *Queries) GetCertificate(ctx context.Context, id string) (Certificate, e
 	var i Certificate
 	err := row.Scan(
 		&i.ID,
-		&i.DomainID,
-		&i.NodeID,
-		&i.Kind,
-		&i.Name,
-		&i.Email,
-		&i.Status,
-		&i.RedirectHttps,
-		&i.ExpiresAt,
-		&i.RenewAfter,
-		&i.Error,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getDomainCertificate = `-- name: GetDomainCertificate :one
-SELECT id, domain_id, node_id, kind, name, email, status, redirect_https, expires_at, renew_after, error, created_at, updated_at FROM certificates WHERE domain_id = ? LIMIT 1
-`
-
-func (q *Queries) GetDomainCertificate(ctx context.Context, domainID sql.NullString) (Certificate, error) {
-	row := q.db.QueryRowContext(ctx, getDomainCertificate, domainID)
-	var i Certificate
-	err := row.Scan(
-		&i.ID,
-		&i.DomainID,
+		&i.WebsiteID,
 		&i.NodeID,
 		&i.Kind,
 		&i.Name,
@@ -164,7 +141,7 @@ func (q *Queries) GetDomainCertificate(ctx context.Context, domainID sql.NullStr
 }
 
 const getPanelCertificate = `-- name: GetPanelCertificate :one
-SELECT id, domain_id, node_id, kind, name, email, status, redirect_https, expires_at, renew_after, error, created_at, updated_at FROM certificates WHERE kind = 'panel' LIMIT 1
+SELECT id, website_id, node_id, kind, name, email, status, redirect_https, expires_at, renew_after, error, created_at, updated_at FROM certificates WHERE kind = 'panel' LIMIT 1
 `
 
 func (q *Queries) GetPanelCertificate(ctx context.Context) (Certificate, error) {
@@ -172,7 +149,32 @@ func (q *Queries) GetPanelCertificate(ctx context.Context) (Certificate, error) 
 	var i Certificate
 	err := row.Scan(
 		&i.ID,
-		&i.DomainID,
+		&i.WebsiteID,
+		&i.NodeID,
+		&i.Kind,
+		&i.Name,
+		&i.Email,
+		&i.Status,
+		&i.RedirectHttps,
+		&i.ExpiresAt,
+		&i.RenewAfter,
+		&i.Error,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getWebsiteCertificate = `-- name: GetWebsiteCertificate :one
+SELECT id, website_id, node_id, kind, name, email, status, redirect_https, expires_at, renew_after, error, created_at, updated_at FROM certificates WHERE website_id = ? LIMIT 1
+`
+
+func (q *Queries) GetWebsiteCertificate(ctx context.Context, websiteID sql.NullString) (Certificate, error) {
+	row := q.db.QueryRowContext(ctx, getWebsiteCertificate, websiteID)
+	var i Certificate
+	err := row.Scan(
+		&i.ID,
+		&i.WebsiteID,
 		&i.NodeID,
 		&i.Kind,
 		&i.Name,
@@ -216,21 +218,23 @@ func (q *Queries) ListCertificateNames(ctx context.Context, certificateID string
 }
 
 const listCertificates = `-- name: ListCertificates :many
-SELECT certificates.id, certificates.domain_id, certificates.node_id, certificates.kind, certificates.name, certificates.email, certificates.status, certificates.redirect_https, certificates.expires_at, certificates.renew_after, certificates.error, certificates.created_at, certificates.updated_at FROM certificates
-LEFT JOIN domains ON domains.id = certificates.domain_id
-LEFT JOIN account_members ON account_members.account_id = domains.account_id
-WHERE ? OR certificates.kind = 'panel' OR account_members.user_id = ?
+SELECT certificates.id, certificates.website_id, certificates.node_id, certificates.kind, certificates.name, certificates.email, certificates.status, certificates.redirect_https, certificates.expires_at, certificates.renew_after, certificates.error, certificates.created_at, certificates.updated_at FROM certificates
+LEFT JOIN websites ON websites.id = certificates.website_id
+LEFT JOIN account_members ON account_members.account_id = websites.account_id
+WHERE (?1 = '' OR certificates.kind = ?1)
+  AND (?2 OR account_members.user_id = ?3)
 GROUP BY certificates.id
 ORDER BY certificates.created_at DESC
 `
 
 type ListCertificatesParams struct {
-	Column1 interface{} `json:"column_1"`
+	Kind    interface{} `json:"kind"`
+	IsAdmin interface{} `json:"is_admin"`
 	UserID  string      `json:"user_id"`
 }
 
 func (q *Queries) ListCertificates(ctx context.Context, arg ListCertificatesParams) ([]Certificate, error) {
-	rows, err := q.db.QueryContext(ctx, listCertificates, arg.Column1, arg.UserID)
+	rows, err := q.db.QueryContext(ctx, listCertificates, arg.Kind, arg.IsAdmin, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +244,7 @@ func (q *Queries) ListCertificates(ctx context.Context, arg ListCertificatesPara
 		var i Certificate
 		if err := rows.Scan(
 			&i.ID,
-			&i.DomainID,
+			&i.WebsiteID,
 			&i.NodeID,
 			&i.Kind,
 			&i.Name,
@@ -267,16 +271,18 @@ func (q *Queries) ListCertificates(ctx context.Context, arg ListCertificatesPara
 }
 
 const listCertificatesPage = `-- name: ListCertificatesPage :many
-SELECT certificates.id, certificates.domain_id, certificates.node_id, certificates.kind, certificates.name, certificates.email, certificates.status, certificates.redirect_https, certificates.expires_at, certificates.renew_after, certificates.error, certificates.created_at, certificates.updated_at FROM certificates
-LEFT JOIN domains ON domains.id = certificates.domain_id
-LEFT JOIN account_members ON account_members.account_id = domains.account_id
-WHERE ?1 OR certificates.kind = 'panel' OR account_members.user_id = ?2
+SELECT certificates.id, certificates.website_id, certificates.node_id, certificates.kind, certificates.name, certificates.email, certificates.status, certificates.redirect_https, certificates.expires_at, certificates.renew_after, certificates.error, certificates.created_at, certificates.updated_at FROM certificates
+LEFT JOIN websites ON websites.id = certificates.website_id
+LEFT JOIN account_members ON account_members.account_id = websites.account_id
+WHERE (?1 = '' OR certificates.kind = ?1)
+  AND (?2 OR account_members.user_id = ?3)
 GROUP BY certificates.id
 ORDER BY certificates.created_at DESC
-LIMIT ?4 OFFSET ?3
+LIMIT ?5 OFFSET ?4
 `
 
 type ListCertificatesPageParams struct {
+	Kind       interface{} `json:"kind"`
 	IsAdmin    interface{} `json:"is_admin"`
 	UserID     string      `json:"user_id"`
 	PageOffset int64       `json:"page_offset"`
@@ -285,6 +291,7 @@ type ListCertificatesPageParams struct {
 
 func (q *Queries) ListCertificatesPage(ctx context.Context, arg ListCertificatesPageParams) ([]Certificate, error) {
 	rows, err := q.db.QueryContext(ctx, listCertificatesPage,
+		arg.Kind,
 		arg.IsAdmin,
 		arg.UserID,
 		arg.PageOffset,
@@ -299,7 +306,7 @@ func (q *Queries) ListCertificatesPage(ctx context.Context, arg ListCertificates
 		var i Certificate
 		if err := rows.Scan(
 			&i.ID,
-			&i.DomainID,
+			&i.WebsiteID,
 			&i.NodeID,
 			&i.Kind,
 			&i.Name,
@@ -326,7 +333,7 @@ func (q *Queries) ListCertificatesPage(ctx context.Context, arg ListCertificates
 }
 
 const listDueCertificates = `-- name: ListDueCertificates :many
-SELECT id, domain_id, node_id, kind, name, email, status, redirect_https, expires_at, renew_after, error, created_at, updated_at FROM certificates
+SELECT id, website_id, node_id, kind, name, email, status, redirect_https, expires_at, renew_after, error, created_at, updated_at FROM certificates
 WHERE status = 'active' AND renew_after IS NOT NULL AND renew_after <= ?
 ORDER BY renew_after ASC
 `
@@ -342,7 +349,7 @@ func (q *Queries) ListDueCertificates(ctx context.Context, renewAfter sql.NullIn
 		var i Certificate
 		if err := rows.Scan(
 			&i.ID,
-			&i.DomainID,
+			&i.WebsiteID,
 			&i.NodeID,
 			&i.Kind,
 			&i.Name,

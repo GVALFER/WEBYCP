@@ -17,6 +17,9 @@ func (s *Store) CreateCronJob(ctx context.Context, value cronjob.CronJob, job jo
 	}
 	defer tx.Rollback()
 	q := s.queries.WithTx(tx)
+	if err := requireCapacity(ctx, tx, value.AccountID, limitScheduledTasks); err != nil {
+		return cronjob.CronJob{}, jobs.Job{}, err
+	}
 	row, err := q.CreateCronJob(ctx, dbgen.CreateCronJobParams{
 		ID: value.ID, AccountID: value.AccountID, NodeID: value.NodeID, Name: value.Name,
 		Schedule: value.Schedule, Command: value.Command, Enabled: boolValue(value.Enabled),

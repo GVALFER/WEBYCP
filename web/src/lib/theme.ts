@@ -16,7 +16,7 @@ export const applyTheme = (theme: Theme) => {
     document.documentElement.style.colorScheme = theme;
     document
         .querySelector('meta[name="theme-color"]')
-        ?.setAttribute("content", theme === "dark" ? "#111113" : "#f7f7f8");
+        ?.setAttribute("content", theme === "dark" ? "#07191f" : "#f2fbf8");
 };
 
 export const saveTheme = (theme: Theme) => {

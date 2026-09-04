@@ -9,6 +9,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/pagination"
+	"github.com/GVALFER/WEBYCP/internal/websites"
 )
 
 var (
@@ -48,7 +49,7 @@ type Repository interface {
 	BackupPlanPage(context.Context, string, bool, pagination.Query) (pagination.Result[Plan], error)
 	BackupPlan(context.Context, string) (Plan, error)
 	CreateBackupPlan(context.Context, Plan) (Plan, error)
-	UpdateBackupPlan(context.Context, Plan) (Plan, error)
+	UpdateBackupPlan(context.Context, Plan, int64) (Plan, error)
 	DeleteBackupPlan(context.Context, string) error
 	DueBackupPlans(context.Context, time.Time) ([]Plan, error)
 	QueueBackupRun(context.Context, Run, jobs.Job, *time.Time) (Run, jobs.Job, error)
@@ -70,9 +71,9 @@ type Agent interface {
 	PreviewBackup(context.Context, string, agentbackup.ArtifactRequest) (backupfmt.Manifest, error)
 	RestoreBackup(context.Context, string, agentbackup.RestoreRequest) (string, error)
 	DeleteBackup(context.Context, string, agentbackup.ArtifactRequest) error
-	EnsureDomain(context.Context, string, string, string, string, string, string, []string) error
+	EnsureWebsite(context.Context, string, websites.Spec) error
 }
 
 type CertificateReconciler interface {
-	ReconcileDomain(context.Context, string) error
+	ReconcileWebsite(context.Context, string) error
 }

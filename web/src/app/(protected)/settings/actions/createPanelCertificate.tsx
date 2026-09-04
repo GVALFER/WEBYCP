@@ -14,10 +14,7 @@ import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
 import { isPageKey } from "@/utils/pagination";
 import { domainField, emailField } from "@/utils/validation";
-
-type CreatePanelCertificateProps = {
-    email: string;
-};
+import { useSession } from "@/providers/SessionProvider";
 
 const formSchema = v.object({
     hostname: domainField,
@@ -26,8 +23,9 @@ const formSchema = v.object({
 
 type FormValues = v.InferOutput<typeof formSchema>;
 
-const CreatePanelCertificate = ({ email }: CreatePanelCertificateProps) => {
+const CreatePanelCertificate = () => {
     const [open, setOpen] = useState(false);
+    const session = useSession();
     const { mutate } = useSWRConfig();
     const [pending, startTransition] = useTransition();
 
@@ -35,7 +33,7 @@ const CreatePanelCertificate = ({ email }: CreatePanelCertificateProps) => {
         resolver: valibotResolver(formSchema),
         defaultValues: {
             hostname: "",
-            email,
+            email: session.user.email,
         },
     });
 

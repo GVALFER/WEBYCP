@@ -177,6 +177,9 @@ func (h *handler) writeBackupError(w http.ResponseWriter, r *http.Request, err e
 	if writeValidationError(w, err) {
 		return
 	}
+	if writeLimitError(w, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		writeError(w, http.StatusNotFound, "not_found", "Backup resource not found")

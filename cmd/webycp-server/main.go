@@ -18,13 +18,14 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/config"
 	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
 	"github.com/GVALFER/WEBYCP/internal/databases"
-	"github.com/GVALFER/WEBYCP/internal/domains"
 	"github.com/GVALFER/WEBYCP/internal/httpapi"
 	"github.com/GVALFER/WEBYCP/internal/httpx"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
+	"github.com/GVALFER/WEBYCP/internal/packages"
 	"github.com/GVALFER/WEBYCP/internal/signalx"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite"
+	"github.com/GVALFER/WEBYCP/internal/websites"
 )
 
 func main() {
@@ -85,26 +86,26 @@ func main() {
 	agent := agentclient.New(2 * time.Minute)
 	nodeService := nodes.NewService(store, agent)
 	worker := jobs.NewWorker(store, store, logger)
-	accountService := accounts.NewService(store, store, agent, worker.Notify)
-	domainService := domains.NewService(store, accountService, store, agent, worker.Notify)
+	packageService := packages.NewService(store)
+	accountService := accounts.NewService(store, store, agent, packageService, worker.Notify)
+	websiteService := websites.NewService(store, accountService, store, agent, worker.Notify)
 	databaseService := databases.NewService(store, accountService, store, agent, worker.Notify)
 	cronService := cronjob.NewService(store, accountService, store, agent, worker.Notify)
-	certificateService := certificates.NewService(store, domainService, accountService, store, agent, worker.Notify)
-	backupService := backups.NewService(store, accountService, domainService, databaseService, cronService, certificateService, store, agent, worker.Notify)
+	certificateService := certificates.NewService(store, websiteService, accountService, store, agent, worker.Notify)
+	backupService := backups.NewService(store, accountService, websiteService, databaseService, cronService, certificateService, store, agent, worker.Notify)
 	worker.Handle(jobs.KindAccountCreate, accountService.Provision)
 	worker.Handle(jobs.KindAccountDelete, accountService.ProvisionAction)
 	worker.Handle(jobs.KindAccountDisable, accountService.ProvisionAction)
 	worker.Handle(jobs.KindAccountEnable, accountService.ProvisionAction)
-	worker.Handle(jobs.KindAliasCreate, domainService.ProvisionAlias)
-	worker.Handle(jobs.KindAliasDelete, domainService.ProvisionAliasAction)
-	worker.Handle(jobs.KindAliasDisable, domainService.ProvisionAliasAction)
-	worker.Handle(jobs.KindAliasEnable, domainService.ProvisionAliasAction)
-	worker.Handle(jobs.KindAliasUpdate, domainService.ProvisionAliasRename)
-	worker.Handle(jobs.KindDomainCreate, domainService.Provision)
-	worker.Handle(jobs.KindDomainDelete, domainService.ProvisionDomainAction)
-	worker.Handle(jobs.KindDomainDisable, domainService.ProvisionDomainAction)
-	worker.Handle(jobs.KindDomainEnable, domainService.ProvisionDomainAction)
-	worker.Handle(jobs.KindDomainUpdate, domainService.ProvisionDomainRename)
+	worker.Handle(jobs.KindWebsiteCreate, websiteService.Provision)
+	worker.Handle(jobs.KindWebsiteDelete, websiteService.ProvisionWebsiteAction)
+	worker.Handle(jobs.KindWebsiteDisable, websiteService.ProvisionWebsiteAction)
+	worker.Handle(jobs.KindWebsiteEnable, websiteService.ProvisionWebsiteAction)
+	worker.Handle(jobs.KindWebsiteDomainCreate, websiteService.ProvisionDomain)
+	worker.Handle(jobs.KindWebsiteDomainDelete, websiteService.ProvisionDomain)
+	worker.Handle(jobs.KindWebsiteDomainDisable, websiteService.ProvisionDomain)
+	worker.Handle(jobs.KindWebsiteDomainEnable, websiteService.ProvisionDomain)
+	worker.Handle(jobs.KindWebsiteDomainUpdate, websiteService.ProvisionDomainRename)
 	worker.Handle(jobs.KindDatabaseCreate, databaseService.Provision)
 	worker.Handle(jobs.KindDatabaseDelete, databaseService.Provision)
 	worker.Handle(jobs.KindDatabaseUserCreate, databaseService.Provision)
@@ -170,7 +171,7 @@ func main() {
 		Handler: httpapi.New(httpapi.Options{
 			Version:      buildinfo.Version,
 			SecureCookie: settings.SecureCookie, Auth: authService,
-			Accounts: accountService, Domains: domainService, Databases: databaseService, Cron: cronService,
+			Accounts: accountService, Packages: packageService, Websites: websiteService, Databases: databaseService, Cron: cronService,
 			Certificates: certificateService,
 			Backups:      backupService,
 			Nodes:        nodeService, Jobs: jobService,

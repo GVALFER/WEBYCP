@@ -18,13 +18,20 @@ const BackupPlanActions = ({ plan }: BackupPlanActionsProps) => {
     const [pending, setPending] = useState(false);
     const { mutate } = useSWRConfig();
 
-    const run = async (action: () => Promise<unknown>, success: string) => {
+    const run = async (action: () => Promise<unknown>, success: string, usage = false) => {
         setPending(true);
 
         try {
             await action();
             await mutate((key) =>
-                isPageKey(key, "backup-plans", "backup-runs", "backup-artifacts", "jobs"),
+                isPageKey(
+                    key,
+                    "backup-plans",
+                    "backup-runs",
+                    "backup-artifacts",
+                    ...(usage ? ["accounts"] : []),
+                    "jobs",
+                ),
             );
             toast.success(success);
         } catch (error) {
@@ -51,21 +58,13 @@ const BackupPlanActions = ({ plan }: BackupPlanActionsProps) => {
                 await api.delete(`backup-plans/${encodeURIComponent(plan.id)}`);
             },
             "Backup plan deleted",
+            true,
         );
 
     return (
         <div className="flex items-center gap-2">
-            <Button
-                size="sm"
-                variant="secondary"
-                isPending={pending}
-                onPress={() => void start()}
-            >
-                {pending ? (
-                    <Spinner color="current" size="sm" />
-                ) : (
-                    <Play className="size-4" />
-                )}
+            <Button size="sm" variant="secondary" isPending={pending} onPress={() => void start()}>
+                {pending ? <Spinner color="current" size="sm" /> : <Play className="size-4" />}
                 Run now
             </Button>
             <Confirm

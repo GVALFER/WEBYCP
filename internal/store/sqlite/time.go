@@ -31,3 +31,10 @@ func timePtr(value sql.NullInt64) *time.Time {
 func nullString(value string) sql.NullString {
 	return sql.NullString{String: value, Valid: value != ""}
 }
+
+func boolValue(value bool) int64 {
+	if value {
+		return 1
+	}
+	return 0
+}

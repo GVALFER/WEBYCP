@@ -9,7 +9,6 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/accounts"
 	"github.com/GVALFER/WEBYCP/internal/audit"
 	"github.com/GVALFER/WEBYCP/internal/auth"
-	"github.com/GVALFER/WEBYCP/internal/domains"
 	"github.com/GVALFER/WEBYCP/internal/httpapi/spec"
 	"github.com/GVALFER/WEBYCP/internal/httpx"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
@@ -29,11 +28,11 @@ func (h *handler) listAccounts(w http.ResponseWriter, r *http.Request, session a
 		return
 	}
 	response := publicapi.AccountListResponse{
-		Items:      make([]publicapi.Account, 0, len(page.Items)),
+		Items:      make([]publicapi.AccountOverview, 0, len(page.Items)),
 		Pagination: paginationResponse(page.Query, page.Total),
 	}
 	for _, item := range page.Items {
-		response.Items = append(response.Items, accountResponse(item))
+		response.Items = append(response.Items, accountOverviewResponse(item))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
 }
@@ -49,7 +48,7 @@ func (h *handler) createAccount(w http.ResponseWriter, r *http.Request, session 
 		return
 	}
 	account, job, err := h.options.Accounts.Create(
-		r.Context(), request.Name, request.NodeId, session.User.ID,
+		r.Context(), request.Name, request.NodeId, request.PackageId, session.User.ID,
 	)
 	if err != nil {
 		h.record(r, audit.Event{
@@ -64,7 +63,7 @@ func (h *handler) createAccount(w http.ResponseWriter, r *http.Request, session 
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "not_found", "Node not found")
+			writeError(w, http.StatusNotFound, "not_found", "Node or Package not found")
 			return
 		}
 		h.internalError(w, r, err)
@@ -126,233 +125,6 @@ func (h *handler) deleteAccount(w http.ResponseWriter, r *http.Request, session 
 		ResourceID: account.ID, Result: "success",
 	})
 	writeAccountJob(w, account, job)
-}
-
-func (h *handler) listDomains(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	query, ok := requestPage(w, r)
-	if !ok {
-		return
-	}
-	page, err := h.options.Domains.DomainPage(
-		r.Context(), session.User.ID, session.User.Role == "admin", query,
-	)
-	if err != nil {
-		h.internalError(w, r, err)
-		return
-	}
-	response := publicapi.DomainListResponse{
-		Items:      make([]publicapi.Domain, 0, len(page.Items)),
-		Pagination: paginationResponse(page.Query, page.Total),
-	}
-	for _, item := range page.Items {
-		response.Items = append(response.Items, domainResponse(item))
-	}
-	httpx.WriteJSON(w, http.StatusOK, response)
-}
-
-func (h *handler) createDomain(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	var request publicapi.CreateDomainRequest
-	if err := httpx.DecodeJSON(w, r, &request); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
-		return
-	}
-	domain, job, err := h.options.Domains.Create(
-		r.Context(), request.AccountId, request.Name,
-		session.User.ID, session.User.Role == "admin",
-	)
-	if err != nil {
-		h.record(r, audit.Event{
-			UserID: session.User.ID, Action: "domain.create", ResourceType: "domain",
-			Result: "failure",
-		})
-		h.writeDomainError(w, r, err)
-		return
-	}
-	h.record(r, audit.Event{
-		UserID: session.User.ID, Action: "domain.create", ResourceType: "domain",
-		ResourceID: domain.ID, Result: "success",
-	})
-	writeDomainJob(w, domain, job)
-}
-
-func (h *handler) setDomain(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	var request publicapi.UpdateDomainRequest
-	if err := httpx.DecodeJSON(w, r, &request); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
-		return
-	}
-	if (request.Enabled == nil) == (request.Name == nil) {
-		writeError(w, http.StatusUnprocessableEntity, "validation_error", "Change either name or enabled")
-		return
-	}
-	var (
-		domain domains.Domain
-		job    jobs.Job
-		err    error
-		action = "domain.update"
-	)
-	if request.Name != nil {
-		domain, job, err = h.options.Domains.RenameDomain(
-			r.Context(), r.PathValue("domainId"), *request.Name,
-			session.User.ID, session.User.Role == "admin",
-		)
-	} else {
-		domain, job, err = h.options.Domains.SetDomain(
-			r.Context(), r.PathValue("domainId"), session.User.ID,
-			session.User.Role == "admin", *request.Enabled,
-		)
-		action = "domain.disable"
-		if *request.Enabled {
-			action = "domain.enable"
-		}
-	}
-	if err != nil {
-		h.record(r, audit.Event{
-			UserID: session.User.ID, Action: action, ResourceType: "domain",
-			ResourceID: r.PathValue("domainId"), Result: "failure",
-		})
-		h.writeDomainError(w, r, err)
-		return
-	}
-	h.record(r, audit.Event{
-		UserID: session.User.ID, Action: action, ResourceType: "domain",
-		ResourceID: domain.ID, Result: "success",
-	})
-	writeDomainJob(w, domain, job)
-}
-
-func (h *handler) deleteDomain(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	domain, job, err := h.options.Domains.DeleteDomain(
-		r.Context(), r.PathValue("domainId"), session.User.ID,
-		session.User.Role == "admin",
-	)
-	if err != nil {
-		h.record(r, audit.Event{
-			UserID: session.User.ID, Action: "domain.delete", ResourceType: "domain",
-			ResourceID: r.PathValue("domainId"), Result: "failure",
-		})
-		h.writeDomainError(w, r, err)
-		return
-	}
-	h.record(r, audit.Event{
-		UserID: session.User.ID, Action: "domain.delete", ResourceType: "domain",
-		ResourceID: domain.ID, Result: "success",
-	})
-	writeDomainJob(w, domain, job)
-}
-
-func (h *handler) listAliases(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	query, ok := requestPage(w, r)
-	if !ok {
-		return
-	}
-	page, err := h.options.Domains.AliasPage(
-		r.Context(), r.PathValue("domainId"), session.User.ID,
-		session.User.Role == "admin", query,
-	)
-	if err != nil {
-		h.writeDomainError(w, r, err)
-		return
-	}
-	response := publicapi.DomainAliasListResponse{
-		Items:      make([]publicapi.DomainAlias, 0, len(page.Items)),
-		Pagination: paginationResponse(page.Query, page.Total),
-	}
-	for _, item := range page.Items {
-		response.Items = append(response.Items, aliasResponse(item))
-	}
-	httpx.WriteJSON(w, http.StatusOK, response)
-}
-
-func (h *handler) createAlias(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	var request publicapi.CreateDomainAliasRequest
-	if err := httpx.DecodeJSON(w, r, &request); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
-		return
-	}
-	alias, job, err := h.options.Domains.CreateAlias(
-		r.Context(), r.PathValue("domainId"), request.Name,
-		session.User.ID, session.User.Role == "admin",
-	)
-	if err != nil {
-		h.record(r, audit.Event{
-			UserID: session.User.ID, Action: "alias.create", ResourceType: "domain_alias",
-			Result: "failure",
-		})
-		h.writeDomainError(w, r, err)
-		return
-	}
-	h.record(r, audit.Event{
-		UserID: session.User.ID, Action: "alias.create", ResourceType: "domain_alias",
-		ResourceID: alias.ID, Result: "success",
-	})
-	writeAliasJob(w, alias, job)
-}
-
-func (h *handler) setAlias(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	var request publicapi.UpdateDomainRequest
-	if err := httpx.DecodeJSON(w, r, &request); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
-		return
-	}
-	if (request.Enabled == nil) == (request.Name == nil) {
-		writeError(w, http.StatusUnprocessableEntity, "validation_error", "Change either name or enabled")
-		return
-	}
-	var (
-		alias  domains.Alias
-		job    jobs.Job
-		err    error
-		action = "alias.update"
-	)
-	if request.Name != nil {
-		alias, job, err = h.options.Domains.RenameAlias(
-			r.Context(), r.PathValue("domainId"), r.PathValue("aliasId"),
-			*request.Name, session.User.ID, session.User.Role == "admin",
-		)
-	} else {
-		alias, job, err = h.options.Domains.SetAlias(
-			r.Context(), r.PathValue("domainId"), r.PathValue("aliasId"),
-			session.User.ID, session.User.Role == "admin", *request.Enabled,
-		)
-		action = "alias.disable"
-		if *request.Enabled {
-			action = "alias.enable"
-		}
-	}
-	if err != nil {
-		h.record(r, audit.Event{
-			UserID: session.User.ID, Action: action, ResourceType: "domain_alias",
-			ResourceID: r.PathValue("aliasId"), Result: "failure",
-		})
-		h.writeDomainError(w, r, err)
-		return
-	}
-	h.record(r, audit.Event{
-		UserID: session.User.ID, Action: action, ResourceType: "domain_alias",
-		ResourceID: alias.ID, Result: "success",
-	})
-	writeAliasJob(w, alias, job)
-}
-
-func (h *handler) deleteAlias(w http.ResponseWriter, r *http.Request, session auth.Session) {
-	alias, job, err := h.options.Domains.DeleteAlias(
-		r.Context(), r.PathValue("domainId"), r.PathValue("aliasId"),
-		session.User.ID, session.User.Role == "admin",
-	)
-	if err != nil {
-		h.record(r, audit.Event{
-			UserID: session.User.ID, Action: "alias.delete", ResourceType: "domain_alias",
-			ResourceID: r.PathValue("aliasId"), Result: "failure",
-		})
-		h.writeDomainError(w, r, err)
-		return
-	}
-	h.record(r, audit.Event{
-		UserID: session.User.ID, Action: "alias.delete", ResourceType: "domain_alias",
-		ResourceID: alias.ID, Result: "success",
-	})
-	writeAliasJob(w, alias, job)
 }
 
 func (h *handler) listNodes(w http.ResponseWriter, r *http.Request, _ auth.Session) {
@@ -454,6 +226,21 @@ func accountResponse(account accounts.Account) publicapi.Account {
 	}
 }
 
+func accountOverviewResponse(value accounts.Overview) publicapi.AccountOverview {
+	return publicapi.AccountOverview{
+		Id: value.ID, NodeId: value.NodeID, Name: value.Name,
+		SystemUser: value.SystemUser, Status: publicapi.AccountOverviewStatus(value.Status),
+		Enabled: value.Enabled, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
+		Package: packageResponse(value.Package),
+		Usage: publicapi.PackageUsage{
+			Websites: value.Usage.Websites, Domains: value.Usage.Domains,
+			Aliases: value.Usage.Aliases, Databases: value.Usage.Databases,
+			DatabaseUsers:  value.Usage.DatabaseUsers,
+			ScheduledTasks: value.Usage.ScheduledTasks, BackupPlans: value.Usage.BackupPlans,
+		},
+	}
+}
+
 func (h *handler) writeAccountError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -470,61 +257,6 @@ func (h *handler) writeAccountError(w http.ResponseWriter, r *http.Request, err 
 func writeAccountJob(w http.ResponseWriter, account accounts.Account, job jobs.Job) {
 	httpx.WriteJSON(w, http.StatusAccepted, publicapi.AccountJobResponse{
 		Account: accountResponse(account), Job: jobResponse(job),
-	})
-}
-
-func domainResponse(domain domains.Domain) publicapi.Domain {
-	return publicapi.Domain{
-		Id: domain.ID, AccountId: domain.AccountID, NodeId: domain.NodeID,
-		Name: domain.Name, Status: publicapi.DomainStatus(domain.Status),
-		PhpVersion: domain.PHPVersion, Enabled: domain.Enabled,
-		CreatedAt: domain.CreatedAt, UpdatedAt: domain.UpdatedAt,
-	}
-}
-
-func aliasResponse(alias domains.Alias) publicapi.DomainAlias {
-	return publicapi.DomainAlias{
-		Id: alias.ID, DomainId: alias.DomainID, Name: alias.Name,
-		Status: publicapi.DomainAliasStatus(alias.Status), Enabled: alias.Enabled,
-		CreatedAt: alias.CreatedAt, UpdatedAt: alias.UpdatedAt,
-	}
-}
-
-func (h *handler) writeDomainError(w http.ResponseWriter, r *http.Request, err error) {
-	if writeValidationError(w, err) {
-		return
-	}
-	switch {
-	case errors.Is(err, accounts.ErrForbidden):
-		writeError(w, http.StatusForbidden, "forbidden", "Account access is required")
-	case errors.Is(err, sql.ErrNoRows):
-		writeError(w, http.StatusNotFound, "not_found", "Domain or account not found")
-	case errors.Is(err, domains.ErrAccountInactive):
-		writeError(w, http.StatusConflict, "account_inactive", "The account must be active")
-	case errors.Is(err, domains.ErrDomainInactive):
-		writeError(w, http.StatusConflict, "domain_inactive", "The domain must be active")
-	case errors.Is(err, domains.ErrBusy):
-		writeError(w, http.StatusConflict, "resource_busy", "A resource operation is already pending")
-	case errors.Is(err, domains.ErrAliasNotFound):
-		writeError(w, http.StatusNotFound, "not_found", "Domain alias not found")
-	case errors.Is(err, domains.ErrNameExists):
-		writeError(w, http.StatusConflict, "domain_name_exists", "This domain name is already in use")
-	case errors.Is(err, domains.ErrNameUnchanged):
-		writeError(w, http.StatusConflict, "domain_name_unchanged", "The new domain name is unchanged")
-	default:
-		h.internalError(w, r, err)
-	}
-}
-
-func writeDomainJob(w http.ResponseWriter, domain domains.Domain, job jobs.Job) {
-	httpx.WriteJSON(w, http.StatusAccepted, publicapi.DomainJobResponse{
-		Domain: domainResponse(domain), Job: jobResponse(job),
-	})
-}
-
-func writeAliasJob(w http.ResponseWriter, alias domains.Alias, job jobs.Job) {
-	httpx.WriteJSON(w, http.StatusAccepted, publicapi.DomainAliasJobResponse{
-		Alias: aliasResponse(alias), Job: jobResponse(job),
 	})
 }
 

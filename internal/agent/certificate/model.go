@@ -6,10 +6,10 @@ import (
 )
 
 type Request struct {
-	ID, Kind, DomainID, AccountID, SystemUser string
-	Name, Email, PHPVersion                   string
-	Names                                     []string
-	RedirectHTTPS                             bool
+	ID, Kind, WebsiteID, AccountID, SystemUser string
+	Name, Email, DocumentRoot, RuntimeVersion  string
+	Names                                      []string
+	RedirectHTTPS                              bool
 }
 
 type Result struct {

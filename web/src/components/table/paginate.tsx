@@ -30,7 +30,7 @@ export const Paginate = ({ pagination, page, onPageChange, onSizeChange }: Props
                 <label className="flex items-center gap-2">
                     <span>Rows</span>
                     <select
-                        className="h-8 rounded-lg border border-border bg-field-background px-2 text-foreground outline-none focus:border-accent"
+                        className="h-8 rounded-lg border border-border bg-surface px-2.5 text-foreground shadow-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
                         aria-label="Rows per page"
                         value={size}
                         onChange={(event) => onSizeChange(Number(event.currentTarget.value))}

@@ -4,30 +4,28 @@ import { LockKeyhole } from "lucide-react";
 import useSWR from "swr";
 import { Table, type TableColumn } from "@/components/table/table";
 import { useTable } from "@/components/table/useTable";
-import type { CertificateListResponse, DomainListResponse } from "@/contracts/types";
+import type { CertificateListResponse, WebsiteListResponse } from "@/contracts/types";
 import { useTimezone } from "@/hooks/useDate";
-import { useSession } from "@/providers/SessionProvider";
 import { cn } from "@/utils/classnames";
 import { statusClass } from "@/utils/status";
 import CertificateActions from "./actions/certificateActions";
 import CreateCertificate from "./actions/createCertificate";
-import CreatePanelCertificate from "./actions/createPanelCertificate";
 
 type CertificatesProps = {
     certificates: CertificateListResponse;
-    domains: DomainListResponse;
+    websites: WebsiteListResponse;
 };
 
 type Certificate = CertificateListResponse["items"][number];
 
-const Certificates = ({ certificates, domains }: CertificatesProps) => {
-    const session = useSession();
+const Certificates = ({ certificates, websites }: CertificatesProps) => {
     const { dt } = useTimezone();
     const table = useTable(certificates.pagination);
 
-    const { data } = useSWR<CertificateListResponse>(`certificates${table.query}`, {
-        fallbackData: table.isInitialQuery ? certificates : undefined,
-    });
+    const { data } = useSWR<CertificateListResponse>(
+        `certificates?kind=website&${table.query.slice(1)}`,
+        { fallbackData: table.isInitialQuery ? certificates : undefined },
+    );
 
     const columns: TableColumn<Certificate>[] = [
         {
@@ -57,8 +55,7 @@ const Certificates = ({ certificates, domains }: CertificatesProps) => {
             id: "expires",
             label: "Expires",
             cellClassName: "whitespace-nowrap text-foreground-500",
-            render: (certificate) =>
-                certificate.expiresAt ? dt(certificate.expiresAt) : "Never",
+            render: (certificate) => (certificate.expiresAt ? dt(certificate.expiresAt) : "Never"),
         },
         {
             id: "status",
@@ -98,10 +95,7 @@ const Certificates = ({ certificates, domains }: CertificatesProps) => {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <CreateCertificate domains={domains} email={session.user.email} />
-                    {session.user.role === "admin" && (
-                        <CreatePanelCertificate email={session.user.email} />
-                    )}
+                    <CreateCertificate websites={websites} />
                 </div>
             </div>
             <Table table={table} columns={columns} data={data} />

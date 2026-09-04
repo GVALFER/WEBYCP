@@ -7,6 +7,7 @@ import (
 
 	"github.com/GVALFER/WEBYCP/internal/accounts"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/packages"
 	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite/dbgen"
 )
@@ -15,6 +16,7 @@ func (s *Store) CreateProvision(
 	ctx context.Context,
 	account accounts.Account,
 	ownerID string,
+	packageID string,
 	job jobs.Job,
 ) (accounts.Account, jobs.Job, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -43,6 +45,12 @@ func (s *Store) CreateProvision(
 		AccountID: account.ID, UserID: ownerID, CreatedAt: timeValue(account.CreatedAt),
 	}); err != nil {
 		return accounts.Account{}, jobs.Job{}, fmt.Errorf("add account owner: %w", err)
+	}
+	if err := queries.AssignAccountPackage(ctx, dbgen.AssignAccountPackageParams{
+		AccountID: account.ID, PackageID: packageID,
+		CreatedAt: timeValue(account.CreatedAt), UpdatedAt: timeValue(account.CreatedAt),
+	}); err != nil {
+		return accounts.Account{}, jobs.Job{}, fmt.Errorf("assign account package: %w", err)
 	}
 	createdJob, err := queries.CreateJob(ctx, dbgen.CreateJobParams{
 		ID: job.ID, NodeID: nullString(job.NodeID), UserID: nullString(job.UserID),
@@ -95,9 +103,9 @@ func (s *Store) Accounts(ctx context.Context, userID string, admin bool) ([]acco
 
 func (s *Store) AccountPage(
 	ctx context.Context, userID string, admin bool, query pagination.Query,
-) (pagination.Result[accounts.Account], error) {
+) (pagination.Result[accounts.Overview], error) {
 	var (
-		rows  []dbgen.Account
+		rows  []dbgen.AccountOverview
 		total int64
 		err   error
 	)
@@ -107,28 +115,36 @@ func (s *Store) AccountPage(
 		total, err = s.queries.CountUserAccounts(ctx, userID)
 	}
 	if err != nil {
-		return pagination.Result[accounts.Account]{}, err
+		return pagination.Result[accounts.Overview]{}, err
 	}
 
 	query = pagination.Clamp(query, total)
 	if admin {
-		rows, err = s.queries.ListAccountsPage(ctx, dbgen.ListAccountsPageParams{
+		rows, err = s.queries.ListAccountOverviewsPage(ctx, dbgen.ListAccountOverviewsPageParams{
 			PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
 		})
 	} else {
-		rows, err = s.queries.ListUserAccountsPage(ctx, dbgen.ListUserAccountsPageParams{
+		rows, err = s.queries.ListUserAccountOverviewsPage(ctx, dbgen.ListUserAccountOverviewsPageParams{
 			UserID: userID, PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
 		})
 	}
 	if err != nil {
-		return pagination.Result[accounts.Account]{}, err
+		return pagination.Result[accounts.Overview]{}, err
 	}
 
-	items := make([]accounts.Account, 0, len(rows))
+	items := make([]accounts.Overview, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, accountValue(row))
+		items = append(items, accountOverviewValue(row))
 	}
-	return pagination.Result[accounts.Account]{Items: items, Query: query, Total: total}, nil
+	return pagination.Result[accounts.Overview]{Items: items, Query: query, Total: total}, nil
+}
+
+func (s *Store) AccountOverview(ctx context.Context, id string) (accounts.Overview, error) {
+	row, err := s.queries.GetAccountOverview(ctx, id)
+	if err != nil {
+		return accounts.Overview{}, err
+	}
+	return accountOverviewValue(row), nil
 }
 
 func (s *Store) QueueAction(
@@ -179,5 +195,31 @@ func accountValue(row dbgen.Account) accounts.Account {
 		ID: row.ID, NodeID: row.NodeID.String, Name: row.Name, SystemUser: row.SystemUser,
 		Status: row.Status, Enabled: row.Enabled != 0,
 		CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt),
+	}
+}
+
+func accountOverviewValue(row dbgen.AccountOverview) accounts.Overview {
+	return accounts.Overview{
+		Account: accounts.Account{
+			ID: row.ID, NodeID: row.NodeID.String, Name: row.Name, SystemUser: row.SystemUser,
+			Status: row.Status, Enabled: row.Enabled != 0,
+			CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt),
+		},
+		Package: packages.Package{
+			ID: row.PackageID, Name: row.PackageName,
+			Limits: packages.Limits{
+				Websites: row.MaxWebsites, Domains: row.MaxDomains, Aliases: row.MaxAliases,
+				Databases: row.MaxDatabases, DatabaseUsers: row.MaxDatabaseUsers,
+				ScheduledTasks: row.MaxScheduledTasks, BackupPlans: row.MaxBackupPlans,
+				BackupRetention: row.MaxBackupRetention,
+			},
+			AccountCount: row.PackageAccountCount,
+			CreatedAt:    timeFrom(row.PackageCreatedAt), UpdatedAt: timeFrom(row.PackageUpdatedAt),
+		},
+		Usage: packages.Usage{
+			Websites: row.UsedWebsites, Domains: row.UsedDomains, Aliases: row.UsedAliases,
+			Databases: row.UsedDatabases, DatabaseUsers: row.UsedDatabaseUsers,
+			ScheduledTasks: row.UsedScheduledTasks, BackupPlans: row.UsedBackupPlans,
+		},
 	}
 }

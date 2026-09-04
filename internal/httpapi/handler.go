@@ -13,11 +13,12 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/certificates"
 	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
 	"github.com/GVALFER/WEBYCP/internal/databases"
-	"github.com/GVALFER/WEBYCP/internal/domains"
 	"github.com/GVALFER/WEBYCP/internal/httpapi/spec"
 	"github.com/GVALFER/WEBYCP/internal/httpx"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
+	"github.com/GVALFER/WEBYCP/internal/packages"
+	"github.com/GVALFER/WEBYCP/internal/websites"
 )
 
 const sessionCookie = "webycp_session"
@@ -27,7 +28,8 @@ type Options struct {
 	SecureCookie bool
 	Auth         *auth.Service
 	Accounts     *accounts.Service
-	Domains      *domains.Service
+	Packages     *packages.Service
+	Websites     *websites.Service
 	Databases    *databases.Service
 	Cron         *cronjob.Service
 	Certificates *certificates.Service
@@ -62,14 +64,20 @@ func New(options Options) http.Handler {
 	mux.HandleFunc("POST /api/v1/accounts", h.withAuth(true, h.createAccount))
 	mux.HandleFunc("PATCH /api/v1/accounts/{accountId}", h.withAuth(true, h.setAccount))
 	mux.HandleFunc("DELETE /api/v1/accounts/{accountId}", h.withAuth(true, h.deleteAccount))
-	mux.HandleFunc("GET /api/v1/domains", h.withAuth(false, h.listDomains))
-	mux.HandleFunc("POST /api/v1/domains", h.withAuth(true, h.createDomain))
-	mux.HandleFunc("PATCH /api/v1/domains/{domainId}", h.withAuth(true, h.setDomain))
-	mux.HandleFunc("DELETE /api/v1/domains/{domainId}", h.withAuth(true, h.deleteDomain))
-	mux.HandleFunc("GET /api/v1/domains/{domainId}/aliases", h.withAuth(false, h.listAliases))
-	mux.HandleFunc("POST /api/v1/domains/{domainId}/aliases", h.withAuth(true, h.createAlias))
-	mux.HandleFunc("PATCH /api/v1/domains/{domainId}/aliases/{aliasId}", h.withAuth(true, h.setAlias))
-	mux.HandleFunc("DELETE /api/v1/domains/{domainId}/aliases/{aliasId}", h.withAuth(true, h.deleteAlias))
+	mux.HandleFunc("PUT /api/v1/accounts/{accountId}/package", h.withAuth(true, h.assignAccountPackage))
+	mux.HandleFunc("GET /api/v1/packages", h.withAuth(false, h.listPackages))
+	mux.HandleFunc("POST /api/v1/packages", h.withAuth(true, h.createPackage))
+	mux.HandleFunc("PATCH /api/v1/packages/{packageId}", h.withAuth(true, h.updatePackage))
+	mux.HandleFunc("DELETE /api/v1/packages/{packageId}", h.withAuth(true, h.deletePackage))
+	mux.HandleFunc("GET /api/v1/websites", h.withAuth(false, h.listWebsites))
+	mux.HandleFunc("POST /api/v1/websites", h.withAuth(true, h.createWebsite))
+	mux.HandleFunc("PATCH /api/v1/websites/{websiteId}", h.withAuth(true, h.setWebsite))
+	mux.HandleFunc("DELETE /api/v1/websites/{websiteId}", h.withAuth(true, h.deleteWebsite))
+	mux.HandleFunc("GET /api/v1/website-domains", h.withAuth(false, h.listWebsiteDomains))
+	mux.HandleFunc("GET /api/v1/websites/{websiteId}/domains", h.withAuth(false, h.listWebsiteDomainsForWebsite))
+	mux.HandleFunc("POST /api/v1/websites/{websiteId}/domains", h.withAuth(true, h.createWebsiteDomain))
+	mux.HandleFunc("PATCH /api/v1/website-domains/{websiteDomainId}", h.withAuth(true, h.setWebsiteDomain))
+	mux.HandleFunc("DELETE /api/v1/website-domains/{websiteDomainId}", h.withAuth(true, h.deleteWebsiteDomain))
 	mux.HandleFunc("GET /api/v1/databases", h.withAuth(false, h.listDatabases))
 	mux.HandleFunc("POST /api/v1/databases", h.withAuth(true, h.createDatabase))
 	mux.HandleFunc("DELETE /api/v1/databases/{databaseId}", h.withAuth(true, h.deleteDatabase))
@@ -84,7 +92,7 @@ func New(options Options) http.Handler {
 	mux.HandleFunc("PATCH /api/v1/cron-jobs/{cronJobId}", h.withAuth(true, h.setCronJob))
 	mux.HandleFunc("DELETE /api/v1/cron-jobs/{cronJobId}", h.withAuth(true, h.deleteCronJob))
 	mux.HandleFunc("GET /api/v1/certificates", h.withAuth(false, h.listCertificates))
-	mux.HandleFunc("POST /api/v1/domains/{domainId}/certificate", h.withAuth(true, h.issueDomainCertificate))
+	mux.HandleFunc("POST /api/v1/websites/{websiteId}/certificate", h.withAuth(true, h.issueWebsiteCertificate))
 	mux.HandleFunc("POST /api/v1/certificates/panel", h.withAuth(true, h.issuePanelCertificate))
 	mux.HandleFunc("POST /api/v1/certificates/{certificateId}/renew", h.withAuth(true, h.renewCertificate))
 	mux.HandleFunc("PATCH /api/v1/certificates/{certificateId}", h.withAuth(true, h.setCertificate))

@@ -9,21 +9,6 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// Defines values for EnsureDomainRequestPhpVersion.
-const (
-	EnsureDomainRequestPhpVersionN83 EnsureDomainRequestPhpVersion = "8.3"
-)
-
-// Valid indicates whether the value is a known member of the EnsureDomainRequestPhpVersion enum.
-func (e EnsureDomainRequestPhpVersion) Valid() bool {
-	switch e {
-	case EnsureDomainRequestPhpVersionN83:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for HealthResponseStatus.
 const (
 	Ok HealthResponseStatus = "ok"
@@ -41,46 +26,91 @@ func (e HealthResponseStatus) Valid() bool {
 
 // Defines values for IssueCertificateRequestKind.
 const (
-	Domain IssueCertificateRequestKind = "domain"
-	Panel  IssueCertificateRequestKind = "panel"
+	Panel   IssueCertificateRequestKind = "panel"
+	Website IssueCertificateRequestKind = "website"
 )
 
 // Valid indicates whether the value is a known member of the IssueCertificateRequestKind enum.
 func (e IssueCertificateRequestKind) Valid() bool {
 	switch e {
-	case Domain:
-		return true
 	case Panel:
 		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for IssueCertificateRequestPhpVersion.
-const (
-	IssueCertificateRequestPhpVersionN83 IssueCertificateRequestPhpVersion = "8.3"
-)
-
-// Valid indicates whether the value is a known member of the IssueCertificateRequestPhpVersion enum.
-func (e IssueCertificateRequestPhpVersion) Valid() bool {
-	switch e {
-	case IssueCertificateRequestPhpVersionN83:
+	case Website:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for RenameDomainRequestPhpVersion.
+// Defines values for IssueCertificateRequestRuntimeVersion.
 const (
-	RenameDomainRequestPhpVersionN83 RenameDomainRequestPhpVersion = "8.3"
+	IssueCertificateRequestRuntimeVersionN83 IssueCertificateRequestRuntimeVersion = "8.3"
 )
 
-// Valid indicates whether the value is a known member of the RenameDomainRequestPhpVersion enum.
-func (e RenameDomainRequestPhpVersion) Valid() bool {
+// Valid indicates whether the value is a known member of the IssueCertificateRequestRuntimeVersion enum.
+func (e IssueCertificateRequestRuntimeVersion) Valid() bool {
 	switch e {
-	case RenameDomainRequestPhpVersionN83:
+	case IssueCertificateRequestRuntimeVersionN83:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebsiteRequestKind.
+const (
+	Php WebsiteRequestKind = "php"
+)
+
+// Valid indicates whether the value is a known member of the WebsiteRequestKind enum.
+func (e WebsiteRequestKind) Valid() bool {
+	switch e {
+	case Php:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebsiteRequestRuntimeDriver.
+const (
+	Phpfpm WebsiteRequestRuntimeDriver = "phpfpm"
+)
+
+// Valid indicates whether the value is a known member of the WebsiteRequestRuntimeDriver enum.
+func (e WebsiteRequestRuntimeDriver) Valid() bool {
+	switch e {
+	case Phpfpm:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebsiteRequestRuntimeVersion.
+const (
+	WebsiteRequestRuntimeVersionN83 WebsiteRequestRuntimeVersion = "8.3"
+)
+
+// Valid indicates whether the value is a known member of the WebsiteRequestRuntimeVersion enum.
+func (e WebsiteRequestRuntimeVersion) Valid() bool {
+	switch e {
+	case WebsiteRequestRuntimeVersionN83:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebsiteRequestWebDriver.
+const (
+	Nginx WebsiteRequestWebDriver = "nginx"
+)
+
+// Valid indicates whether the value is a known member of the WebsiteRequestWebDriver enum.
+func (e WebsiteRequestWebDriver) Valid() bool {
+	switch e {
+	case Nginx:
 		return true
 	default:
 		return false
@@ -167,39 +197,11 @@ type DatabaseUserRequest struct {
 	Password *string `json:"password,omitempty"`
 }
 
-// DeleteDomainRequest defines model for DeleteDomainRequest.
-type DeleteDomainRequest struct {
-	AccountId  string `json:"accountId"`
-	DomainId   string `json:"domainId"`
-	Name       string `json:"name"`
-	SystemUser string `json:"systemUser"`
-}
-
-// DisableDomainRequest defines model for DisableDomainRequest.
-type DisableDomainRequest struct {
-	AccountId  string `json:"accountId"`
-	DomainId   string `json:"domainId"`
-	SystemUser string `json:"systemUser"`
-}
-
 // EnsureAccountRequest defines model for EnsureAccountRequest.
 type EnsureAccountRequest struct {
 	AccountId  string `json:"accountId"`
 	SystemUser string `json:"systemUser"`
 }
-
-// EnsureDomainRequest defines model for EnsureDomainRequest.
-type EnsureDomainRequest struct {
-	AccountId  string                        `json:"accountId"`
-	Aliases    []string                      `json:"aliases"`
-	DomainId   string                        `json:"domainId"`
-	Name       string                        `json:"name"`
-	PhpVersion EnsureDomainRequestPhpVersion `json:"phpVersion"`
-	SystemUser string                        `json:"systemUser"`
-}
-
-// EnsureDomainRequestPhpVersion defines model for EnsureDomainRequest.PhpVersion.
-type EnsureDomainRequestPhpVersion string
 
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
@@ -225,37 +227,24 @@ type HealthResponseStatus string
 
 // IssueCertificateRequest defines model for IssueCertificateRequest.
 type IssueCertificateRequest struct {
-	AccountId     *string                            `json:"accountId,omitempty"`
-	CertificateId string                             `json:"certificateId"`
-	DomainId      *string                            `json:"domainId,omitempty"`
-	Email         openapi_types.Email                `json:"email"`
-	Kind          IssueCertificateRequestKind        `json:"kind"`
-	Name          string                             `json:"name"`
-	Names         []string                           `json:"names"`
-	PhpVersion    *IssueCertificateRequestPhpVersion `json:"phpVersion,omitempty"`
-	RedirectHttps bool                               `json:"redirectHttps"`
-	SystemUser    *string                            `json:"systemUser,omitempty"`
+	AccountId      *string                                `json:"accountId,omitempty"`
+	CertificateId  string                                 `json:"certificateId"`
+	DocumentRoot   *string                                `json:"documentRoot,omitempty"`
+	Email          openapi_types.Email                    `json:"email"`
+	Kind           IssueCertificateRequestKind            `json:"kind"`
+	Name           string                                 `json:"name"`
+	Names          []string                               `json:"names"`
+	RedirectHttps  bool                                   `json:"redirectHttps"`
+	RuntimeVersion *IssueCertificateRequestRuntimeVersion `json:"runtimeVersion,omitempty"`
+	SystemUser     *string                                `json:"systemUser,omitempty"`
+	WebsiteId      *string                                `json:"websiteId,omitempty"`
 }
 
 // IssueCertificateRequestKind defines model for IssueCertificateRequest.Kind.
 type IssueCertificateRequestKind string
 
-// IssueCertificateRequestPhpVersion defines model for IssueCertificateRequest.PhpVersion.
-type IssueCertificateRequestPhpVersion string
-
-// RenameDomainRequest defines model for RenameDomainRequest.
-type RenameDomainRequest struct {
-	AccountId   string                        `json:"accountId"`
-	Aliases     []string                      `json:"aliases"`
-	CurrentName string                        `json:"currentName"`
-	DomainId    string                        `json:"domainId"`
-	Name        string                        `json:"name"`
-	PhpVersion  RenameDomainRequestPhpVersion `json:"phpVersion"`
-	SystemUser  string                        `json:"systemUser"`
-}
-
-// RenameDomainRequestPhpVersion defines model for RenameDomainRequest.PhpVersion.
-type RenameDomainRequestPhpVersion string
+// IssueCertificateRequestRuntimeVersion defines model for IssueCertificateRequest.RuntimeVersion.
+type IssueCertificateRequestRuntimeVersion string
 
 // RestoreBackupRequest defines model for RestoreBackupRequest.
 type RestoreBackupRequest struct {
@@ -279,6 +268,32 @@ type SyncCronRequest struct {
 	Entries    []CronEntry `json:"entries"`
 	SystemUser string      `json:"systemUser"`
 }
+
+// WebsiteRequest defines model for WebsiteRequest.
+type WebsiteRequest struct {
+	AccountId      string                       `json:"accountId"`
+	Aliases        []string                     `json:"aliases"`
+	DocumentRoot   string                       `json:"documentRoot"`
+	Kind           WebsiteRequestKind           `json:"kind"`
+	PrimaryDomain  string                       `json:"primaryDomain"`
+	RuntimeDriver  WebsiteRequestRuntimeDriver  `json:"runtimeDriver"`
+	RuntimeVersion WebsiteRequestRuntimeVersion `json:"runtimeVersion"`
+	SystemUser     string                       `json:"systemUser"`
+	WebDriver      WebsiteRequestWebDriver      `json:"webDriver"`
+	WebsiteId      string                       `json:"websiteId"`
+}
+
+// WebsiteRequestKind defines model for WebsiteRequest.Kind.
+type WebsiteRequestKind string
+
+// WebsiteRequestRuntimeDriver defines model for WebsiteRequest.RuntimeDriver.
+type WebsiteRequestRuntimeDriver string
+
+// WebsiteRequestRuntimeVersion defines model for WebsiteRequest.RuntimeVersion.
+type WebsiteRequestRuntimeVersion string
+
+// WebsiteRequestWebDriver defines model for WebsiteRequest.WebDriver.
+type WebsiteRequestWebDriver string
 
 // EnsureAccountJSONRequestBody defines body for EnsureAccount for application/json ContentType.
 type EnsureAccountJSONRequestBody = EnsureAccountRequest
@@ -328,14 +343,11 @@ type DeleteDatabaseJSONRequestBody = DatabaseRequest
 // EnsureDatabaseJSONRequestBody defines body for EnsureDatabase for application/json ContentType.
 type EnsureDatabaseJSONRequestBody = DatabaseRequest
 
-// EnsureDomainJSONRequestBody defines body for EnsureDomain for application/json ContentType.
-type EnsureDomainJSONRequestBody = EnsureDomainRequest
+// EnsureWebsiteJSONRequestBody defines body for EnsureWebsite for application/json ContentType.
+type EnsureWebsiteJSONRequestBody = WebsiteRequest
 
-// DeleteDomainJSONRequestBody defines body for DeleteDomain for application/json ContentType.
-type DeleteDomainJSONRequestBody = DeleteDomainRequest
+// DeleteWebsiteJSONRequestBody defines body for DeleteWebsite for application/json ContentType.
+type DeleteWebsiteJSONRequestBody = WebsiteRequest
 
-// DisableDomainJSONRequestBody defines body for DisableDomain for application/json ContentType.
-type DisableDomainJSONRequestBody = DisableDomainRequest
-
-// RenameDomainJSONRequestBody defines body for RenameDomain for application/json ContentType.
-type RenameDomainJSONRequestBody = RenameDomainRequest
+// DisableWebsiteJSONRequestBody defines body for DisableWebsite for application/json ContentType.
+type DisableWebsiteJSONRequestBody = WebsiteRequest

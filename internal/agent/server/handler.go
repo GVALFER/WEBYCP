@@ -12,6 +12,7 @@ import (
 	agentdatabase "github.com/GVALFER/WEBYCP/internal/agent/database"
 	"github.com/GVALFER/WEBYCP/internal/agent/protocol"
 	"github.com/GVALFER/WEBYCP/internal/agent/scheduler"
+	agentwebsite "github.com/GVALFER/WEBYCP/internal/agent/website"
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/httpx"
 	"github.com/GVALFER/WEBYCP/internal/validate"
@@ -27,18 +28,17 @@ type AccountLifecycle interface {
 	Delete(context.Context, string, string) error
 }
 
-type DomainManager interface {
-	Ensure(context.Context, string, string, string, string, string, []string) error
-	Disable(context.Context, string, string, string) error
-	Delete(context.Context, string, string, string, string) error
-	Rename(context.Context, string, string, string, string, string, string, []string) error
+type WebsiteManager interface {
+	Ensure(context.Context, agentwebsite.Spec) error
+	Disable(context.Context, agentwebsite.Spec) error
+	Delete(context.Context, agentwebsite.Spec) error
 }
 
 type Options struct {
 	Version        string
 	Accounts       AccountManager
 	AccountActions AccountLifecycle
-	Domains        DomainManager
+	Websites       WebsiteManager
 	Databases      agentdatabase.Driver
 	Cron           scheduler.Driver
 	Certificates   agentcertificate.Driver
@@ -257,8 +257,8 @@ func New(options Options) http.Handler {
 			ID: request.CertificateId, Kind: string(request.Kind), Name: request.Name,
 			Names: request.Names, Email: string(request.Email), RedirectHTTPS: request.RedirectHttps,
 		}
-		if request.DomainId != nil {
-			value.DomainID = *request.DomainId
+		if request.WebsiteId != nil {
+			value.WebsiteID = *request.WebsiteId
 		}
 		if request.AccountId != nil {
 			value.AccountID = *request.AccountId
@@ -266,8 +266,11 @@ func New(options Options) http.Handler {
 		if request.SystemUser != nil {
 			value.SystemUser = *request.SystemUser
 		}
-		if request.PhpVersion != nil {
-			value.PHPVersion = string(*request.PhpVersion)
+		if request.DocumentRoot != nil {
+			value.DocumentRoot = *request.DocumentRoot
+		}
+		if request.RuntimeVersion != nil {
+			value.RuntimeVersion = string(*request.RuntimeVersion)
 		}
 		result, err := options.Certificates.Issue(r.Context(), value)
 		if err != nil {
@@ -344,141 +347,45 @@ func New(options Options) http.Handler {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
-	mux.HandleFunc("POST /agent/v1/domains", func(w http.ResponseWriter, r *http.Request) {
-		var request agentapi.EnsureDomainRequest
-		if err := httpx.DecodeJSON(w, r, &request); err != nil {
-			httpx.WriteJSON(w, http.StatusBadRequest, agentapi.ErrorResponse{
-				Code: "invalid_json", Message: "The request body is invalid",
-			})
-			return
-		}
-		aliases, domainErr := validate.DomainAliases(request.Name, request.Aliases)
-		if validate.ID("accountId", request.AccountId) != nil ||
-			validate.ID("domainId", request.DomainId) != nil ||
-			validate.SystemUser(request.SystemUser) != nil ||
-			!request.PhpVersion.Valid() ||
-			domainErr != nil {
-			httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{
-				Code: "validation_error", Message: "The domain request is invalid",
-			})
-			return
-		}
-		if options.Domains == nil {
-			logger.Error("domain manager is not configured")
-			httpx.WriteJSON(w, http.StatusInternalServerError, agentapi.ErrorResponse{
-				Code: "internal_error", Message: "An internal error occurred",
-			})
-			return
-		}
-		if err := options.Domains.Ensure(
-			r.Context(), request.AccountId, request.SystemUser, request.DomainId,
-			request.Name, string(request.PhpVersion), aliases,
-		); err != nil {
-			writeDomainFailure(w, logger, err, request.DomainId, "reconcile", "domain_reconcile_failed")
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-	mux.HandleFunc("POST /agent/v1/domains/disable", func(w http.ResponseWriter, r *http.Request) {
-		var request agentapi.DisableDomainRequest
-		if err := httpx.DecodeJSON(w, r, &request); err != nil {
-			httpx.WriteJSON(w, http.StatusBadRequest, agentapi.ErrorResponse{
-				Code: "invalid_json", Message: "The request body is invalid",
-			})
-			return
-		}
-		if validate.ID("accountId", request.AccountId) != nil ||
-			validate.ID("domainId", request.DomainId) != nil ||
-			validate.SystemUser(request.SystemUser) != nil {
-			httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{
-				Code: "validation_error", Message: "The domain request is invalid",
-			})
-			return
-		}
-		if options.Domains == nil {
-			logger.Error("domain manager is not configured")
-			httpx.WriteJSON(w, http.StatusInternalServerError, agentapi.ErrorResponse{
-				Code: "internal_error", Message: "An internal error occurred",
-			})
-			return
-		}
-		if err := options.Domains.Disable(
-			r.Context(), request.AccountId, request.SystemUser, request.DomainId,
-		); err != nil {
-			writeDomainFailure(w, logger, err, request.DomainId, "disable", "domain_disable_failed")
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-	mux.HandleFunc("POST /agent/v1/domains/delete", func(w http.ResponseWriter, r *http.Request) {
-		var request agentapi.DeleteDomainRequest
-		if err := httpx.DecodeJSON(w, r, &request); err != nil {
-			httpx.WriteJSON(w, http.StatusBadRequest, agentapi.ErrorResponse{
-				Code: "invalid_json", Message: "The request body is invalid",
-			})
-			return
-		}
-		name, domainErr := validate.Domain(request.Name)
-		if validate.ID("accountId", request.AccountId) != nil ||
-			validate.ID("domainId", request.DomainId) != nil ||
-			validate.SystemUser(request.SystemUser) != nil ||
-			domainErr != nil || name != request.Name {
-			httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{
-				Code: "validation_error", Message: "The domain request is invalid",
-			})
-			return
-		}
-		if options.Domains == nil {
-			logger.Error("domain manager is not configured")
-			httpx.WriteJSON(w, http.StatusInternalServerError, agentapi.ErrorResponse{
-				Code: "internal_error", Message: "An internal error occurred",
-			})
-			return
-		}
-		if err := options.Domains.Delete(
-			r.Context(), request.AccountId, request.SystemUser, request.DomainId, request.Name,
-		); err != nil {
-			writeDomainFailure(w, logger, err, request.DomainId, "delete", "domain_delete_failed")
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-	mux.HandleFunc("POST /agent/v1/domains/rename", func(w http.ResponseWriter, r *http.Request) {
-		var request agentapi.RenameDomainRequest
-		if err := httpx.DecodeJSON(w, r, &request); err != nil {
-			httpx.WriteJSON(w, http.StatusBadRequest, agentapi.ErrorResponse{
-				Code: "invalid_json", Message: "The request body is invalid",
-			})
-			return
-		}
-		current, currentErr := validate.Domain(request.CurrentName)
-		aliases, domainErr := validate.DomainAliases(request.Name, request.Aliases)
-		if validate.ID("accountId", request.AccountId) != nil ||
-			validate.ID("domainId", request.DomainId) != nil ||
-			validate.SystemUser(request.SystemUser) != nil ||
-			!request.PhpVersion.Valid() || currentErr != nil ||
-			current != request.CurrentName || current == request.Name || domainErr != nil {
-			httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{
-				Code: "validation_error", Message: "The domain request is invalid",
-			})
-			return
-		}
-		if options.Domains == nil {
-			logger.Error("domain manager is not configured")
-			httpx.WriteJSON(w, http.StatusInternalServerError, agentapi.ErrorResponse{
-				Code: "internal_error", Message: "An internal error occurred",
-			})
-			return
-		}
-		if err := options.Domains.Rename(
-			r.Context(), request.AccountId, request.SystemUser, request.DomainId,
-			request.CurrentName, request.Name, string(request.PhpVersion), aliases,
-		); err != nil {
-			writeDomainFailure(w, logger, err, request.DomainId, "rename", "domain_rename_failed")
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
+	for _, route := range []struct {
+		path, action string
+	}{
+		{path: "POST /agent/v1/websites", action: "ensure"},
+		{path: "POST /agent/v1/websites/disable", action: "disable"},
+		{path: "POST /agent/v1/websites/delete", action: "delete"},
+	} {
+		item := route
+		mux.HandleFunc(item.path, func(w http.ResponseWriter, r *http.Request) {
+			var request agentapi.WebsiteRequest
+			if err := httpx.DecodeJSON(w, r, &request); err != nil {
+				httpx.WriteJSON(w, http.StatusBadRequest, agentapi.ErrorResponse{Code: "invalid_json", Message: "The request body is invalid"})
+				return
+			}
+			if options.Websites == nil {
+				httpx.WriteJSON(w, http.StatusInternalServerError, agentapi.ErrorResponse{Code: "internal_error", Message: "Website manager is not configured"})
+				return
+			}
+			if validate.ID("accountId", request.AccountId) != nil || validate.ID("websiteId", request.WebsiteId) != nil || validate.SystemUser(request.SystemUser) != nil || !request.Kind.Valid() || !request.WebDriver.Valid() || !request.RuntimeDriver.Valid() || !request.RuntimeVersion.Valid() {
+				httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{Code: "validation_error", Message: "The website request is invalid"})
+				return
+			}
+			spec := agentwebsite.Spec{AccountID: request.AccountId, SystemUser: request.SystemUser, WebsiteID: request.WebsiteId, DocumentRoot: request.DocumentRoot, Kind: string(request.Kind), WebDriver: string(request.WebDriver), RuntimeDriver: string(request.RuntimeDriver), RuntimeVersion: string(request.RuntimeVersion), PrimaryDomain: request.PrimaryDomain, Aliases: request.Aliases}
+			var err error
+			switch item.action {
+			case "ensure":
+				err = options.Websites.Ensure(r.Context(), spec)
+			case "disable":
+				err = options.Websites.Disable(r.Context(), spec)
+			case "delete":
+				err = options.Websites.Delete(r.Context(), spec)
+			}
+			if err != nil {
+				writeWebsiteFailure(w, logger, err, request.WebsiteId, item.action)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		})
+	}
 
 	return mux
 }
@@ -505,11 +412,11 @@ func writeBackupFailure(w http.ResponseWriter, logger *slog.Logger, err error, o
 	httpx.WriteJSON(w, http.StatusInternalServerError, agentapi.ErrorResponse{Code: "backup_failed", Message: "The backup operation failed"})
 }
 
-func writeDomainFailure(
+func writeWebsiteFailure(
 	w http.ResponseWriter,
 	logger *slog.Logger,
 	err error,
-	domainID, operation, code string,
+	websiteID, operation string,
 ) {
 	var validationError *validate.Error
 	if errors.As(err, &validationError) {
@@ -518,8 +425,8 @@ func writeDomainFailure(
 		})
 		return
 	}
-	logger.Error("failed to "+operation+" domain", "error", err, "domainId", domainID)
+	logger.Error("failed to "+operation+" website", "error", err, "websiteId", websiteID)
 	httpx.WriteJSON(w, http.StatusInternalServerError, agentapi.ErrorResponse{
-		Code: code, Message: "The domain operation failed",
+		Code: "website_" + operation + "_failed", Message: "The website operation failed",
 	})
 }

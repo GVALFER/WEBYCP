@@ -39,7 +39,7 @@ func New() *Driver {
 }
 
 func (d *Driver) Ensure(ctx context.Context, site webserver.Site) error {
-	if err := validate.ID("domainId", site.ID); err != nil {
+	if err := validate.ID("websiteId", site.ID); err != nil {
 		return err
 	}
 	aliases, err := validate.DomainAliases(site.Name, site.Aliases)
@@ -174,16 +174,16 @@ func (d *Driver) install(ctx context.Context, id string, contents []byte) error 
 	return nil
 }
 
-func (d *Driver) Disable(ctx context.Context, domainID string) error {
-	return d.remove(ctx, domainID, false)
+func (d *Driver) Disable(ctx context.Context, websiteID string) error {
+	return d.remove(ctx, websiteID, false)
 }
 
-func (d *Driver) Delete(ctx context.Context, domainID string) error {
-	return d.remove(ctx, domainID, true)
+func (d *Driver) Delete(ctx context.Context, websiteID string) error {
+	return d.remove(ctx, websiteID, true)
 }
 
-func (d *Driver) remove(ctx context.Context, domainID string, deleteConfig bool) error {
-	if err := validate.ID("domainId", domainID); err != nil {
+func (d *Driver) remove(ctx context.Context, websiteID string, deleteConfig bool) error {
+	if err := validate.ID("websiteId", websiteID); err != nil {
 		return err
 	}
 	if err := configfile.EnsureDir(d.available, 0o755); err != nil {
@@ -192,9 +192,9 @@ func (d *Driver) remove(ctx context.Context, domainID string, deleteConfig bool)
 	if err := configfile.EnsureDir(d.enabled, 0o755); err != nil {
 		return err
 	}
-	configPath := filepath.Join(d.available, domainID+".conf")
-	linkPath := filepath.Join(d.enabled, domainID+".conf")
-	target := filepath.Join("..", "sites-available", domainID+".conf")
+	configPath := filepath.Join(d.available, websiteID+".conf")
+	linkPath := filepath.Join(d.enabled, websiteID+".conf")
+	target := filepath.Join("..", "sites-available", websiteID+".conf")
 	previous, err := configfile.Take(configPath)
 	if err != nil {
 		return err

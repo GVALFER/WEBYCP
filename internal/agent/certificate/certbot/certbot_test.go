@@ -60,10 +60,11 @@ func TestIssueFiltersAliasesByPrimaryDNSAndInstallsTLS(t *testing.T) {
 		return writeCertificate(filepath.Join(directory, "fullchain.pem"), expires)
 	}
 	result, err := driver.Issue(context.Background(), certificate.Request{
-		ID: "0123456789abcdef0123456789abcdef", Kind: "domain",
-		DomainID: "abcdef0123456789abcdef0123456789", AccountID: "fedcba9876543210fedcba9876543210",
+		ID: "0123456789abcdef0123456789abcdef", Kind: "website",
+		WebsiteID: "abcdef0123456789abcdef0123456789", AccountID: "fedcba9876543210fedcba9876543210",
 		SystemUser: "wcp_fedcba987654", Name: "example.com", Email: "admin@example.com",
-		PHPVersion: "8.3", Names: []string{"example.com", "www.example.com", "bad.example.net"},
+		DocumentRoot:   "/home/wcp_fedcba987654/web/abcdef0123456789abcdef0123456789/public_html",
+		RuntimeVersion: "8.3", Names: []string{"example.com", "www.example.com", "bad.example.net"},
 		RedirectHTTPS: true,
 	})
 	if err != nil {

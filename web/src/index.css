@@ -1,7 +1,106 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 
-:root {
+:root,
+[data-theme="light"] {
+    --radius: 0.625rem;
+    --field-radius: 0.75rem;
+    --field-border-width: 1px;
+    --background: oklch(0.978 0.014 178);
+    --foreground: oklch(0.245 0.03 226);
+    --surface: oklch(0.995 0.006 178);
+    --surface-foreground: var(--foreground);
+    --surface-secondary: oklch(0.955 0.018 180);
+    --surface-secondary-foreground: var(--foreground);
+    --surface-tertiary: oklch(0.925 0.024 183);
+    --surface-tertiary-foreground: var(--foreground);
+    --overlay: oklch(0.995 0.006 178);
+    --overlay-foreground: var(--foreground);
+    --muted: oklch(0.55 0.026 218);
+    --default: oklch(0.935 0.018 184);
+    --default-foreground: var(--foreground);
+    --accent: oklch(0.605 0.195 274);
+    --accent-foreground: oklch(0.99 0.004 270);
+    --field-background: oklch(0.992 0.006 178);
+    --field-foreground: var(--foreground);
+    --field-placeholder: oklch(0.63 0.018 218);
+    --field-border: oklch(0.875 0.026 185);
+    --success: oklch(0.62 0.15 157);
+    --success-foreground: oklch(0.99 0.004 157);
+    --warning: oklch(0.73 0.16 74);
+    --warning-foreground: oklch(0.25 0.03 74);
+    --danger: oklch(0.62 0.205 25);
+    --danger-foreground: oklch(0.99 0.004 25);
+    --segment: var(--surface);
+    --segment-foreground: var(--foreground);
+    --border: oklch(0.88 0.024 185);
+    --separator: oklch(0.91 0.02 184);
+    --focus: var(--accent);
+    --link: var(--accent);
+    --backdrop: rgb(8 28 33 / 52%);
+    --surface-shadow: 0 1px 1px rgb(20 66 67 / 4%), 0 12px 35px rgb(20 66 67 / 7%);
+    --overlay-shadow: 0 1px 2px rgb(20 66 67 / 6%), 0 24px 70px rgb(20 66 67 / 18%);
+    --field-shadow: 0 1px 2px rgb(20 66 67 / 4%);
+    --app-glow: oklch(0.83 0.09 180 / 42%);
+    --app-grid: oklch(0.63 0.055 185 / 9%);
+}
+
+[data-theme="dark"] {
+    --background: oklch(0.145 0.026 223);
+    --foreground: oklch(0.94 0.012 188);
+    --surface: oklch(0.185 0.027 221);
+    --surface-foreground: var(--foreground);
+    --surface-secondary: oklch(0.215 0.029 219);
+    --surface-secondary-foreground: var(--foreground);
+    --surface-tertiary: oklch(0.255 0.03 217);
+    --surface-tertiary-foreground: var(--foreground);
+    --overlay: oklch(0.2 0.027 221);
+    --overlay-foreground: var(--foreground);
+    --muted: oklch(0.69 0.025 204);
+    --default: oklch(0.25 0.028 218);
+    --default-foreground: var(--foreground);
+    --accent: oklch(0.69 0.18 274);
+    --accent-foreground: oklch(0.99 0.004 270);
+    --field-background: oklch(0.205 0.026 221);
+    --field-foreground: var(--foreground);
+    --field-placeholder: oklch(0.59 0.024 207);
+    --field-border: oklch(0.31 0.03 216);
+    --success: oklch(0.7 0.15 157);
+    --success-foreground: oklch(0.14 0.025 157);
+    --warning: oklch(0.78 0.15 74);
+    --warning-foreground: oklch(0.17 0.025 74);
+    --danger: oklch(0.67 0.19 25);
+    --danger-foreground: oklch(0.99 0.004 25);
+    --segment: oklch(0.265 0.029 218);
+    --segment-foreground: var(--foreground);
+    --border: oklch(0.285 0.028 216);
+    --separator: oklch(0.25 0.026 218);
+    --focus: var(--accent);
+    --link: oklch(0.76 0.14 274);
+    --backdrop: rgb(2 10 14 / 74%);
+    --surface-shadow: 0 1px 0 rgb(255 255 255 / 3%) inset;
+    --overlay-shadow: 0 1px 0 rgb(255 255 255 / 5%) inset, 0 28px 80px rgb(0 0 0 / 40%);
+    --field-shadow: 0 1px 0 rgb(255 255 255 / 2%) inset;
+    --app-glow: oklch(0.48 0.09 189 / 22%);
+    --app-grid: oklch(0.73 0.08 185 / 6%);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-width: 320px;
+    min-height: 100%;
+    background: var(--background);
+}
+
+body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
     font-family:
         Inter,
         ui-sans-serif,
@@ -10,20 +109,12 @@
         BlinkMacSystemFont,
         "Segoe UI",
         sans-serif;
-    background: var(--background);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
 }
 
-body {
-    min-width: 320px;
-    min-height: 100vh;
-    margin: 0;
-    background:
-        radial-gradient(
-            circle at 85% -10%,
-            color-mix(in oklab, var(--accent) 9%, transparent),
-            transparent 30rem
-        ),
-        var(--background);
+::selection {
+    background: color-mix(in oklab, var(--accent) 28%, transparent);
 }
 
 button,
@@ -31,18 +122,45 @@ a {
     -webkit-tap-highlight-color: transparent;
 }
 
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+.app-shell {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 70% -15%, var(--app-glow), transparent 31rem),
+        linear-gradient(
+            180deg,
+            color-mix(in oklab, var(--background) 92%, transparent),
+            var(--background)
+        );
+}
+
+.sidebar-shell {
+    background:
+        linear-gradient(
+            180deg,
+            color-mix(in oklab, var(--surface) 96%, transparent),
+            var(--surface)
+        ),
+        var(--surface);
+    box-shadow: 1px 0 0 color-mix(in oklab, var(--border) 75%, transparent);
+}
+
 .panel-card,
 .metric-card {
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
     border-radius: 1rem;
-    background: color-mix(in oklab, var(--surface) 94%, transparent);
-    box-shadow:
-        0 1px 0 color-mix(in oklab, var(--foreground) 4%, transparent) inset,
-        0 18px 45px rgb(0 0 0 / 12%);
+    background: color-mix(in oklab, var(--surface) 96%, transparent);
+    box-shadow: var(--surface-shadow);
 }
 
 .metric-card {
-    min-height: 9.5rem;
+    min-height: 9rem;
     padding: 1.25rem;
 }
 
@@ -53,51 +171,143 @@ a {
     flex: none;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in oklab, var(--border) 82%, transparent);
     border-radius: 0.75rem;
     background: var(--surface-secondary);
     color: var(--muted);
 }
 
+.brand-mark {
+    position: relative;
+    display: grid;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex: none;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--accent) 34%, var(--border));
+    border-radius: 0.85rem;
+    background: linear-gradient(
+        145deg,
+        color-mix(in oklab, var(--accent) 88%, white),
+        var(--accent)
+    );
+    color: var(--accent-foreground);
+    box-shadow:
+        0 8px 22px color-mix(in oklab, var(--accent) 24%, transparent),
+        0 1px 0 rgb(255 255 255 / 30%) inset;
+}
+
 .auth-shell {
     position: relative;
     isolation: isolate;
+    min-height: 100vh;
+    overflow: hidden;
     background:
-        linear-gradient(
-            120deg,
-            color-mix(in oklab, var(--surface) 75%, transparent),
-            transparent 58%
+        radial-gradient(circle at 22% 80%, var(--app-glow), transparent 28rem),
+        radial-gradient(
+            circle at 76% 27%,
+            color-mix(in oklab, var(--app-glow) 78%, transparent),
+            transparent 34rem
         ),
-        var(--background);
+        linear-gradient(
+            145deg,
+            color-mix(in oklab, var(--surface) 32%, var(--background)),
+            var(--background) 66%
+        );
 }
 
 .auth-shell::before {
     position: absolute;
-    z-index: -1;
+    z-index: -2;
     inset: 0;
     background-image:
-        linear-gradient(
-            color-mix(in oklab, var(--foreground) 3%, transparent) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            color-mix(in oklab, var(--foreground) 3%, transparent) 1px,
-            transparent 1px
-        );
-    background-size: 4rem 4rem;
-    mask-image: linear-gradient(to right, black, transparent 72%);
+        linear-gradient(var(--app-grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--app-grid) 1px, transparent 1px);
+    background-size: 4.5rem 4.5rem;
+    mask-image: radial-gradient(circle at center, black, transparent 78%);
     content: "";
 }
 
-.auth-glow {
+.auth-shell::after {
     position: absolute;
-    top: 25%;
-    left: 18%;
-    width: 26rem;
-    height: 26rem;
-    border-radius: 999px;
-    background: color-mix(in oklab, var(--accent) 12%, transparent);
-    filter: blur(90px);
-    pointer-events: none;
+    z-index: -1;
+    inset: -18%;
+    border-radius: 50%;
+    background: repeating-radial-gradient(
+        ellipse at 58% 48%,
+        transparent 0 5rem,
+        color-mix(in oklab, var(--accent) 8%, transparent) 5.05rem 5.1rem,
+        transparent 5.15rem 9rem
+    );
+    mask-image: radial-gradient(ellipse at center, black 4%, transparent 66%);
+    transform: rotate(-7deg);
+    content: "";
+}
+
+.auth-card {
+    border: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
+    border-radius: 1.25rem;
+    background: color-mix(in oklab, var(--surface) 88%, transparent);
+    box-shadow: var(--overlay-shadow);
+    backdrop-filter: blur(24px);
+}
+
+.data-table {
+    padding: 0 1.25rem 1.25rem;
+}
+
+.data-table .table__scroll-container {
+    overflow: hidden auto;
+    border: 1px solid color-mix(in oklab, var(--border) 82%, transparent);
+    border-radius: 0.875rem;
+    background: color-mix(in oklab, var(--surface) 84%, transparent);
+}
+
+.data-table .table__column {
+    padding-block: 0.75rem;
+    background: color-mix(in oklab, var(--surface-secondary) 74%, var(--surface));
+    color: var(--muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+}
+
+.data-table .table__column::after {
+    display: none;
+}
+
+.data-table .table__cell {
+    padding-block: 0.9rem;
+    background: transparent;
+}
+
+.data-table .table__row .table__cell {
+    border-color: color-mix(in oklab, var(--separator) 78%, transparent);
+}
+
+.data-table .table__row:last-child .table__cell {
+    border-bottom: 0;
+}
+
+.data-table .table__footer {
+    padding: 1rem 0 0;
+}
+
+@media (min-width: 640px) {
+    .data-table {
+        padding-inline: 1.5rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

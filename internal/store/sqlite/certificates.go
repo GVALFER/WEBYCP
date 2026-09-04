@@ -11,7 +11,7 @@ import (
 )
 
 func (s *Store) Certificates(ctx context.Context, userID string, admin bool) ([]certificates.Certificate, error) {
-	rows, err := s.queries.ListCertificates(ctx, dbgen.ListCertificatesParams{Column1: admin, UserID: userID})
+	rows, err := s.queries.ListCertificates(ctx, dbgen.ListCertificatesParams{Kind: "", IsAdmin: admin, UserID: userID})
 	if err != nil {
 		return nil, err
 	}
@@ -27,17 +27,17 @@ func (s *Store) Certificates(ctx context.Context, userID string, admin bool) ([]
 }
 
 func (s *Store) CertificatePage(
-	ctx context.Context, userID string, admin bool, query pagination.Query,
+	ctx context.Context, userID string, admin bool, kind string, query pagination.Query,
 ) (pagination.Result[certificates.Certificate], error) {
 	total, err := s.queries.CountCertificates(ctx, dbgen.CountCertificatesParams{
-		IsAdmin: admin, UserID: userID,
+		Kind: kind, IsAdmin: admin, UserID: userID,
 	})
 	if err != nil {
 		return pagination.Result[certificates.Certificate]{}, err
 	}
 	query = pagination.Clamp(query, total)
 	rows, err := s.queries.ListCertificatesPage(ctx, dbgen.ListCertificatesPageParams{
-		IsAdmin: admin, UserID: userID,
+		Kind: kind, IsAdmin: admin, UserID: userID,
 		PageOffset: pagination.Offset(query), PageSize: int64(query.Size),
 	})
 	if err != nil {
@@ -62,8 +62,8 @@ func (s *Store) Certificate(ctx context.Context, id string) (certificates.Certif
 	return s.certificateValue(ctx, row)
 }
 
-func (s *Store) DomainCertificate(ctx context.Context, domainID string) (certificates.Certificate, error) {
-	row, err := s.queries.GetDomainCertificate(ctx, nullString(domainID))
+func (s *Store) WebsiteCertificate(ctx context.Context, websiteID string) (certificates.Certificate, error) {
+	row, err := s.queries.GetWebsiteCertificate(ctx, nullString(websiteID))
 	if err != nil {
 		return certificates.Certificate{}, err
 	}
@@ -88,7 +88,7 @@ func (s *Store) QueueCertificate(ctx context.Context, value certificates.Certifi
 	var row dbgen.Certificate
 	if create {
 		row, err = q.CreateCertificate(ctx, dbgen.CreateCertificateParams{
-			ID: value.ID, DomainID: nullString(value.DomainID), NodeID: value.NodeID,
+			ID: value.ID, WebsiteID: nullString(value.WebsiteID), NodeID: value.NodeID,
 			Kind: value.Kind, Name: value.Name, Email: value.Email,
 			RedirectHttps: boolValue(value.RedirectHTTPS), CreatedAt: timeValue(value.CreatedAt), UpdatedAt: timeValue(time.Now().UTC()),
 		})
@@ -179,7 +179,7 @@ func (s *Store) certificateValue(ctx context.Context, row dbgen.Certificate) (ce
 
 func certificateRowValue(row dbgen.Certificate) certificates.Certificate {
 	return certificates.Certificate{
-		ID: row.ID, DomainID: row.DomainID.String, NodeID: row.NodeID, Kind: row.Kind,
+		ID: row.ID, WebsiteID: row.WebsiteID.String, NodeID: row.NodeID, Kind: row.Kind,
 		Name: row.Name, Email: row.Email, Status: row.Status, RedirectHTTPS: row.RedirectHttps != 0,
 		ExpiresAt: timePtr(row.ExpiresAt), RenewAfter: timePtr(row.RenewAfter), Error: row.Error,
 		CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt),

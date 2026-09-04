@@ -15,6 +15,10 @@
    Do instead: allowlist only the exact generated `.next/dev` key and manifest paths alongside their production equivalents; never bypass the working-tree secret scan.
 3. **[2026-09-04] Browser QA may clean tracked screenshot artifacts**
    Do instead: compare `git status` before and after Playwright, then restore only exact artifacts removed by the browser session.
+4. **[2026-09-04] Docker Desktop build cache can exhaust its internal disk**
+   Do instead: inspect `docker system df` first and prune only disposable builder cache when a release fails with `ENOSPC`; preserve containers, images in use, and volumes.
+5. **[2026-09-04] Next.js may generate nested agent instruction files during development**
+   Do instead: keep `agentRules: false` in `next.config.ts` so `next dev` does not create `web/AGENTS.md` or `web/CLAUDE.md`.
 
 ## Execution & Validation (Highest Priority)
 
@@ -57,10 +61,10 @@
    Do instead: place pure frontend helpers in `web/src/utils` and shared Go functions in small purpose-named packages such as `fsx`, `execx`, or `validate`.
 8. **[2026-09-03] Keep code and UI copy in English**
    Do instead: use English for identifiers, comments, errors, labels, and other UI text unless explicitly requested otherwise.
-9. **[2026-09-03] Prefer concise arrow functions and practical `div` elements**
-   Do instead: follow the repository's established style, defaulting new JavaScript/TypeScript functions to arrow functions and concise names.
-10. **[2026-09-03] Treat domains and aliases as one global hostname namespace**
-    Do instead: normalize names before persistence and reject collisions against primary, alias, and reserved previous names in the same transaction until rename reconciliation finishes.
+9. **[2026-09-04] Enforce Account Package limits atomically**
+   Do instead: check the assigned Package and current usage inside the same serialized SQLite transaction that inserts the resource and job; let lowered limits preserve existing resources while blocking only new capacity, including restore upserts.
+10. **[2026-09-04] Keep Websites separate from hostname bindings**
+    Do instead: persist the vhost, document root, and explicit stack on `Website`; keep primary and alias hostnames in one global `WebsiteDomain` namespace; key host paths and service configuration by immutable Website ID so hostname changes never move customer files.
 
 ## Systemd & Runtime
 

@@ -125,25 +125,42 @@ export interface paths {
         patch: operations["setAccount"];
         trace?: never;
     };
-    "/api/v1/domains": {
+    "/api/v1/accounts/{accountId}/package": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List accessible domains */
-        get: operations["listDomains"];
-        put?: never;
-        /** Create and queue provisioning for a domain */
-        post: operations["createDomain"];
+        get?: never;
+        /** Assign a Package to a hosting Account */
+        put: operations["assignAccountPackage"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/domains/{domainId}": {
+    "/api/v1/packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List hosting Packages */
+        get: operations["listPackages"];
+        put?: never;
+        /** Create a hosting Package */
+        post: operations["createPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/packages/{packageId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -153,33 +170,33 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Delete a domain and quarantine its document root */
-        delete: operations["deleteDomain"];
+        /** Delete an unused hosting Package */
+        delete: operations["deletePackage"];
         options?: never;
         head?: never;
-        /** Update a domain hostname or enabled state */
-        patch: operations["setDomain"];
+        /** Update a hosting Package */
+        patch: operations["updatePackage"];
         trace?: never;
     };
-    "/api/v1/domains/{domainId}/aliases": {
+    "/api/v1/websites": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List aliases for an accessible domain */
-        get: operations["listDomainAliases"];
+        /** List accessible websites */
+        get: operations["listWebsites"];
         put?: never;
-        /** Create and queue provisioning for a domain alias */
-        post: operations["createDomainAlias"];
+        /** Create and queue provisioning for a website */
+        post: operations["createWebsite"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/domains/{domainId}/aliases/{aliasId}": {
+    "/api/v1/websites/{websiteId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -189,12 +206,65 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Delete a domain alias */
-        delete: operations["deleteDomainAlias"];
+        /** Delete a website and quarantine its document root */
+        delete: operations["deleteWebsite"];
         options?: never;
         head?: never;
-        /** Update a domain alias hostname or enabled state */
-        patch: operations["setDomainAlias"];
+        /** Update a website enabled state */
+        patch: operations["setWebsite"];
+        trace?: never;
+    };
+    "/api/v1/website-domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List accessible website domains by kind */
+        get: operations["listWebsiteDomains"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/websites/{websiteId}/domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List hostname bindings for an accessible website */
+        get: operations["listWebsiteDomainsForWebsite"];
+        put?: never;
+        /** Add an alias domain to a website */
+        post: operations["createWebsiteDomain"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/website-domains/{websiteDomainId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an alias website domain */
+        delete: operations["deleteWebsiteDomain"];
+        options?: never;
+        head?: never;
+        /** Update a website domain hostname or enabled state */
+        patch: operations["setWebsiteDomain"];
         trace?: never;
     };
     "/api/v1/certificates": {
@@ -214,7 +284,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/domains/{domainId}/certificate": {
+    "/api/v1/websites/{websiteId}/certificate": {
         parameters: {
             query?: never;
             header?: never;
@@ -223,8 +293,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Issue a certificate for a domain and eligible aliases */
-        post: operations["issueDomainCertificate"];
+        /** Issue a certificate for a website and its eligible domains */
+        post: operations["issueWebsiteCertificate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -688,9 +758,81 @@ export interface components {
         CreateAccountRequest: {
             name: string;
             nodeId: string;
+            packageId: string;
+        };
+        AssignAccountPackageRequest: {
+            packageId: string;
+        };
+        PackageLimits: {
+            /** Format: int64 */
+            websites: number;
+            /** Format: int64 */
+            domains: number;
+            /** Format: int64 */
+            aliases: number;
+            /** Format: int64 */
+            databases: number;
+            /** Format: int64 */
+            databaseUsers: number;
+            /** Format: int64 */
+            scheduledTasks: number;
+            /** Format: int64 */
+            backupPlans: number;
+            /** Format: int64 */
+            backupRetention: number;
+        };
+        PackageUsage: {
+            /** Format: int64 */
+            websites: number;
+            /** Format: int64 */
+            domains: number;
+            /** Format: int64 */
+            aliases: number;
+            /** Format: int64 */
+            databases: number;
+            /** Format: int64 */
+            databaseUsers: number;
+            /** Format: int64 */
+            scheduledTasks: number;
+            /** Format: int64 */
+            backupPlans: number;
+        };
+        Package: {
+            id: string;
+            name: string;
+            limits: components["schemas"]["PackageLimits"];
+            /** Format: int64 */
+            accountCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        WritePackageRequest: {
+            name: string;
+            limits: components["schemas"]["PackageLimits"];
+        };
+        AccountOverview: {
+            id: string;
+            nodeId: string;
+            name: string;
+            systemUser: string;
+            /** @enum {string} */
+            status: "pending" | "active" | "disabled" | "error";
+            enabled: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            package: components["schemas"]["Package"];
+            usage: components["schemas"]["PackageUsage"];
+        };
+        PackageListResponse: {
+            items: components["schemas"]["Package"][];
+            pagination: components["schemas"]["Pagination"];
         };
         AccountListResponse: {
-            items: components["schemas"]["Account"][];
+            items: components["schemas"]["AccountOverview"][];
             pagination: components["schemas"]["Pagination"];
         };
         Pagination: {
@@ -707,36 +849,20 @@ export interface components {
         UpdateEnabledRequest: {
             enabled: boolean;
         };
-        Domain: {
+        Website: {
             id: string;
             accountId: string;
             nodeId: string;
             name: string;
             /** @enum {string} */
-            status: "pending" | "active" | "disabled" | "error";
-            phpVersion: string;
-            enabled: boolean;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        CreateDomainRequest: {
-            accountId: string;
-            name: string;
-        };
-        DomainListResponse: {
-            items: components["schemas"]["Domain"][];
-            pagination: components["schemas"]["Pagination"];
-        };
-        DomainJobResponse: {
-            domain: components["schemas"]["Domain"];
-            job: components["schemas"]["Job"];
-        };
-        DomainAlias: {
-            id: string;
-            domainId: string;
-            name: string;
+            kind: "php";
+            documentRoot: string;
+            /** @enum {string} */
+            webDriver: "nginx";
+            /** @enum {string} */
+            runtimeDriver: "phpfpm";
+            /** @enum {string} */
+            runtimeVersion: "8.3";
             /** @enum {string} */
             status: "pending" | "active" | "disabled" | "error";
             enabled: boolean;
@@ -745,19 +871,60 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        CreateDomainAliasRequest: {
+        CreateWebsiteRequest: {
+            accountId: string;
             name: string;
+            primaryDomain: string;
+            /** @enum {string} */
+            kind: "php";
+            /** @enum {string} */
+            webDriver: "nginx";
+            /** @enum {string} */
+            runtimeDriver: "phpfpm";
+            /** @enum {string} */
+            runtimeVersion: "8.3";
         };
-        UpdateDomainRequest: {
-            enabled?: boolean;
-            name?: string;
-        };
-        DomainAliasListResponse: {
-            items: components["schemas"]["DomainAlias"][];
+        WebsiteListResponse: {
+            items: components["schemas"]["Website"][];
             pagination: components["schemas"]["Pagination"];
         };
-        DomainAliasJobResponse: {
-            alias: components["schemas"]["DomainAlias"];
+        WebsiteJobResponse: {
+            website: components["schemas"]["Website"];
+            job: components["schemas"]["Job"];
+        };
+        WebsiteDomain: {
+            id: string;
+            websiteId: string;
+            hostname: string;
+            /** @enum {string} */
+            kind: "primary" | "alias";
+            /** @enum {string} */
+            status: "pending" | "active" | "disabled" | "error";
+            enabled: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateWebsiteDomainRequest: {
+            hostname: string;
+        };
+        UpdateWebsiteRequest: {
+            enabled: boolean;
+        };
+        UpdateWebsiteDomainRequest: {
+            enabled?: boolean;
+            hostname?: string;
+        };
+        WebsiteDomainListResponse: {
+            items: components["schemas"]["WebsiteDomain"][];
+            pagination: components["schemas"]["Pagination"];
+        };
+        WebsiteDomainCollection: {
+            items: components["schemas"]["WebsiteDomain"][];
+        };
+        WebsiteDomainJobResponse: {
+            domain: components["schemas"]["WebsiteDomain"];
             job: components["schemas"]["Job"];
         };
         NodeListResponse: {
@@ -806,10 +973,10 @@ export interface components {
         };
         Certificate: {
             id: string;
-            domainId?: string | null;
+            websiteId?: string | null;
             nodeId: string;
             /** @enum {string} */
-            kind: "domain" | "panel";
+            kind: "website" | "panel";
             name: string;
             names: string[];
             /** Format: email */
@@ -1117,9 +1284,10 @@ export interface components {
         CSRFToken: string;
         NodeID: string;
         JobID: string;
-        DomainID: string;
-        AliasID: string;
+        WebsiteID: string;
+        WebsiteDomainID: string;
         AccountID: string;
+        PackageID: string;
         CertificateID: string;
         DatabaseID: string;
         DatabaseUserID: string;
@@ -1379,7 +1547,41 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    listDomains: {
+    assignAccountPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path: {
+                accountId: components["parameters"]["AccountID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignAccountPackageRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated Account Package assignment. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountOverview"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listPackages: {
         parameters: {
             query?: {
                 page?: components["parameters"]["Page"];
@@ -1391,21 +1593,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Domains. */
+            /** @description Hosting Packages. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DomainListResponse"];
+                    "application/json": components["schemas"]["PackageListResponse"];
                 };
             };
             400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
             500: components["responses"]["InternalError"];
         };
     };
-    createDomain: {
+    createPackage: {
         parameters: {
             query?: never;
             header: {
@@ -1416,82 +1619,78 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateDomainRequest"];
+                "application/json": components["schemas"]["WritePackageRequest"];
             };
         };
         responses: {
-            /** @description Domain provisioning queued. */
-            202: {
+            /** @description Package created. */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DomainJobResponse"];
+                    "application/json": components["schemas"]["Package"];
                 };
             };
             400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["ForbiddenError"];
-            404: components["responses"]["NotFoundError"];
             409: components["responses"]["ConflictError"];
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };
-    deleteDomain: {
+    deletePackage: {
         parameters: {
             query?: never;
             header: {
                 "X-CSRF-Token": components["parameters"]["CSRFToken"];
             };
             path: {
-                domainId: components["parameters"]["DomainID"];
+                packageId: components["parameters"]["PackageID"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Domain deletion queued. */
-            202: {
+            /** @description Package deleted. */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["DomainJobResponse"];
-                };
+                content?: never;
             };
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["ForbiddenError"];
             404: components["responses"]["NotFoundError"];
             409: components["responses"]["ConflictError"];
-            422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };
-    setDomain: {
+    updatePackage: {
         parameters: {
             query?: never;
             header: {
                 "X-CSRF-Token": components["parameters"]["CSRFToken"];
             };
             path: {
-                domainId: components["parameters"]["DomainID"];
+                packageId: components["parameters"]["PackageID"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateDomainRequest"];
+                "application/json": components["schemas"]["WritePackageRequest"];
             };
         };
         responses: {
-            /** @description Domain operation queued. */
-            202: {
+            /** @description Package updated. */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DomainJobResponse"];
+                    "application/json": components["schemas"]["Package"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -1503,61 +1702,54 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    listDomainAliases: {
+    listWebsites: {
         parameters: {
             query?: {
                 page?: components["parameters"]["Page"];
                 size?: components["parameters"]["PageSize"];
             };
             header?: never;
-            path: {
-                domainId: components["parameters"]["DomainID"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Domain aliases. */
+            /** @description Websites. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DomainAliasListResponse"];
+                    "application/json": components["schemas"]["WebsiteListResponse"];
                 };
             };
             400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
-            403: components["responses"]["ForbiddenError"];
-            404: components["responses"]["NotFoundError"];
-            422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };
-    createDomainAlias: {
+    createWebsite: {
         parameters: {
             query?: never;
             header: {
                 "X-CSRF-Token": components["parameters"]["CSRFToken"];
             };
-            path: {
-                domainId: components["parameters"]["DomainID"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateDomainAliasRequest"];
+                "application/json": components["schemas"]["CreateWebsiteRequest"];
             };
         };
         responses: {
-            /** @description Domain alias provisioning queued. */
+            /** @description Website provisioning queued. */
             202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DomainAliasJobResponse"];
+                    "application/json": components["schemas"]["WebsiteJobResponse"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -1569,27 +1761,26 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    deleteDomainAlias: {
+    deleteWebsite: {
         parameters: {
             query?: never;
             header: {
                 "X-CSRF-Token": components["parameters"]["CSRFToken"];
             };
             path: {
-                domainId: components["parameters"]["DomainID"];
-                aliasId: components["parameters"]["AliasID"];
+                websiteId: components["parameters"]["WebsiteID"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Domain alias deletion queued. */
+            /** @description Website deletion queued. */
             202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DomainAliasJobResponse"];
+                    "application/json": components["schemas"]["WebsiteJobResponse"];
                 };
             };
             401: components["responses"]["UnauthorizedError"];
@@ -1600,31 +1791,186 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    setDomainAlias: {
+    setWebsite: {
         parameters: {
             query?: never;
             header: {
                 "X-CSRF-Token": components["parameters"]["CSRFToken"];
             };
             path: {
-                domainId: components["parameters"]["DomainID"];
-                aliasId: components["parameters"]["AliasID"];
+                websiteId: components["parameters"]["WebsiteID"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateDomainRequest"];
+                "application/json": components["schemas"]["UpdateWebsiteRequest"];
             };
         };
         responses: {
-            /** @description Domain alias operation queued. */
+            /** @description Website operation queued. */
             202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DomainAliasJobResponse"];
+                    "application/json": components["schemas"]["WebsiteJobResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listWebsiteDomains: {
+        parameters: {
+            query: {
+                kind: "primary" | "alias";
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Website domains. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebsiteDomainListResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listWebsiteDomainsForWebsite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                websiteId: components["parameters"]["WebsiteID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Website domains. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebsiteDomainCollection"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    createWebsiteDomain: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path: {
+                websiteId: components["parameters"]["WebsiteID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWebsiteDomainRequest"];
+            };
+        };
+        responses: {
+            /** @description Website domain provisioning queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebsiteDomainJobResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    deleteWebsiteDomain: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path: {
+                websiteDomainId: components["parameters"]["WebsiteDomainID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Website domain deletion queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebsiteDomainJobResponse"];
+                };
+            };
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    setWebsiteDomain: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path: {
+                websiteDomainId: components["parameters"]["WebsiteDomainID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWebsiteDomainRequest"];
+            };
+        };
+        responses: {
+            /** @description Website domain operation queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebsiteDomainJobResponse"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -1639,6 +1985,7 @@ export interface operations {
     listCertificates: {
         parameters: {
             query?: {
+                kind?: "website" | "panel";
                 page?: components["parameters"]["Page"];
                 size?: components["parameters"]["PageSize"];
             };
@@ -1662,14 +2009,14 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    issueDomainCertificate: {
+    issueWebsiteCertificate: {
         parameters: {
             query?: never;
             header: {
                 "X-CSRF-Token": components["parameters"]["CSRFToken"];
             };
             path: {
-                domainId: components["parameters"]["DomainID"];
+                websiteId: components["parameters"]["WebsiteID"];
             };
             cookie?: never;
         };

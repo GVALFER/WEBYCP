@@ -795,37 +795,6 @@ func (q *Queries) UpdateBackupRun(ctx context.Context, arg UpdateBackupRunParams
 	return err
 }
 
-const upsertRestoredAlias = `-- name: UpsertRestoredAlias :exec
-INSERT INTO domain_aliases (id, domain_id, name, status, enabled, created_at, updated_at)
-VALUES (?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?, ?)
-ON CONFLICT(id) DO UPDATE SET name = excluded.name,
-    status = CASE WHEN excluded.enabled = 1 THEN 'active' ELSE 'disabled' END,
-    enabled = excluded.enabled, updated_at = excluded.updated_at
-`
-
-type UpsertRestoredAliasParams struct {
-	ID        string      `json:"id"`
-	DomainID  string      `json:"domain_id"`
-	Name      string      `json:"name"`
-	Column4   interface{} `json:"column_4"`
-	Enabled   int64       `json:"enabled"`
-	CreatedAt int64       `json:"created_at"`
-	UpdatedAt int64       `json:"updated_at"`
-}
-
-func (q *Queries) UpsertRestoredAlias(ctx context.Context, arg UpsertRestoredAliasParams) error {
-	_, err := q.db.ExecContext(ctx, upsertRestoredAlias,
-		arg.ID,
-		arg.DomainID,
-		arg.Name,
-		arg.Column4,
-		arg.Enabled,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
-}
-
 const upsertRestoredCronJob = `-- name: UpsertRestoredCronJob :exec
 INSERT INTO cron_jobs (id, account_id, node_id, name, schedule, command, enabled, status, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?)
@@ -894,31 +863,80 @@ func (q *Queries) UpsertRestoredDatabase(ctx context.Context, arg UpsertRestored
 	return err
 }
 
-const upsertRestoredDomain = `-- name: UpsertRestoredDomain :exec
-INSERT INTO domains (id, account_id, node_id, name, status, php_version, enabled, created_at, updated_at)
-VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)
-ON CONFLICT(id) DO UPDATE SET name = excluded.name, status = 'active',
-    php_version = excluded.php_version, enabled = excluded.enabled, updated_at = excluded.updated_at
+const upsertRestoredWebsite = `-- name: UpsertRestoredWebsite :exec
+INSERT INTO websites (
+    id, account_id, node_id, name, kind, document_root, web_driver,
+    runtime_driver, runtime_version, status, enabled, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind,
+    document_root = excluded.document_root, web_driver = excluded.web_driver,
+    runtime_driver = excluded.runtime_driver, runtime_version = excluded.runtime_version,
+    status = excluded.status, enabled = excluded.enabled, updated_at = excluded.updated_at
 `
 
-type UpsertRestoredDomainParams struct {
-	ID         string `json:"id"`
-	AccountID  string `json:"account_id"`
-	NodeID     string `json:"node_id"`
-	Name       string `json:"name"`
-	PhpVersion string `json:"php_version"`
-	Enabled    int64  `json:"enabled"`
-	CreatedAt  int64  `json:"created_at"`
-	UpdatedAt  int64  `json:"updated_at"`
+type UpsertRestoredWebsiteParams struct {
+	ID             string      `json:"id"`
+	AccountID      string      `json:"account_id"`
+	NodeID         string      `json:"node_id"`
+	Name           string      `json:"name"`
+	Kind           string      `json:"kind"`
+	DocumentRoot   string      `json:"document_root"`
+	WebDriver      string      `json:"web_driver"`
+	RuntimeDriver  string      `json:"runtime_driver"`
+	RuntimeVersion string      `json:"runtime_version"`
+	Column10       interface{} `json:"column_10"`
+	Enabled        int64       `json:"enabled"`
+	CreatedAt      int64       `json:"created_at"`
+	UpdatedAt      int64       `json:"updated_at"`
 }
 
-func (q *Queries) UpsertRestoredDomain(ctx context.Context, arg UpsertRestoredDomainParams) error {
-	_, err := q.db.ExecContext(ctx, upsertRestoredDomain,
+func (q *Queries) UpsertRestoredWebsite(ctx context.Context, arg UpsertRestoredWebsiteParams) error {
+	_, err := q.db.ExecContext(ctx, upsertRestoredWebsite,
 		arg.ID,
 		arg.AccountID,
 		arg.NodeID,
 		arg.Name,
-		arg.PhpVersion,
+		arg.Kind,
+		arg.DocumentRoot,
+		arg.WebDriver,
+		arg.RuntimeDriver,
+		arg.RuntimeVersion,
+		arg.Column10,
+		arg.Enabled,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
+const upsertRestoredWebsiteDomain = `-- name: UpsertRestoredWebsiteDomain :exec
+INSERT INTO website_domains (
+    id, website_id, hostname, kind, status, enabled, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET hostname = excluded.hostname, kind = excluded.kind,
+    status = excluded.status, enabled = excluded.enabled, updated_at = excluded.updated_at
+`
+
+type UpsertRestoredWebsiteDomainParams struct {
+	ID        string      `json:"id"`
+	WebsiteID string      `json:"website_id"`
+	Hostname  string      `json:"hostname"`
+	Kind      string      `json:"kind"`
+	Column5   interface{} `json:"column_5"`
+	Enabled   int64       `json:"enabled"`
+	CreatedAt int64       `json:"created_at"`
+	UpdatedAt int64       `json:"updated_at"`
+}
+
+func (q *Queries) UpsertRestoredWebsiteDomain(ctx context.Context, arg UpsertRestoredWebsiteDomainParams) error {
+	_, err := q.db.ExecContext(ctx, upsertRestoredWebsiteDomain,
+		arg.ID,
+		arg.WebsiteID,
+		arg.Hostname,
+		arg.Kind,
+		arg.Column5,
 		arg.Enabled,
 		arg.CreatedAt,
 		arg.UpdatedAt,

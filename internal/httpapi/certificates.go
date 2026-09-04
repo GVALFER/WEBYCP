@@ -8,10 +8,10 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/accounts"
 	"github.com/GVALFER/WEBYCP/internal/auth"
 	"github.com/GVALFER/WEBYCP/internal/certificates"
-	"github.com/GVALFER/WEBYCP/internal/domains"
-	"github.com/GVALFER/WEBYCP/internal/httpapi/spec"
+	publicapi "github.com/GVALFER/WEBYCP/internal/httpapi/spec"
 	"github.com/GVALFER/WEBYCP/internal/httpx"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
+	"github.com/GVALFER/WEBYCP/internal/websites"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -21,7 +21,7 @@ func (h *handler) listCertificates(w http.ResponseWriter, r *http.Request, sessi
 		return
 	}
 	page, err := h.options.Certificates.CertificatePage(
-		r.Context(), session.User.ID, session.User.Role == "admin", query,
+		r.Context(), session.User.ID, session.User.Role == "admin", r.URL.Query().Get("kind"), query,
 	)
 	if err != nil {
 		h.internalError(w, r, err)
@@ -37,13 +37,13 @@ func (h *handler) listCertificates(w http.ResponseWriter, r *http.Request, sessi
 	httpx.WriteJSON(w, http.StatusOK, response)
 }
 
-func (h *handler) issueDomainCertificate(w http.ResponseWriter, r *http.Request, session auth.Session) {
+func (h *handler) issueWebsiteCertificate(w http.ResponseWriter, r *http.Request, session auth.Session) {
 	var request publicapi.IssueCertificateRequest
 	if err := httpx.DecodeJSON(w, r, &request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
 		return
 	}
-	value, job, err := h.options.Certificates.IssueDomain(r.Context(), r.PathValue("domainId"), string(request.Email), session.User.ID, session.User.Role == "admin")
+	value, job, err := h.options.Certificates.IssueWebsite(r.Context(), r.PathValue("websiteId"), string(request.Email), session.User.ID, session.User.Role == "admin")
 	h.recordMutation(r, session.User.ID, "certificate.issue", "certificate", value.ID, err)
 	if err != nil {
 		h.writeCertificateError(w, r, err)
@@ -102,11 +102,11 @@ func (h *handler) writeCertificateError(w http.ResponseWriter, r *http.Request, 
 	}
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		writeError(w, http.StatusNotFound, "not_found", "Certificate or domain not found")
+		writeError(w, http.StatusNotFound, "not_found", "Certificate or website not found")
 	case errors.Is(err, accounts.ErrForbidden):
 		writeError(w, http.StatusForbidden, "forbidden", "Account access is required")
-	case errors.Is(err, domains.ErrDomainInactive):
-		writeError(w, http.StatusConflict, "domain_inactive", "The domain must be active")
+	case errors.Is(err, websites.ErrWebsiteInactive):
+		writeError(w, http.StatusConflict, "website_inactive", "The website must be active")
 	case errors.Is(err, certificates.ErrBusy):
 		writeError(w, http.StatusConflict, "resource_busy", "A certificate operation is already pending")
 	default:
@@ -121,8 +121,8 @@ func certificateResponse(value certificates.Certificate) publicapi.Certificate {
 		Status: publicapi.CertificateStatus(value.Status), RedirectHttps: value.RedirectHTTPS,
 		ExpiresAt: value.ExpiresAt, Error: value.Error, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
 	}
-	if value.DomainID != "" {
-		response.DomainId = &value.DomainID
+	if value.WebsiteID != "" {
+		response.WebsiteId = &value.WebsiteID
 	}
 	return response
 }

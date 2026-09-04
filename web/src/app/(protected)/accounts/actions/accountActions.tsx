@@ -4,17 +4,20 @@ import { Button, Spinner, toast } from "@heroui/react";
 import { Power, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
-import type { AccountJobResponse, AccountListResponse } from "@/contracts/types";
+import type { Account, AccountJobResponse, Package } from "@/contracts/types";
 import { Confirm } from "@/components/actions/confirm";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
 import { isPageKey } from "@/utils/pagination";
+import AssignPackage from "./assignPackage";
 
 type AccountActionsProps = {
-    account: AccountListResponse["items"][number];
+    account: Account;
+    packageId: string;
+    packages: Package[];
 };
 
-const AccountActions = ({ account }: AccountActionsProps) => {
+const AccountActions = ({ account, packageId, packages }: AccountActionsProps) => {
     const [pending, setPending] = useState(false);
     const { mutate } = useSWRConfig();
 
@@ -51,6 +54,7 @@ const AccountActions = ({ account }: AccountActionsProps) => {
 
     return (
         <div className="flex items-center gap-1">
+            <AssignPackage account={account} packageId={packageId} packages={packages} />
             <Button
                 isIconOnly
                 size="sm"

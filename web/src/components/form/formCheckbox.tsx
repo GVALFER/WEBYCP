@@ -1,7 +1,7 @@
 "use client";
 
+import { Checkbox, ErrorMessage, Label } from "@heroui/react";
 import { useController, useFormContext } from "react-hook-form";
-import { cn } from "@/utils/classnames";
 
 type Props = {
     className?: string;
@@ -17,21 +17,22 @@ export const FormCheckbox = ({ className, label, name }: Props) => {
     } = useController({ control, name });
 
     return (
-        <label className={cn("flex items-center gap-3 text-sm", className)}>
-            <input
-                ref={ref}
-                type="checkbox"
-                name={fieldName}
-                checked={value === true}
-                onBlur={onBlur}
-                onChange={(event) => onChange(event.currentTarget.checked)}
-            />
-            {label}
-            {fieldState.error?.message && (
-                <span className="text-xs text-danger" role="alert">
-                    {fieldState.error.message}
-                </span>
-            )}
-        </label>
+        <Checkbox
+            ref={ref}
+            className={className}
+            name={fieldName}
+            isInvalid={fieldState.invalid}
+            isSelected={value === true}
+            onBlur={onBlur}
+            onChange={onChange}
+        >
+            <Checkbox.Content>
+                <Checkbox.Control>
+                    <Checkbox.Indicator />
+                </Checkbox.Control>
+                <Label>{label}</Label>
+            </Checkbox.Content>
+            <ErrorMessage>{fieldState.error?.message}</ErrorMessage>
+        </Checkbox>
     );
 };

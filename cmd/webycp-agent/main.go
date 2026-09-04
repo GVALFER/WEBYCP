@@ -10,11 +10,11 @@ import (
 	backuplocal "github.com/GVALFER/WEBYCP/internal/agent/backup/local"
 	"github.com/GVALFER/WEBYCP/internal/agent/certificate/certbot"
 	"github.com/GVALFER/WEBYCP/internal/agent/database/mysql"
-	agentdomain "github.com/GVALFER/WEBYCP/internal/agent/domain"
 	"github.com/GVALFER/WEBYCP/internal/agent/runtime/phpfpm"
 	"github.com/GVALFER/WEBYCP/internal/agent/scheduler/crontab"
 	agentserver "github.com/GVALFER/WEBYCP/internal/agent/server"
 	"github.com/GVALFER/WEBYCP/internal/agent/webserver/nginx"
+	agentwebsite "github.com/GVALFER/WEBYCP/internal/agent/website"
 	"github.com/GVALFER/WEBYCP/internal/buildinfo"
 	"github.com/GVALFER/WEBYCP/internal/config"
 	"github.com/GVALFER/WEBYCP/internal/httpx"
@@ -40,12 +40,12 @@ func main() {
 
 	nginxDriver := nginx.New()
 	runtimeDriver := phpfpm.New()
-	domainManager := agentdomain.New(runtimeDriver, nginxDriver)
+	websiteManager := agentwebsite.New(runtimeDriver, nginxDriver)
 	accountManager := agentaccount.New(agentaccount.NewLinux(), runtimeDriver)
 	server := &http.Server{
 		Handler: agentserver.New(agentserver.Options{
 			Version: buildinfo.Version, Accounts: accountManager, AccountActions: accountManager,
-			Domains: domainManager, Databases: mysql.New(), Cron: crontab.New(),
+			Websites: websiteManager, Databases: mysql.New(), Cron: crontab.New(),
 			Certificates: certbot.New(nginxDriver), Logger: logger,
 			Backups: backuplocal.New(),
 		}),

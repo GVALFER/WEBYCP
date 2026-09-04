@@ -41,15 +41,18 @@ const CreateGrant = ({
     const [pending, startTransition] = useTransition();
     const { run } = useDatabaseAction();
 
-    const { data: accountsData } = useSWR<AccountListResponse>(pageKey("accounts", { page: 1, size: 100 }), {
-        fallbackData: accounts,
-    });
-    const { data: databases } = useSWR<DatabaseListResponse>(pageKey("databases", { page: 1, size: 100 }), {
-        fallbackData: initialDatabases,
-    });
-    const { data: users } = useSWR<DatabaseUserListResponse>(pageKey("database-users", { page: 1, size: 100 }), {
-        fallbackData: initialUsers,
-    });
+    const { data: accountsData } = useSWR<AccountListResponse>(
+        pageKey("accounts", { page: 1, size: 100 }),
+        { fallbackData: accounts },
+    );
+    const { data: databases } = useSWR<DatabaseListResponse>(
+        pageKey("databases", { page: 1, size: 100 }),
+        { fallbackData: initialDatabases },
+    );
+    const { data: users } = useSWR<DatabaseUserListResponse>(
+        pageKey("database-users", { page: 1, size: 100 }),
+        { fallbackData: initialUsers },
+    );
 
     const accountsOptions = useMemo(
         () =>

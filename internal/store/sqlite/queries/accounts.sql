@@ -76,7 +76,7 @@ RETURNING *;
 
 -- name: AccountResourceCount :one
 SELECT
-    (SELECT COUNT(*) FROM domains WHERE domains.account_id = sqlc.arg(account_id)) +
+    (SELECT COUNT(*) FROM websites WHERE websites.account_id = sqlc.arg(account_id)) +
     (SELECT COUNT(*) FROM databases WHERE databases.account_id = sqlc.arg(account_id)) +
     (SELECT COUNT(*) FROM database_users WHERE database_users.account_id = sqlc.arg(account_id)) +
     (SELECT COUNT(*) FROM cron_jobs WHERE cron_jobs.account_id = sqlc.arg(account_id)) +

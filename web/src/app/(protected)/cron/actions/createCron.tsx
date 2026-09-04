@@ -66,7 +66,7 @@ const CreateCron = ({ accounts }: CreateCronProps) => {
                         schedule: values.schedule,
                         command: "",
                     });
-                    await mutate((key) => isPageKey(key, "cron-jobs", "jobs"));
+                    await mutate((key) => isPageKey(key, "cron-jobs", "accounts", "jobs"));
                     setOpen(false);
                     toast.success("Cron job queued for creation");
                 } catch (error) {

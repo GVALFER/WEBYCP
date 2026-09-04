@@ -1,7 +1,7 @@
 "use client";
 
+import { ErrorMessage, Label, ListBox, Select } from "@heroui/react";
 import { useController, useFormContext } from "react-hook-form";
-import { cn } from "@/utils/classnames";
 
 export type FormOption = {
     id: string;
@@ -34,35 +34,39 @@ export const FormSelect = ({
     } = useController({ control, name });
 
     return (
-        <label className={cn("block space-y-2 text-sm", className)}>
-            <span className="font-medium">{label}</span>
-            <select
-                ref={ref}
-                className={cn(
-                    "h-10 w-full rounded-xl border bg-field-background px-3 outline-none transition focus:border-accent",
-                    fieldState.invalid ? "border-danger" : "border-border",
-                )}
-                name={fieldName}
-                required={required}
-                value={value ?? ""}
-                onBlur={onBlur}
-                onChange={(event) => {
-                    onChange(event.currentTarget.value);
-                    onValueChange?.(event.currentTarget.value);
-                }}
-            >
-                {!options.length && <option value="">{empty}</option>}
-                {options.map((option) => (
-                    <option key={option.id} value={option.id}>
-                        {option.name}
-                    </option>
-                ))}
-            </select>
-            {fieldState.error?.message && (
-                <span className="block text-xs text-danger" role="alert">
-                    {fieldState.error.message}
-                </span>
-            )}
-        </label>
+        <Select
+            ref={ref}
+            className={className}
+            name={fieldName}
+            selectedKey={value || null}
+            placeholder={empty}
+            isDisabled={!options.length}
+            isInvalid={fieldState.invalid}
+            isRequired={required}
+            fullWidth
+            onBlur={onBlur}
+            onSelectionChange={(key) => {
+                const selected = String(key);
+                onChange(selected);
+                onValueChange?.(selected);
+            }}
+        >
+            <Label>{label}</Label>
+            <Select.Trigger>
+                <Select.Value />
+                <Select.Indicator />
+            </Select.Trigger>
+            <Select.Popover>
+                <ListBox>
+                    {options.map((option) => (
+                        <ListBox.Item key={option.id} id={option.id} textValue={option.name}>
+                            {option.name}
+                            <ListBox.ItemIndicator />
+                        </ListBox.Item>
+                    ))}
+                </ListBox>
+            </Select.Popover>
+            <ErrorMessage>{fieldState.error?.message}</ErrorMessage>
+        </Select>
     );
 };

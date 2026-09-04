@@ -5,6 +5,7 @@ import Cron from "./cron";
 
 const CronPage = async ({ searchParams }: PageProps) => {
     const query = await getPageQuery("/cron", searchParams);
+
     const [accounts, jobs] = await Promise.all([
         api.get("accounts", { searchParams: { page: 1, size: 100 } }).json<AccountListResponse>(),
         api.get("cron-jobs", { searchParams: query }).json<CronJobListResponse>(),

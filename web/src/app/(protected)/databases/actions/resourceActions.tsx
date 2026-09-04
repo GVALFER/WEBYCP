@@ -30,6 +30,7 @@ const ResourceActions = ({ kind, resource }: ResourceActionsProps) => {
                           .delete(`databases/${encodeURIComponent(resource.id)}`)
                           .json<DatabaseJobResponse>(),
                   "Database queued for deletion",
+                  true,
               )
             : run(
                   () =>
@@ -37,6 +38,7 @@ const ResourceActions = ({ kind, resource }: ResourceActionsProps) => {
                           .delete(`database-users/${encodeURIComponent(resource.id)}`)
                           .json<DatabaseUserJobResponse>(),
                   "Database user queued for deletion",
+                  true,
               );
 
     const description =

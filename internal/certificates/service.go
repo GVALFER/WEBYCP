@@ -9,17 +9,17 @@ import (
 	"time"
 
 	"github.com/GVALFER/WEBYCP/internal/accounts"
-	"github.com/GVALFER/WEBYCP/internal/domains"
 	"github.com/GVALFER/WEBYCP/internal/idgen"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
 	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/validate"
+	"github.com/GVALFER/WEBYCP/internal/websites"
 )
 
 type Service struct {
 	repository Repository
-	domains    *domains.Service
+	websites   *websites.Service
 	accounts   *accounts.Service
 	nodes      nodes.Repository
 	agent      Agent
@@ -30,8 +30,8 @@ type payload struct {
 	CertificateID string `json:"certificateId"`
 }
 
-func NewService(repository Repository, domains *domains.Service, accounts *accounts.Service, nodes nodes.Repository, agent Agent, notify func()) *Service {
-	return &Service{repository: repository, domains: domains, accounts: accounts, nodes: nodes, agent: agent, notify: notify}
+func NewService(repository Repository, websites *websites.Service, accounts *accounts.Service, nodes nodes.Repository, agent Agent, notify func()) *Service {
+	return &Service{repository: repository, websites: websites, accounts: accounts, nodes: nodes, agent: agent, notify: notify}
 }
 
 func (s *Service) Certificates(ctx context.Context, userID string, admin bool) ([]Certificate, error) {
@@ -39,34 +39,44 @@ func (s *Service) Certificates(ctx context.Context, userID string, admin bool) (
 }
 
 func (s *Service) CertificatePage(
-	ctx context.Context, userID string, admin bool, query pagination.Query,
+	ctx context.Context, userID string, admin bool, kind string, query pagination.Query,
 ) (pagination.Result[Certificate], error) {
-	return s.repository.CertificatePage(ctx, userID, admin, query)
+	if kind != "" && kind != "website" && kind != "panel" {
+		return pagination.Result[Certificate]{}, &validate.Error{Field: "kind", Message: "Certificate kind is invalid"}
+	}
+	return s.repository.CertificatePage(ctx, userID, admin, kind, query)
 }
 
-func (s *Service) IssueDomain(ctx context.Context, domainID, email, userID string, admin bool) (Certificate, jobs.Job, error) {
-	domain, err := s.domains.GetDomain(ctx, domainID, userID, admin)
+func (s *Service) IssueWebsite(ctx context.Context, websiteID, email, userID string, admin bool) (Certificate, jobs.Job, error) {
+	website, err := s.websites.GetWebsite(ctx, websiteID, userID, admin)
 	if err != nil {
 		return Certificate{}, jobs.Job{}, err
 	}
-	if domain.Status != "active" || !domain.Enabled {
-		return Certificate{}, jobs.Job{}, domains.ErrDomainInactive
+	if website.Status != "active" || !website.Enabled {
+		return Certificate{}, jobs.Job{}, websites.ErrWebsiteInactive
 	}
 	email, err = validate.Email(email)
 	if err != nil {
 		return Certificate{}, jobs.Job{}, err
 	}
-	aliases, err := s.domains.Aliases(ctx, domain.ID, userID, admin)
+	domains, err := s.websites.Domains(ctx, website.ID, userID, admin)
 	if err != nil {
 		return Certificate{}, jobs.Job{}, err
 	}
-	names := []string{domain.Name}
-	for _, alias := range aliases {
-		if alias.Enabled && alias.Status == "active" {
-			names = append(names, alias.Name)
+	name := ""
+	names := make([]string, 0, len(domains))
+	for _, domain := range domains {
+		if domain.Kind == "primary" {
+			name = domain.Hostname
+		}
+		if domain.Enabled && domain.Status == "active" {
+			names = append(names, domain.Hostname)
 		}
 	}
-	certificate, create, err := s.domainValue(ctx, domain, email, names)
+	if name == "" {
+		return Certificate{}, jobs.Job{}, websites.ErrPrimaryRequired
+	}
+	certificate, create, err := s.websiteValue(ctx, website, name, email, names)
 	if err != nil {
 		return Certificate{}, jobs.Job{}, err
 	}
@@ -113,6 +123,10 @@ func (s *Service) Renew(ctx context.Context, id, userID string, admin bool) (Cer
 	if certificate.Status == "pending" {
 		return Certificate{}, jobs.Job{}, ErrBusy
 	}
+	certificate, err = s.refreshWebsite(ctx, certificate, userID, admin)
+	if err != nil {
+		return Certificate{}, jobs.Job{}, err
+	}
 	return s.queue(ctx, certificate, userID, jobs.KindCertificateRenew, false)
 }
 
@@ -121,8 +135,12 @@ func (s *Service) SetRedirect(ctx context.Context, id, userID string, admin, red
 	if err != nil {
 		return Certificate{}, jobs.Job{}, err
 	}
-	if certificate.Kind != "domain" || certificate.Status == "pending" {
+	if certificate.Kind != "website" || certificate.Status == "pending" {
 		return Certificate{}, jobs.Job{}, ErrBusy
+	}
+	certificate, err = s.refreshWebsite(ctx, certificate, userID, admin)
+	if err != nil {
+		return Certificate{}, jobs.Job{}, err
 	}
 	certificate.RedirectHTTPS = redirect
 	return s.queue(ctx, certificate, userID, jobs.KindCertificateRenew, false)
@@ -134,6 +152,10 @@ func (s *Service) QueueDue(ctx context.Context) error {
 		return err
 	}
 	for _, value := range values {
+		value, err = s.refreshWebsite(ctx, value, "", true)
+		if err != nil {
+			return err
+		}
 		pending, err := s.repository.CertificateJobPending(ctx, value.ID)
 		if err != nil {
 			return err
@@ -160,8 +182,8 @@ func (s *Service) Provision(ctx context.Context, job jobs.Job) error {
 	return s.provision(ctx, certificate)
 }
 
-func (s *Service) ReconcileDomain(ctx context.Context, domainID string) error {
-	certificate, err := s.repository.DomainCertificate(ctx, domainID)
+func (s *Service) ReconcileWebsite(ctx context.Context, websiteID string) error {
+	certificate, err := s.repository.WebsiteCertificate(ctx, websiteID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
@@ -171,7 +193,39 @@ func (s *Service) ReconcileDomain(ctx context.Context, domainID string) error {
 	if certificate.Status != "active" {
 		return nil
 	}
+	certificate, err = s.refreshWebsite(ctx, certificate, "", true)
+	if err != nil {
+		return err
+	}
 	return s.provision(ctx, certificate)
+}
+
+func (s *Service) refreshWebsite(ctx context.Context, certificate Certificate, userID string, admin bool) (Certificate, error) {
+	if certificate.Kind != "website" {
+		return certificate, nil
+	}
+	website, err := s.websites.GetWebsite(ctx, certificate.WebsiteID, userID, admin)
+	if err != nil {
+		return Certificate{}, err
+	}
+	domains, err := s.websites.Domains(ctx, website.ID, userID, admin)
+	if err != nil {
+		return Certificate{}, err
+	}
+	certificate.Name = ""
+	certificate.Names = certificate.Names[:0]
+	for _, domain := range domains {
+		if domain.Kind == "primary" {
+			certificate.Name = domain.Hostname
+		}
+		if domain.Enabled && domain.Status == "active" {
+			certificate.Names = append(certificate.Names, domain.Hostname)
+		}
+	}
+	if certificate.Name == "" {
+		return Certificate{}, websites.ErrPrimaryRequired
+	}
+	return certificate, nil
 }
 
 func (s *Service) provision(ctx context.Context, certificate Certificate) error {
@@ -179,17 +233,18 @@ func (s *Service) provision(ctx context.Context, certificate Certificate) error 
 	if err != nil {
 		return err
 	}
-	request := Request{CertificateID: certificate.ID, Kind: certificate.Kind, DomainID: certificate.DomainID, Name: certificate.Name, Names: certificate.Names, Email: certificate.Email, RedirectHTTPS: certificate.RedirectHTTPS}
-	if certificate.Kind == "domain" {
-		domain, err := s.domains.Get(ctx, certificate.DomainID)
+	request := Request{CertificateID: certificate.ID, Kind: certificate.Kind, WebsiteID: certificate.WebsiteID, Name: certificate.Name, Names: certificate.Names, Email: certificate.Email, RedirectHTTPS: certificate.RedirectHTTPS}
+	if certificate.Kind == "website" {
+		website, err := s.websites.Get(ctx, certificate.WebsiteID)
 		if err != nil {
 			return err
 		}
-		account, err := s.accounts.Get(ctx, domain.AccountID)
+		account, err := s.accounts.Get(ctx, website.AccountID)
 		if err != nil {
 			return err
 		}
-		request.AccountID, request.SystemUser, request.PHPVersion = account.ID, account.SystemUser, domain.PHPVersion
+		request.AccountID, request.SystemUser = account.ID, account.SystemUser
+		request.DocumentRoot, request.RuntimeVersion = website.DocumentRoot, website.RuntimeVersion
 	}
 	result, err := s.agent.IssueCertificate(ctx, node.Endpoint, request)
 	if err != nil {
@@ -200,8 +255,8 @@ func (s *Service) provision(ctx context.Context, certificate Certificate) error 
 	return s.repository.SetResult(ctx, certificate.ID, result.Names, "active", &result.ExpiresAt, &renewAfter, "")
 }
 
-func (s *Service) domainValue(ctx context.Context, domain domains.Domain, email string, names []string) (Certificate, bool, error) {
-	certificate, err := s.repository.DomainCertificate(ctx, domain.ID)
+func (s *Service) websiteValue(ctx context.Context, website websites.Website, name, email string, names []string) (Certificate, bool, error) {
+	certificate, err := s.repository.WebsiteCertificate(ctx, website.ID)
 	create := errors.Is(err, sql.ErrNoRows)
 	if err != nil && !create {
 		return Certificate{}, false, err
@@ -212,11 +267,11 @@ func (s *Service) domainValue(ctx context.Context, domain domains.Domain, email 
 			return Certificate{}, false, err
 		}
 		now := time.Now().UTC()
-		certificate = Certificate{ID: id, DomainID: domain.ID, NodeID: domain.NodeID, Kind: "domain", Status: "pending", RedirectHTTPS: true, CreatedAt: now, UpdatedAt: now}
+		certificate = Certificate{ID: id, WebsiteID: website.ID, NodeID: website.NodeID, Kind: "website", Status: "pending", RedirectHTTPS: true, CreatedAt: now, UpdatedAt: now}
 	} else if certificate.Status == "pending" {
 		return Certificate{}, false, ErrBusy
 	}
-	certificate.Name, certificate.Names, certificate.Email = domain.Name, names, email
+	certificate.Name, certificate.Names, certificate.Email = name, names, email
 	return certificate, create, nil
 }
 
@@ -234,7 +289,7 @@ func (s *Service) access(ctx context.Context, id, userID string, admin bool) (Ce
 		}
 		return certificate, nil
 	}
-	if _, err := s.domains.GetDomain(ctx, certificate.DomainID, userID, admin); err != nil {
+	if _, err := s.websites.GetWebsite(ctx, certificate.WebsiteID, userID, admin); err != nil {
 		return Certificate{}, err
 	}
 	return certificate, nil

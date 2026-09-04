@@ -93,6 +93,7 @@ const CreateBackup = ({ accounts }: CreateBackupProps) => {
                             "backup-plans",
                             "backup-runs",
                             "backup-artifacts",
+                            "accounts",
                             "jobs",
                         ),
                     );

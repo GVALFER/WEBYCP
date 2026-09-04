@@ -79,6 +79,9 @@ func (h *handler) writeCronError(w http.ResponseWriter, r *http.Request, err err
 	if writeValidationError(w, err) {
 		return
 	}
+	if writeLimitError(w, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		writeError(w, http.StatusNotFound, "not_found", "Cron job not found")

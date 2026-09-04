@@ -19,12 +19,14 @@ const CronActions = ({ item }: CronActionsProps) => {
     const { mutate } = useSWRConfig();
     const path = `cron-jobs/${encodeURIComponent(item.id)}`;
 
-    const run = async (action: () => Promise<unknown>, success: string) => {
+    const run = async (action: () => Promise<unknown>, success: string, usage = false) => {
         setPending(true);
 
         try {
             await action();
-            await mutate((key) => isPageKey(key, "cron-jobs", "jobs"));
+            await mutate((key) =>
+                isPageKey(key, "cron-jobs", ...(usage ? ["accounts"] : []), "jobs"),
+            );
             toast.success(success);
         } catch (error) {
             toast.danger("Action failed", {
@@ -53,7 +55,7 @@ const CronActions = ({ item }: CronActionsProps) => {
         );
 
     const remove = () =>
-        run(() => api.delete(path).json<Job>(), "Cron job queued for deletion");
+        run(() => api.delete(path).json<Job>(), "Cron job queued for deletion", true);
 
     return (
         <div className="flex items-center gap-2">
@@ -66,11 +68,7 @@ const CronActions = ({ item }: CronActionsProps) => {
                 isDisabled={item.status === "pending"}
                 onPress={() => void toggle()}
             >
-                {pending ? (
-                    <Spinner color="current" size="sm" />
-                ) : (
-                    <Power className="size-4" />
-                )}
+                {pending ? <Spinner color="current" size="sm" /> : <Power className="size-4" />}
             </Button>
             <Confirm
                 title={`Delete ${item.name}?`}

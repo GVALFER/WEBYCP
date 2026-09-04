@@ -10,50 +10,51 @@ import { Form } from "@/components/form/form";
 import { FormInput } from "@/components/form/formInput";
 import { FormModal } from "@/components/form/formModal";
 import { FormSelect } from "@/components/form/formSelect";
-import type { CertificateJobResponse, DomainListResponse } from "@/contracts/types";
+import type { CertificateJobResponse, WebsiteListResponse } from "@/contracts/types";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
 import { isPageKey, pageKey } from "@/utils/pagination";
 import { emailField } from "@/utils/validation";
+import { useSession } from "@/providers/SessionProvider";
 
 type CreateCertificateProps = {
-    domains: DomainListResponse;
-    email: string;
+    websites: WebsiteListResponse;
 };
 
 const formSchema = v.object({
-    domainId: v.pipe(v.string(), v.nonEmpty("Choose a domain.")),
+    websiteId: v.pipe(v.string(), v.nonEmpty("Choose a website.")),
     email: emailField,
 });
 
 type FormValues = v.InferOutput<typeof formSchema>;
 
-const CreateCertificate = ({ domains, email }: CreateCertificateProps) => {
+const CreateCertificate = ({ websites }: CreateCertificateProps) => {
     const [open, setOpen] = useState(false);
+    const session = useSession();
 
     const [pending, startTransition] = useTransition();
     const { mutate } = useSWRConfig();
 
-    const { data } = useSWR<DomainListResponse>(pageKey("domains", { page: 1, size: 100 }), {
-        fallbackData: domains,
+    const { data } = useSWR<WebsiteListResponse>(pageKey("websites", { page: 1, size: 100 }), {
+        fallbackData: websites,
     });
 
     const options =
-        data?.items.filter((domain) => domain.status === "active" && domain.enabled) ?? [];
+        data?.items.filter((website) => website.status === "active" && website.enabled) ?? [];
 
     const form = useForm<FormValues>({
         resolver: valibotResolver(formSchema),
-        defaultValues: { domainId: options[0]?.id ?? "", email },
+        defaultValues: { websiteId: options[0]?.id ?? "", email: session.user.email },
     });
 
-    const domainId = useWatch({ control: form.control, name: "domainId" });
+    const websiteId = useWatch({ control: form.control, name: "websiteId" });
 
     const handleSubmit = useCallback(
         (values: FormValues) => {
             startTransition(async () => {
                 try {
                     await api
-                        .post(`domains/${encodeURIComponent(values.domainId)}/certificate`, {
+                        .post(`websites/${encodeURIComponent(values.websiteId)}/certificate`, {
                             json: { email: values.email },
                         })
                         .json<CertificateJobResponse>();
@@ -74,21 +75,21 @@ const CreateCertificate = ({ domains, email }: CreateCertificateProps) => {
         <Form {...form}>
             <FormModal
                 open={open}
-                title="Secure a domain"
-                description="Requests a Let's Encrypt certificate for an active domain."
-                triggerLabel="Secure a domain"
-                triggerText="Domain"
+                title="Secure a website"
+                description="Requests a Let's Encrypt certificate for an active website and its domains."
+                triggerLabel="Secure a website"
+                triggerText="Website"
                 submitLabel="Issue certificate"
                 pending={pending}
-                submitDisabled={!domainId}
+                submitDisabled={!websiteId}
                 onOpenChange={setOpen}
                 onSubmit={form.handleSubmit(handleSubmit)}
             >
                 <FormSelect
-                    name="domainId"
-                    label="Domain"
+                    name="websiteId"
+                    label="Website"
                     options={options}
-                    empty="No active domains"
+                    empty="No active websites"
                     required
                 />
                 <FormInput name="email" label="ACME email" type="email" required />

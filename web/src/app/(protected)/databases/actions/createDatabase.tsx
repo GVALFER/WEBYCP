@@ -51,6 +51,7 @@ const CreateDatabase = ({ accounts }: CreateDatabaseProps) => {
                 const response = await run(
                     () => api.post("databases", { json: values }).json<DatabaseJobResponse>(),
                     "Database queued for creation",
+                    true,
                 );
                 if (response) {
                     form.reset({ accountId: values.accountId, name: "" });
