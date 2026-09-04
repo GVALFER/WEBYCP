@@ -92,15 +92,12 @@ func TestCreateProvisionsAccount(t *testing.T) {
 func createOwner(t *testing.T, ctx context.Context, store *sqlite.Store) {
 	t.Helper()
 	now := time.Now().UTC()
-	err := store.Bootstrap(ctx, auth.NewUser{
-		ID: "user-1", Email: "admin@example.com", Name: "Admin",
+	created, err := store.InitAdmin(ctx, auth.NewUser{
+		ID: "user-1", Username: "admin", Email: "admin@example.com", Name: "Admin",
 		PasswordHash: "test", Role: "admin", CreatedAt: now,
-	}, auth.NewSession{
-		ID: "session-1", UserID: "user-1", TokenHash: "hash", CSRFToken: "csrf",
-		ExpiresAt: now.Add(time.Hour), CreatedAt: now,
 	})
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || !created {
+		t.Fatalf("create owner: created=%v, error=%v", created, err)
 	}
 }
 

@@ -16,3 +16,7 @@ type Pool struct {
 type Driver interface {
 	Ensure(context.Context, Account) (Pool, error)
 }
+
+type Cleaner interface {
+	Delete(context.Context, string) error
+}

@@ -23,11 +23,10 @@ func TestGrantCannotCrossAccountBoundary(t *testing.T) {
 	}
 	defer store.Close()
 	now := time.Now().UTC()
-	if err := store.Bootstrap(ctx,
-		auth.NewUser{ID: "user-1", Email: "admin@example.com", Name: "Admin", PasswordHash: "hash", Role: "admin", CreatedAt: now},
-		auth.NewSession{ID: "session-1", UserID: "user-1", TokenHash: "hash", CSRFToken: "csrf", ExpiresAt: now.Add(time.Hour), CreatedAt: now},
-	); err != nil {
-		t.Fatal(err)
+	if created, err := store.InitAdmin(ctx,
+		auth.NewUser{ID: "user-1", Username: "admin", Email: "admin@example.com", Name: "Admin", PasswordHash: "hash", Role: "admin", CreatedAt: now},
+	); err != nil || !created {
+		t.Fatalf("create owner: created=%v, error=%v", created, err)
 	}
 	node, err := store.EnsureLocal(ctx, "test", "/tmp/test-agent.sock")
 	if err != nil {

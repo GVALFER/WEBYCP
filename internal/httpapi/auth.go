@@ -14,47 +14,6 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-func (h *handler) bootstrapState(w http.ResponseWriter, r *http.Request) {
-	required, err := h.options.Auth.BootstrapRequired(r.Context())
-	if err != nil {
-		h.internalError(w, r, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, publicapi.BootstrapResponse{Required: required})
-}
-
-func (h *handler) bootstrap(w http.ResponseWriter, r *http.Request) {
-	var request publicapi.BootstrapRequest
-	if err := httpx.DecodeJSON(w, r, &request); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
-		return
-	}
-
-	session, err := h.options.Auth.Bootstrap(
-		r.Context(), request.Name, string(request.Email), request.Password,
-	)
-	if err != nil {
-		h.record(r, audit.Event{Action: "auth.bootstrap", ResourceType: "user", Result: "failure"})
-		if errors.Is(err, auth.ErrBootstrapComplete) {
-			writeError(w, http.StatusConflict, "bootstrap_complete", "Bootstrap is already complete")
-			return
-		}
-		if writeValidationError(w, err) {
-			return
-		}
-		h.internalError(w, r, err)
-		return
-	}
-
-	h.setSessionCookie(w, session)
-	h.record(r, audit.Event{
-		UserID: session.User.ID, Action: "auth.bootstrap", ResourceType: "user",
-		ResourceID: session.User.ID, Result: "success",
-	})
-	w.Header().Set("Cache-Control", "no-store")
-	httpx.WriteJSON(w, http.StatusCreated, authResponse(session))
-}
-
 func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	var request publicapi.LoginRequest
 	if err := httpx.DecodeJSON(w, r, &request); err != nil {
@@ -62,11 +21,11 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.options.Auth.Login(r.Context(), string(request.Email), request.Password)
+	session, err := h.options.Auth.Login(r.Context(), request.Username, request.Password)
 	if err != nil {
 		h.record(r, audit.Event{Action: "auth.login", ResourceType: "session", Result: "failure"})
 		if errors.Is(err, auth.ErrInvalidCredentials) {
-			writeError(w, http.StatusUnauthorized, "invalid_credentials", "Email or password is incorrect")
+			writeError(w, http.StatusUnauthorized, "invalid_credentials", "Username or password is incorrect")
 			return
 		}
 		h.internalError(w, r, err)
@@ -80,6 +39,54 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	})
 	w.Header().Set("Cache-Control", "no-store")
 	httpx.WriteJSON(w, http.StatusOK, authResponse(session))
+}
+
+func (h *handler) updateProfile(w http.ResponseWriter, r *http.Request, session auth.Session) {
+	var request publicapi.UpdateProfileRequest
+	if err := httpx.DecodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "The request body is invalid")
+		return
+	}
+	currentPassword := ""
+	if request.CurrentPassword != nil {
+		currentPassword = *request.CurrentPassword
+	}
+	password := ""
+	if request.Password != nil {
+		password = *request.Password
+	}
+	updated, err := h.options.Auth.UpdateProfile(
+		r.Context(), session, request.Username, request.Name, string(request.Email),
+		request.Timezone, currentPassword, password,
+	)
+	if err != nil {
+		h.record(r, audit.Event{
+			UserID: session.User.ID, Action: "auth.profile.update",
+			ResourceType: "user", ResourceID: session.User.ID, Result: "failure",
+		})
+		if writeValidationError(w, err) {
+			return
+		}
+		switch {
+		case errors.Is(err, auth.ErrCurrentPassword):
+			writeError(w, http.StatusForbidden, "invalid_current_password", "Current password is incorrect")
+		case errors.Is(err, auth.ErrUsernameExists):
+			writeError(w, http.StatusConflict, "username_exists", "Username is already in use")
+		case errors.Is(err, auth.ErrEmailExists):
+			writeError(w, http.StatusConflict, "email_exists", "Email address is already in use")
+		case errors.Is(err, auth.ErrUnauthorized):
+			writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication is required")
+		default:
+			h.internalError(w, r, err)
+		}
+		return
+	}
+	h.record(r, audit.Event{
+		UserID: session.User.ID, Action: "auth.profile.update",
+		ResourceType: "user", ResourceID: session.User.ID, Result: "success",
+	})
+	w.Header().Set("Cache-Control", "no-store")
+	httpx.WriteJSON(w, http.StatusOK, authResponse(updated))
 }
 
 func (h *handler) logout(w http.ResponseWriter, r *http.Request, session auth.Session) {
@@ -162,10 +169,12 @@ func authResponse(session auth.Session) publicapi.AuthResponse {
 	return publicapi.AuthResponse{
 		CsrfToken: session.CSRFToken,
 		ExpiresAt: session.ExpiresAt,
+		Timezone:  session.User.Timezone,
 		User: publicapi.User{
-			Id: session.User.ID, Email: openapi_types.Email(session.User.Email),
-			Name: session.User.Name, Role: publicapi.UserRole(session.User.Role),
-			CreatedAt: session.User.CreatedAt,
+			Id: session.User.ID, Username: session.User.Username,
+			Email: openapi_types.Email(session.User.Email), Name: session.User.Name,
+			Role:               publicapi.UserRole(session.User.Role),
+			MustChangePassword: session.User.MustChangePassword, CreatedAt: session.User.CreatedAt,
 		},
 	}
 }

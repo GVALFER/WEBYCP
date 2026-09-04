@@ -45,18 +45,18 @@ func TestUnknownAPIPath(t *testing.T) {
 	}
 }
 
-func TestBootstrapSessionAndProbe(t *testing.T) {
-	api, store := testAPI(t)
+func TestTemporaryAdminSetupAndProbe(t *testing.T) {
+	api, store, credentials := testAPI(t)
 	defer store.Close()
 
-	bootstrap := httptest.NewRequest(http.MethodPost, "/api/v1/bootstrap", strings.NewReader(`{
-		"name":"Test Admin","email":"admin@example.com","password":"correct horse battery staple"
+	login := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{
+		"username":"`+credentials.Username+`","password":"`+credentials.Password+`"
 	}`))
-	bootstrap.Header.Set("Content-Type", "application/json")
+	login.Header.Set("Content-Type", "application/json")
 	created := httptest.NewRecorder()
-	api.ServeHTTP(created, bootstrap)
-	if created.Code != http.StatusCreated {
-		t.Fatalf("bootstrap status = %d, body = %s", created.Code, created.Body.String())
+	api.ServeHTTP(created, login)
+	if created.Code != http.StatusOK {
+		t.Fatalf("login status = %d, body = %s", created.Code, created.Body.String())
 	}
 	if len(created.Result().Cookies()) != 1 {
 		t.Fatal("expected session cookie")
@@ -67,6 +67,31 @@ func TestBootstrapSessionAndProbe(t *testing.T) {
 	}
 	if err := json.Unmarshal(created.Body.Bytes(), &session); err != nil {
 		t.Fatal(err)
+	}
+
+	blocked := httptest.NewRequest(http.MethodGet, "/api/v1/nodes", nil)
+	blocked.AddCookie(cookie)
+	blockedResponse := httptest.NewRecorder()
+	api.ServeHTTP(blockedResponse, blocked)
+	if blockedResponse.Code != http.StatusForbidden {
+		t.Fatalf("temporary session status = %d, body = %s", blockedResponse.Code, blockedResponse.Body.String())
+	}
+
+	profile := httptest.NewRequest(http.MethodPatch, "/api/v1/auth/profile", strings.NewReader(`{
+		"username":"owner","name":"Test Admin","email":"admin@example.com",
+		"timezone":"Europe/Lisbon",
+		"password":"correct horse battery staple"
+	}`))
+	profile.Header.Set("Content-Type", "application/json")
+	profile.Header.Set("X-CSRF-Token", session.CSRFToken)
+	profile.AddCookie(cookie)
+	updated := httptest.NewRecorder()
+	api.ServeHTTP(updated, profile)
+	if updated.Code != http.StatusOK ||
+		!strings.Contains(updated.Body.String(), `"username":"owner"`) ||
+		!strings.Contains(updated.Body.String(), `"timezone":"Europe/Lisbon"`) ||
+		!strings.Contains(updated.Body.String(), `"mustChangePassword":false`) {
+		t.Fatalf("profile status = %d, body = %s", updated.Code, updated.Body.String())
 	}
 
 	me := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
@@ -279,7 +304,7 @@ func TestBootstrapSessionAndProbe(t *testing.T) {
 	}
 }
 
-func testAPI(t *testing.T) (http.Handler, *sqlite.Store) {
+func testAPI(t *testing.T) (http.Handler, *sqlite.Store, auth.Credentials) {
 	t.Helper()
 	ctx := context.Background()
 	store, err := sqlite.Open(ctx, filepath.Join(t.TempDir(), "webycp.db"))
@@ -293,13 +318,19 @@ func testAPI(t *testing.T) (http.Handler, *sqlite.Store) {
 	worker := jobs.NewWorker(store, store, slog.Default())
 	agent := agentclient.New(time.Second)
 	accountService := accounts.NewService(store, store, agent, worker.Notify)
+	authService := auth.NewService(store)
+	credentials, created, err := authService.InitAdmin(ctx)
+	if err != nil || !created {
+		store.Close()
+		t.Fatalf("initialize administrator: created=%v, error=%v", created, err)
+	}
 	return New(Options{
 		Version: "test", SecureCookie: false,
-		Auth:     auth.NewService(store),
+		Auth:     authService,
 		Accounts: accountService,
 		Domains:  domains.NewService(store, accountService, store, agent, worker.Notify),
 		Nodes:    nodes.NewService(store, agent),
 		Jobs:     jobs.NewService(store, worker.Notify),
 		Audit:    store,
-	}), store
+	}), store, credentials
 }

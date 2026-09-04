@@ -12,15 +12,19 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/user"
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/GVALFER/WEBYCP/internal/agent/backup"
+	"github.com/GVALFER/WEBYCP/internal/agent/hostuser"
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/execx"
+	"github.com/GVALFER/WEBYCP/internal/fsx"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
 
@@ -34,14 +38,19 @@ const (
 var checksumPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
 type Driver struct {
-	root  string
-	home  string
-	dump  func(context.Context, io.Writer, string, ...string) error
-	input func(context.Context, io.Reader, string, ...string) error
+	root        string
+	home        string
+	dump        func(context.Context, io.Writer, string, ...string) error
+	input       func(context.Context, io.Reader, string, ...string) error
+	lookup      func(string) (*user.User, error)
+	lookupGroup func(string) (*user.Group, error)
 }
 
 func New() *Driver {
-	return &Driver{root: defaultRoot, home: defaultHome, dump: execx.Write, input: execx.Input}
+	return &Driver{
+		root: defaultRoot, home: defaultHome, dump: execx.Write, input: execx.Input,
+		lookup: user.Lookup, lookupGroup: user.LookupGroup,
+	}
 }
 
 func (d *Driver) Create(ctx context.Context, request backup.CreateRequest) (backup.Artifact, error) {
@@ -124,6 +133,10 @@ func (d *Driver) Restore(ctx context.Context, request backup.RestoreRequest) (st
 	if err := d.validateAccount(request.AccountID, request.SystemUser); err != nil {
 		return "", err
 	}
+	identity, webGID, err := d.restoreIdentity(request.AccountID, request.SystemUser)
+	if err != nil {
+		return "", err
+	}
 	file, gz, reader, err := openArchive(request.Path)
 	if err != nil {
 		return "", err
@@ -141,7 +154,7 @@ func (d *Driver) Restore(ctx context.Context, request backup.RestoreRequest) (st
 		}
 		switch {
 		case request.Files && strings.HasPrefix(header.Name, "files/"):
-			if err := d.restoreFile(reader, header, request.SystemUser); err != nil {
+			if err := d.restoreFile(reader, header, identity, webGID); err != nil {
 				return "", err
 			}
 		case request.Databases && strings.HasPrefix(header.Name, "databases/") && header.Typeflag == tar.TypeReg:
@@ -332,14 +345,30 @@ func openArchive(filePath string) (*os.File, *gzip.Reader, *tar.Reader, error) {
 	return file, gz, tar.NewReader(gz), nil
 }
 
-func (d *Driver) restoreFile(reader io.Reader, header *tar.Header, systemUser string) error {
+func (d *Driver) restoreFile(reader io.Reader, header *tar.Header, identity hostuser.Identity, webGID int) error {
 	relative := strings.TrimPrefix(header.Name, "files/")
-	target, err := safeTarget(filepath.Join(d.home, systemUser), relative)
+	target, err := safeTarget(identity.Home, relative)
 	if err != nil {
 		return err
 	}
+	gid := identity.GID
+	if relative == "web" || strings.HasPrefix(relative, "web/") {
+		gid = webGID
+	}
 	if header.Typeflag == tar.TypeDir {
-		return os.MkdirAll(target, os.FileMode(header.Mode)&0o770)
+		mode := uint32(header.Mode) & 0o770
+		if header.Mode&0o2000 != 0 {
+			mode |= 0o2000
+		}
+		if err := os.MkdirAll(target, os.FileMode(mode)); err != nil {
+			return err
+		}
+		directory, err := fsx.OpenDir(target)
+		if err != nil {
+			return err
+		}
+		defer directory.Close()
+		return directory.Configure(mode, identity.UID, gid)
 	}
 	if header.Typeflag != tar.TypeReg {
 		return fmt.Errorf("unsupported file backup entry: %s", header.Name)
@@ -351,8 +380,36 @@ func (d *Driver) restoreFile(reader io.Reader, header *tar.Header, systemUser st
 	if err != nil {
 		return err
 	}
+	if err := file.Chown(identity.UID, gid); err != nil {
+		file.Close()
+		return fmt.Errorf("set restored file owner: %w", err)
+	}
+	if err := file.Chmod(os.FileMode(header.Mode) & 0o660); err != nil {
+		file.Close()
+		return fmt.Errorf("set restored file mode: %w", err)
+	}
 	_, copyErr := io.Copy(file, io.LimitReader(reader, header.Size))
 	return errors.Join(copyErr, file.Close())
+}
+
+func (d *Driver) restoreIdentity(accountID, systemUser string) (hostuser.Identity, int, error) {
+	found, err := d.lookup(systemUser)
+	if err != nil {
+		return hostuser.Identity{}, 0, fmt.Errorf("lookup backup account: %w", err)
+	}
+	identity, err := hostuser.Validate(found, d.home, accountID, systemUser)
+	if err != nil {
+		return hostuser.Identity{}, 0, err
+	}
+	group, err := d.lookupGroup(hostuser.WebGroup)
+	if err != nil {
+		return hostuser.Identity{}, 0, fmt.Errorf("lookup web server group: %w", err)
+	}
+	webGID, err := strconv.Atoi(group.Gid)
+	if err != nil || webGID <= 0 {
+		return hostuser.Identity{}, 0, fmt.Errorf("invalid web server GID")
+	}
+	return identity, webGID, nil
 }
 
 func (d *Driver) validateAccount(accountID, systemUser string) error {

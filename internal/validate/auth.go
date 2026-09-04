@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -16,6 +17,7 @@ import (
 var (
 	idPattern         = regexp.MustCompile(`^[a-f0-9]{32}$`)
 	systemUserPattern = regexp.MustCompile(`^wcp_[a-f0-9]{12}$`)
+	usernamePattern   = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{2,31}$`)
 )
 
 const MaxDomainAliases = 100
@@ -49,6 +51,17 @@ func Name(value string) (string, error) {
 	return normalized, nil
 }
 
+func Username(value string) (string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if !usernamePattern.MatchString(normalized) {
+		return "", &Error{
+			Field: "username", Message: "Use 3 to 32 lowercase letters, numbers, dots, underscores or hyphens",
+		}
+	}
+
+	return normalized, nil
+}
+
 func Password(value string) error {
 	length := utf8.RuneCountInString(value)
 	if length < 12 || length > 128 {
@@ -56,6 +69,18 @@ func Password(value string) error {
 	}
 
 	return nil
+}
+
+func Timezone(value string) (string, error) {
+	normalized := strings.TrimSpace(value)
+	if normalized == "" || len(normalized) > 64 {
+		return "", &Error{Field: "timezone", Message: "Choose a valid timezone"}
+	}
+	if _, err := time.LoadLocation(normalized); err != nil {
+		return "", &Error{Field: "timezone", Message: "Choose a valid timezone"}
+	}
+
+	return normalized, nil
 }
 
 func AccountName(value string) (string, error) {

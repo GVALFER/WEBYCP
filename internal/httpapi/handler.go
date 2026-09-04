@@ -24,7 +24,6 @@ const sessionCookie = "webycp_session"
 
 type Options struct {
 	Version      string
-	WebDir       string
 	SecureCookie bool
 	Auth         *auth.Service
 	Accounts     *accounts.Service
@@ -55,11 +54,10 @@ func New(options Options) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/v1/health", h.health)
-	mux.HandleFunc("GET /api/v1/bootstrap", h.bootstrapState)
-	mux.HandleFunc("POST /api/v1/bootstrap", h.bootstrap)
 	mux.HandleFunc("POST /api/v1/auth/login", h.login)
 	mux.HandleFunc("POST /api/v1/auth/logout", h.withAuth(true, h.logout))
 	mux.HandleFunc("GET /api/v1/auth/me", h.withAuth(false, h.me))
+	mux.HandleFunc("PATCH /api/v1/auth/profile", h.withAuth(true, h.updateProfile))
 	mux.HandleFunc("GET /api/v1/accounts", h.withAuth(false, h.listAccounts))
 	mux.HandleFunc("POST /api/v1/accounts", h.withAuth(true, h.createAccount))
 	mux.HandleFunc("PATCH /api/v1/accounts/{accountId}", h.withAuth(true, h.setAccount))
@@ -108,10 +106,6 @@ func New(options Options) http.Handler {
 		writeError(w, http.StatusNotFound, "not_found", "API route not found")
 	})
 
-	if options.WebDir != "" {
-		mux.Handle("/", newSPA(options.WebDir))
-	}
-
 	return mux
 }
 
@@ -139,6 +133,13 @@ func (h *handler) withAuth(csrf bool, next authedHandler) http.HandlerFunc {
 			[]byte(r.Header.Get("X-CSRF-Token")), []byte(session.CSRFToken),
 		) != 1 {
 			writeError(w, http.StatusForbidden, "invalid_csrf", "The CSRF token is invalid")
+			return
+		}
+		if session.User.MustChangePassword &&
+			r.URL.Path != "/api/v1/auth/me" &&
+			r.URL.Path != "/api/v1/auth/logout" &&
+			r.URL.Path != "/api/v1/auth/profile" {
+			writeError(w, http.StatusForbidden, "password_change_required", "Change the temporary password to continue")
 			return
 		}
 

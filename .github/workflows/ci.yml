@@ -24,7 +24,7 @@ jobs:
             - name: Set up Node.js
               uses: actions/setup-node@v5
               with:
-                  node-version: "22"
+                  node-version: "24"
                   cache: npm
                   cache-dependency-path: web/package-lock.json
 
@@ -33,3 +33,26 @@ jobs:
 
             - name: Check project
               run: make check
+
+    security:
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Check out repository history
+              uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+
+            - name: Set up Go
+              uses: actions/setup-go@v6
+              with:
+                  go-version: "1.27.x"
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v5
+              with:
+                  node-version: "24"
+                  cache: npm
+                  cache-dependency-path: web/package-lock.json
+
+            - name: Scan dependencies and secrets
+              run: make security

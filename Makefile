@@ -1,6 +1,6 @@
 GO_PACKAGES := ./cmd/... ./internal/...
 
-.PHONY: build build-go build-web check check-packaging dev-agent dev-server dev-web fmt fmt-check generate lint release setup test typecheck
+.PHONY: build build-go build-web check check-packaging dev-agent dev-init dev-server dev-web fmt fmt-check generate lint release security setup test typecheck
 
 setup:
 	npm --prefix web install
@@ -41,16 +41,24 @@ build: build-go build-web
 
 check-packaging:
 	sh -n packaging/ubuntu/install.sh
+	sh -n packaging/ubuntu/upgrade.sh
 	sh -n scripts/release.sh
+	sh -n scripts/security.sh
 
 check: check-packaging fmt-check lint typecheck test build
+
+security:
+	./scripts/security.sh
 
 release:
 	@test -n "$(VERSION)" || { echo "VERSION is required, for example: make release VERSION=1.0.0"; exit 1; }
 	./scripts/release.sh "$(VERSION)" $(RELEASE_FLAGS)
 
 dev-server:
-	WEBYCP_DATABASE_PATH=var/dev.db WEBYCP_AGENT_SOCKET=/tmp/webycp-agent.sock WEBYCP_WEB_DIR=web/dist WEBYCP_SECURE_COOKIE=false go run ./cmd/webycp-server
+	WEBYCP_DATABASE_PATH=var/dev.db WEBYCP_AGENT_SOCKET=/tmp/webycp-agent.sock WEBYCP_SECURE_COOKIE=false go run ./cmd/webycp-server
+
+dev-init:
+	WEBYCP_DATABASE_PATH=var/dev.db go run ./cmd/webycp-server admin init
 
 dev-agent:
 	WEBYCP_AGENT_SOCKET=/tmp/webycp-agent.sock go run ./cmd/webycp-agent

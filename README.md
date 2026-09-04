@@ -2,16 +2,16 @@
 
 WEBYCP is a self-hosted, open-source hosting control panel for Ubuntu 24.04.
 
-The v1 feature implementation through local backup and restore is now present:
+The v1 feature and native packaging baseline is now present:
 
-- React/Vite SPA with HeroUI, Tailwind, Lucide, SWR, `reqly-js`, and
-  `urlstate-js`
+- Next.js App Router frontend with SSR, HeroUI, Tailwind, Lucide, SWR,
+  `reqly-js`, `urlstate-js`, and Valibot
 - Unprivileged Go REST API and a privileged Go Agent connected only through a
   protected Unix socket
 - OpenAPI-generated Go and TypeScript contracts
 - SQLite metadata, forward-only migrations, and typed `sqlc` queries
-- First-admin bootstrap, server-side sessions, CSRF protection, persistent
-  jobs, and audit events
+- Installer-generated temporary administrator credentials, mandatory first-login
+  password change, server-side sessions, CSRF protection, and audit events
 - Linux hosting account create, enable, disable, and recoverable delete
 - Domain and alias lifecycle with isolated Nginx and PHP-FPM 8.3 configuration
 - Let's Encrypt HTTP-01 certificates for hosted domains and the panel, DNS
@@ -22,18 +22,20 @@ The v1 feature implementation through local backup and restore is now present:
 - Scheduled and on-demand local backups with retention, SHA-256 verification,
   restore preview, and selective file/database/metadata restore
 
-Native Ubuntu packaging, hardening, and real-host acceptance are deliberately
-left for M8 and M9. See [plan.md](plan.md) for the complete scope and milestone
-status.
+Native Ubuntu packaging, hardening, and the external Ubuntu 24.04 lifecycle
+acceptance suite are complete. See [plan.md](plan.md) for the remaining release
+gate and full milestone status.
 
 ## Requirements
 
 - Go 1.27 or newer
-- Node.js 22 or newer
+- Node.js 24 or newer
 - npm 10 or newer
+- Docker with Buildx for Linux release creation
 
-Production releases will contain compiled Go binaries and static frontend
-assets, so these build tools will not be required on the managed host.
+Production releases contain compiled Go binaries, the Next.js standalone build,
+and its Linux Node.js runtime, so these build tools are not required on the
+managed host.
 
 ## Development
 
@@ -47,12 +49,16 @@ make generate
 Run the Agent, API, and frontend in separate terminals:
 
 ```sh
+make dev-init
 make dev-agent
 make dev-server
 make dev-web
 ```
 
-The frontend development server proxies `/api` to `127.0.0.1:8080`. Host
+`make dev-init` creates the local `admin` user once and prints its temporary
+password. Complete the profile and replace that password on the first login.
+
+The Next.js development server proxies `/api` to `127.0.0.1:8080`. Host
 mutations require the expected Ubuntu services and root Agent permissions;
 ordinary UI development and automated tests do not.
 
@@ -64,8 +70,8 @@ make check
 
 ## Production installation
 
-Production installation consumes a release containing Linux amd64 binaries and
-the compiled frontend. On Ubuntu 24.04, run:
+Production installation consumes a release containing Linux amd64 binaries,
+the standalone Next.js frontend, and its Node.js runtime. On Ubuntu 24.04, run:
 
 ```sh
 sudo ./packaging/ubuntu/install.sh
@@ -79,16 +85,21 @@ make release VERSION=0.1.0
 ```
 
 The result is written to `dist/webycp-0.1.0-linux-amd64.tar.gz`. The build uses
-the locked frontend dependencies, static Go binaries, normalized archive
+the locked frontend dependencies, static Go binaries, a Linux Next.js runtime,
+normalized archive
 metadata, the current commit timestamp, and the current commit identifier.
 
-The initial panel is available on `https://SERVER_IP:8443` with a temporary
-self-signed certificate. See the [Ubuntu packaging guide](packaging/README.md)
-for the installed services, paths, permissions, and bootstrap TLS flow.
+The installer prints the initial `admin` username and a generated temporary
+password. The panel is then available on `https://SERVER_IP:8443` with a
+temporary self-signed certificate and requires a new password on first login.
+See the [Ubuntu packaging guide](packaging/README.md) for installation, atomic
+upgrades, recovery, installed paths, permissions, and the bootstrap TLS flow.
+Use the [operations runbook](docs/operations.md) for credential, backup,
+restore, certificate, Agent, and full-host recovery procedures.
 
 ## REST resources
 
-- Bootstrap and authentication: `/api/v1/bootstrap`, `/api/v1/auth/*`
+- Authentication and administrator profile: `/api/v1/auth/*`
 - Nodes and jobs: `/api/v1/nodes`, `/api/v1/jobs`
 - Hosting accounts: `/api/v1/accounts`
 - Domains and aliases: `/api/v1/domains`, `/api/v1/domains/{domainId}/aliases`
@@ -116,6 +127,19 @@ Never commit server credentials, private keys, generated certificates, backup
 artifacts, or production environment files. The public API must not run as
 root. Rotate any credential that has been shared through chat before external
 host testing.
+
+Run the security baseline locally with:
+
+```sh
+make security
+```
+
+It checks reachable Go vulnerabilities, production frontend dependencies, the
+complete Git history, and the current working tree. Release archives receive a
+separate secret scan before their checksum is published. Scanner versions are
+pinned in `scripts/security.sh`. If the npm audit endpoint is unavailable, a
+pinned OSV Scanner image checks the lockfile instead; if neither scan can run,
+the check fails closed.
 
 ## License
 

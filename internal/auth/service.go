@@ -5,14 +5,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/GVALFER/WEBYCP/internal/idgen"
+	"github.com/GVALFER/WEBYCP/internal/secret"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
 
-const sessionTTL = 24 * time.Hour
+const (
+	sessionTTL  = 24 * time.Hour
+	initialUser = "admin"
+)
 
 type Service struct {
 	repository Repository
@@ -22,42 +25,41 @@ func NewService(repository Repository) *Service {
 	return &Service{repository: repository}
 }
 
-func (s *Service) BootstrapRequired(ctx context.Context) (bool, error) {
+func (s *Service) InitAdmin(ctx context.Context) (Credentials, bool, error) {
 	count, err := s.repository.UserCount(ctx)
 	if err != nil {
-		return false, fmt.Errorf("count users: %w", err)
+		return Credentials{}, false, fmt.Errorf("count users: %w", err)
 	}
-
-	return count == 0, nil
+	if count != 0 {
+		return Credentials{}, false, nil
+	}
+	password, err := secret.Generate(24)
+	if err != nil {
+		return Credentials{}, false, err
+	}
+	user, passwordHash, err := prepareUser(
+		initialUser, "Administrator", "admin@localhost.invalid", password, true,
+	)
+	if err != nil {
+		return Credentials{}, false, err
+	}
+	created, err := s.repository.InitAdmin(ctx, newUser(user, passwordHash))
+	if err != nil {
+		return Credentials{}, false, err
+	}
+	if !created {
+		return Credentials{}, false, nil
+	}
+	return Credentials{Username: user.Username, Password: password}, true, nil
 }
 
-func (s *Service) Bootstrap(ctx context.Context, name, email, password string) (Session, error) {
-	user, passwordHash, err := prepareUser(name, email, password)
+func (s *Service) Login(ctx context.Context, username, password string) (Session, error) {
+	normalized, err := validate.Username(username)
 	if err != nil {
-		return Session{}, err
+		_, _ = HashPassword(password)
+		return Session{}, ErrInvalidCredentials
 	}
-
-	session, record, err := newSession(user)
-	if err != nil {
-		return Session{}, err
-	}
-	if err := s.repository.Bootstrap(ctx, NewUser{
-		ID:           user.ID,
-		Email:        user.Email,
-		Name:         user.Name,
-		PasswordHash: passwordHash,
-		Role:         user.Role,
-		CreatedAt:    user.CreatedAt,
-	}, record); err != nil {
-		return Session{}, err
-	}
-
-	return session, nil
-}
-
-func (s *Service) Login(ctx context.Context, email, password string) (Session, error) {
-	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
-	user, err := s.repository.UserByEmail(ctx, normalizedEmail)
+	user, err := s.repository.UserByUsername(ctx, normalized)
 	if err != nil {
 		// Keep unknown users close to the same Argon2 cost as wrong passwords.
 		_, _ = HashPassword(password)
@@ -76,6 +78,87 @@ func (s *Service) Login(ctx context.Context, email, password string) (Session, e
 	}
 
 	return session, nil
+}
+
+func (s *Service) UpdateProfile(
+	ctx context.Context,
+	session Session,
+	username, name, email, timezone, currentPassword, password string,
+) (Session, error) {
+	normalizedUsername, err := validate.Username(username)
+	if err != nil {
+		return Session{}, err
+	}
+	normalizedName, err := validate.Name(name)
+	if err != nil {
+		return Session{}, err
+	}
+	normalizedEmail, err := validate.Email(email)
+	if err != nil {
+		return Session{}, err
+	}
+	normalizedTimezone, err := validate.Timezone(timezone)
+	if err != nil {
+		return Session{}, err
+	}
+	record, err := s.repository.UserRecordByID(ctx, session.User.ID)
+	if err != nil {
+		return Session{}, ErrUnauthorized
+	}
+	passwordHash := ""
+	if record.MustChangePassword && password == "" {
+		return Session{}, &validate.Error{Field: "password", Message: "Choose a new password"}
+	}
+	if currentPassword != "" && password == "" {
+		return Session{}, &validate.Error{Field: "password", Message: "Enter a new password"}
+	}
+	if password != "" {
+		if err := validate.Password(password); err != nil {
+			return Session{}, err
+		}
+		if record.MustChangePassword {
+			if VerifyPassword(password, record.PasswordHash) {
+				return Session{}, &validate.Error{Field: "password", Message: "Choose a different password"}
+			}
+		} else if !VerifyPassword(currentPassword, record.PasswordHash) {
+			return Session{}, ErrCurrentPassword
+		}
+		passwordHash, err = HashPassword(password)
+		if err != nil {
+			return Session{}, err
+		}
+	}
+	user, err := s.repository.UpdateProfile(ctx, UserUpdate{
+		ID: session.User.ID, SessionID: session.ID,
+		Username: normalizedUsername, Name: normalizedName, Email: normalizedEmail,
+		Timezone:     normalizedTimezone,
+		PasswordHash: passwordHash, UpdatedAt: time.Now().UTC(),
+	})
+	if err != nil {
+		return Session{}, err
+	}
+	session.User = user
+	return session, nil
+}
+
+func (s *Service) ResetPassword(ctx context.Context, username string) (Credentials, error) {
+	normalized, err := validate.Username(username)
+	if err != nil {
+		return Credentials{}, err
+	}
+	password, err := secret.Generate(24)
+	if err != nil {
+		return Credentials{}, err
+	}
+	hash, err := HashPassword(password)
+	if err != nil {
+		return Credentials{}, err
+	}
+	user, err := s.repository.ResetPassword(ctx, normalized, hash, time.Now().UTC())
+	if err != nil {
+		return Credentials{}, err
+	}
+	return Credentials{Username: user.Username, Password: password}, nil
 }
 
 func (s *Service) Authenticate(ctx context.Context, token string) (Session, error) {
@@ -108,7 +191,14 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 	return s.repository.DeleteSession(ctx, tokenHash(token))
 }
 
-func prepareUser(name, email, password string) (User, string, error) {
+func prepareUser(
+	username, name, email, password string,
+	mustChangePassword bool,
+) (User, string, error) {
+	normalizedUsername, err := validate.Username(username)
+	if err != nil {
+		return User{}, "", err
+	}
 	normalizedName, err := validate.Name(name)
 	if err != nil {
 		return User{}, "", err
@@ -134,12 +224,18 @@ func prepareUser(name, email, password string) (User, string, error) {
 	}
 
 	return User{
-		ID:        id,
-		Email:     normalizedEmail,
-		Name:      normalizedName,
-		Role:      "admin",
+		ID: id, Username: normalizedUsername, Email: normalizedEmail,
+		Name: normalizedName, Timezone: "UTC", Role: "admin", MustChangePassword: mustChangePassword,
 		CreatedAt: time.Now().UTC(),
 	}, passwordHash, nil
+}
+
+func newUser(user User, passwordHash string) NewUser {
+	return NewUser{
+		ID: user.ID, Username: user.Username, Email: user.Email, Name: user.Name,
+		PasswordHash: passwordHash, Role: user.Role,
+		MustChangePassword: user.MustChangePassword, CreatedAt: user.CreatedAt,
+	}
 }
 
 func newSession(user User) (Session, NewSession, error) {

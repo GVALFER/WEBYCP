@@ -65,33 +65,39 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     id,
+    username,
     email,
     name,
     password_hash,
     role,
+    must_change_password,
     created_at,
     updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?)
-RETURNING id, email, name, password_hash, role, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, email, name, password_hash, role, created_at, updated_at, username, must_change_password, timezone
 `
 
 type CreateUserParams struct {
-	ID           string `json:"id"`
-	Email        string `json:"email"`
-	Name         string `json:"name"`
-	PasswordHash string `json:"password_hash"`
-	Role         string `json:"role"`
-	CreatedAt    int64  `json:"created_at"`
-	UpdatedAt    int64  `json:"updated_at"`
+	ID                 string `json:"id"`
+	Username           string `json:"username"`
+	Email              string `json:"email"`
+	Name               string `json:"name"`
+	PasswordHash       string `json:"password_hash"`
+	Role               string `json:"role"`
+	MustChangePassword int64  `json:"must_change_password"`
+	CreatedAt          int64  `json:"created_at"`
+	UpdatedAt          int64  `json:"updated_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, createUser,
 		arg.ID,
+		arg.Username,
 		arg.Email,
 		arg.Name,
 		arg.PasswordHash,
 		arg.Role,
+		arg.MustChangePassword,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -104,6 +110,9 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Username,
+		&i.MustChangePassword,
+		&i.Timezone,
 	)
 	return i, err
 }
@@ -120,6 +129,20 @@ func (q *Queries) DeleteExpiredSessions(ctx context.Context, expiresAt int64) (i
 	return result.RowsAffected()
 }
 
+const deleteOtherUserSessions = `-- name: DeleteOtherUserSessions :exec
+DELETE FROM sessions WHERE user_id = ? AND id != ?
+`
+
+type DeleteOtherUserSessionsParams struct {
+	UserID string `json:"user_id"`
+	ID     string `json:"id"`
+}
+
+func (q *Queries) DeleteOtherUserSessions(ctx context.Context, arg DeleteOtherUserSessionsParams) error {
+	_, err := q.db.ExecContext(ctx, deleteOtherUserSessions, arg.UserID, arg.ID)
+	return err
+}
+
 const deleteSessionByTokenHash = `-- name: DeleteSessionByTokenHash :exec
 DELETE FROM sessions WHERE token_hash = ?
 `
@@ -127,6 +150,33 @@ DELETE FROM sessions WHERE token_hash = ?
 func (q *Queries) DeleteSessionByTokenHash(ctx context.Context, tokenHash string) error {
 	_, err := q.db.ExecContext(ctx, deleteSessionByTokenHash, tokenHash)
 	return err
+}
+
+const deleteUserSessions = `-- name: DeleteUserSessions :exec
+DELETE FROM sessions WHERE user_id = ?
+`
+
+func (q *Queries) DeleteUserSessions(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteUserSessions, userID)
+	return err
+}
+
+const emailExistsExcept = `-- name: EmailExistsExcept :one
+SELECT EXISTS(
+    SELECT 1 FROM users WHERE email = ? AND id != ?
+)
+`
+
+type EmailExistsExceptParams struct {
+	Email string `json:"email"`
+	ID    string `json:"id"`
+}
+
+func (q *Queries) EmailExistsExcept(ctx context.Context, arg EmailExistsExceptParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, emailExistsExcept, arg.Email, arg.ID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
@@ -154,27 +204,8 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, arg GetSessionByTok
 	return i, err
 }
 
-const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, password_hash, role, created_at, updated_at FROM users WHERE email = ? LIMIT 1
-`
-
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.Name,
-		&i.PasswordHash,
-		&i.Role,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, password_hash, role, created_at, updated_at FROM users WHERE id = ? LIMIT 1
+SELECT id, email, name, password_hash, role, created_at, updated_at, username, must_change_password, timezone FROM users WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
@@ -188,6 +219,127 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Username,
+		&i.MustChangePassword,
+		&i.Timezone,
 	)
 	return i, err
+}
+
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT id, email, name, password_hash, role, created_at, updated_at, username, must_change_password, timezone FROM users WHERE username = ? LIMIT 1
+`
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByUsername, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.PasswordHash,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Username,
+		&i.MustChangePassword,
+		&i.Timezone,
+	)
+	return i, err
+}
+
+const updateUserPassword = `-- name: UpdateUserPassword :one
+UPDATE users
+SET password_hash = ?, must_change_password = ?, updated_at = ?
+WHERE id = ?
+RETURNING id, email, name, password_hash, role, created_at, updated_at, username, must_change_password, timezone
+`
+
+type UpdateUserPasswordParams struct {
+	PasswordHash       string `json:"password_hash"`
+	MustChangePassword int64  `json:"must_change_password"`
+	UpdatedAt          int64  `json:"updated_at"`
+	ID                 string `json:"id"`
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserPassword,
+		arg.PasswordHash,
+		arg.MustChangePassword,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.PasswordHash,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Username,
+		&i.MustChangePassword,
+		&i.Timezone,
+	)
+	return i, err
+}
+
+const updateUserProfile = `-- name: UpdateUserProfile :one
+UPDATE users
+SET username = ?, name = ?, email = ?, timezone = ?, updated_at = ?
+WHERE id = ?
+RETURNING id, email, name, password_hash, role, created_at, updated_at, username, must_change_password, timezone
+`
+
+type UpdateUserProfileParams struct {
+	Username  string `json:"username"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Timezone  string `json:"timezone"`
+	UpdatedAt int64  `json:"updated_at"`
+	ID        string `json:"id"`
+}
+
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserProfile,
+		arg.Username,
+		arg.Name,
+		arg.Email,
+		arg.Timezone,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.PasswordHash,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Username,
+		&i.MustChangePassword,
+		&i.Timezone,
+	)
+	return i, err
+}
+
+const usernameExistsExcept = `-- name: UsernameExistsExcept :one
+SELECT EXISTS(
+    SELECT 1 FROM users WHERE username = ? AND id != ?
+)
+`
+
+type UsernameExistsExceptParams struct {
+	Username string `json:"username"`
+	ID       string `json:"id"`
+}
+
+func (q *Queries) UsernameExistsExcept(ctx context.Context, arg UsernameExistsExceptParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, usernameExistsExcept, arg.Username, arg.ID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }

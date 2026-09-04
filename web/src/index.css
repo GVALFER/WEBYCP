@@ -2,102 +2,102 @@
 @import "@heroui/styles";
 
 :root {
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-  background: var(--background);
+    font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    background: var(--background);
 }
 
 body {
-  min-width: 320px;
-  min-height: 100vh;
-  margin: 0;
-  background:
-    radial-gradient(
-      circle at 85% -10%,
-      color-mix(in oklab, var(--accent) 9%, transparent),
-      transparent 30rem
-    ),
-    var(--background);
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    background:
+        radial-gradient(
+            circle at 85% -10%,
+            color-mix(in oklab, var(--accent) 9%, transparent),
+            transparent 30rem
+        ),
+        var(--background);
 }
 
 button,
 a {
-  -webkit-tap-highlight-color: transparent;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .panel-card,
 .metric-card {
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  background: color-mix(in oklab, var(--surface) 94%, transparent);
-  box-shadow:
-    0 1px 0 color-mix(in oklab, var(--foreground) 4%, transparent) inset,
-    0 18px 45px rgb(0 0 0 / 12%);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: color-mix(in oklab, var(--surface) 94%, transparent);
+    box-shadow:
+        0 1px 0 color-mix(in oklab, var(--foreground) 4%, transparent) inset,
+        0 18px 45px rgb(0 0 0 / 12%);
 }
 
 .metric-card {
-  min-height: 9.5rem;
-  padding: 1.25rem;
+    min-height: 9.5rem;
+    padding: 1.25rem;
 }
 
 .icon-box {
-  display: flex;
-  width: 2.5rem;
-  height: 2.5rem;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  background: var(--surface-secondary);
-  color: var(--muted);
+    display: flex;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--surface-secondary);
+    color: var(--muted);
 }
 
 .auth-shell {
-  position: relative;
-  isolation: isolate;
-  background:
-    linear-gradient(
-      120deg,
-      color-mix(in oklab, var(--surface) 75%, transparent),
-      transparent 58%
-    ),
-    var(--background);
+    position: relative;
+    isolation: isolate;
+    background:
+        linear-gradient(
+            120deg,
+            color-mix(in oklab, var(--surface) 75%, transparent),
+            transparent 58%
+        ),
+        var(--background);
 }
 
 .auth-shell::before {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  background-image:
-    linear-gradient(
-      color-mix(in oklab, var(--foreground) 3%, transparent) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      90deg,
-      color-mix(in oklab, var(--foreground) 3%, transparent) 1px,
-      transparent 1px
-    );
-  background-size: 4rem 4rem;
-  mask-image: linear-gradient(to right, black, transparent 72%);
-  content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background-image:
+        linear-gradient(
+            color-mix(in oklab, var(--foreground) 3%, transparent) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            color-mix(in oklab, var(--foreground) 3%, transparent) 1px,
+            transparent 1px
+        );
+    background-size: 4rem 4rem;
+    mask-image: linear-gradient(to right, black, transparent 72%);
+    content: "";
 }
 
 .auth-glow {
-  position: absolute;
-  top: 25%;
-  left: 18%;
-  width: 26rem;
-  height: 26rem;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--accent) 12%, transparent);
-  filter: blur(90px);
-  pointer-events: none;
+    position: absolute;
+    top: 25%;
+    left: 18%;
+    width: 26rem;
+    height: 26rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--accent) 12%, transparent);
+    filter: blur(90px);
+    pointer-events: none;
 }

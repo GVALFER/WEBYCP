@@ -6,14 +6,12 @@ const (
 	defaultServerAddr   = "127.0.0.1:8080"
 	defaultDatabasePath = "/var/lib/webycp/server/webycp.db"
 	defaultAgentSocket  = "/run/webycp/agent.sock"
-	defaultWebDir       = "/usr/share/webycp/web"
 )
 
 type Server struct {
 	Addr         string
 	DatabasePath string
 	AgentSocket  string
-	WebDir       string
 	SecureCookie bool
 }
 
@@ -22,7 +20,6 @@ func ServerFromEnv() Server {
 		Addr:         envx.String("WEBYCP_SERVER_ADDR", defaultServerAddr),
 		DatabasePath: envx.String("WEBYCP_DATABASE_PATH", defaultDatabasePath),
 		AgentSocket:  envx.String("WEBYCP_AGENT_SOCKET", defaultAgentSocket),
-		WebDir:       envx.String("WEBYCP_WEB_DIR", defaultWebDir),
 		SecureCookie: envx.Bool("WEBYCP_SECURE_COOKIE", true),
 	}
 }

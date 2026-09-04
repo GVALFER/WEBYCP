@@ -68,18 +68,26 @@ check_source() {
     for path in \
         bin/webycp-agent \
         bin/webycp-server \
-        web/dist/index.html \
+        runtime/node \
+        web/server.js \
         packaging/nginx/panel-bootstrap.conf \
         packaging/nginx/webycp.conf \
         packaging/systemd/webycp-agent.service \
         packaging/systemd/webycp-server.service \
+        packaging/systemd/webycp-web.service \
         packaging/ubuntu/agent.env.example \
-        packaging/ubuntu/server.env.example
+        packaging/ubuntu/server.env.example \
+        packaging/ubuntu/upgrade.sh \
+        packaging/ubuntu/web.env.example \
+        VERSION
     do
         [ -f "$SOURCE_DIR/$path" ] || fail "release file is missing: $path"
     done
     check_binary "$SOURCE_DIR/bin/webycp-agent"
     check_binary "$SOURCE_DIR/bin/webycp-server"
+    check_binary "$SOURCE_DIR/runtime/node"
+    [ -d "$SOURCE_DIR/web/.next/static" ] ||
+        fail "release directory is missing: web/.next/static"
 }
 
 install_packages() {
@@ -163,8 +171,10 @@ install_release() {
     log "Installing WEBYCP release files"
     install_atomic "$SOURCE_DIR/bin/webycp-agent" /usr/lib/webycp/webycp-agent 0755 root root
     install_atomic "$SOURCE_DIR/bin/webycp-server" /usr/lib/webycp/webycp-server 0755 root root
+    install_atomic "$SOURCE_DIR/runtime/node" /usr/lib/webycp/node 0755 root root
+    install_atomic "$SOURCE_DIR/VERSION" /usr/lib/webycp/VERSION 0644 root root
 
-    cp -a "$SOURCE_DIR/web/dist/." /usr/share/webycp/web/
+    cp -a "$SOURCE_DIR/web/." /usr/share/webycp/web/
     chown -R root:root /usr/share/webycp/web
     find /usr/share/webycp/web -type d -exec chmod 0755 {} +
     find /usr/share/webycp/web -type f -exec chmod 0644 {} +
@@ -175,6 +185,9 @@ install_release() {
     install_atomic \
         "$SOURCE_DIR/packaging/systemd/webycp-server.service" \
         /usr/lib/systemd/system/webycp-server.service 0644 root root
+    install_atomic \
+        "$SOURCE_DIR/packaging/systemd/webycp-web.service" \
+        /usr/lib/systemd/system/webycp-web.service 0644 root root
 }
 
 ensure_config() {
@@ -202,6 +215,9 @@ install_config() {
     ensure_config \
         "$SOURCE_DIR/packaging/ubuntu/server.env.example" \
         /etc/webycp/server.env 0640 root webycp
+    ensure_config \
+        "$SOURCE_DIR/packaging/ubuntu/web.env.example" \
+        /etc/webycp/web.env 0640 root webycp
 }
 
 ensure_bootstrap_certificate() {
@@ -291,6 +307,16 @@ install_nginx() {
     fi
 }
 
+ensure_admin() {
+    if [ "$START_SERVICES" = false ]; then
+        log "Administrator initialization skipped; run webycp-server admin init before first startup"
+        return
+    fi
+    log "Initializing the administrator account"
+    /usr/sbin/runuser -u webycp -- \
+        /usr/lib/webycp/webycp-server admin init
+}
+
 wait_for_socket() {
     attempts=0
     while [ "$attempts" -lt 20 ]; do
@@ -314,6 +340,19 @@ wait_for_server() {
     fail "Server health endpoint did not become ready"
 }
 
+wait_for_web() {
+    attempts=0
+    while [ "$attempts" -lt 20 ]; do
+        if curl --fail --silent --show-error \
+            http://127.0.0.1:3000/login >/dev/null 2>&1; then
+            return
+        fi
+        attempts=$((attempts + 1))
+        sleep 1
+    done
+    fail "Web frontend did not become ready"
+}
+
 start_services() {
     if [ "$START_SERVICES" = false ]; then
         log "Files installed; service startup was skipped"
@@ -324,12 +363,14 @@ start_services() {
 
     log "Enabling and starting services"
     systemctl daemon-reload
-    systemctl enable nginx mysql php8.3-fpm cron webycp-agent webycp-server >/dev/null
+    systemctl enable nginx mysql php8.3-fpm cron webycp-agent webycp-server webycp-web >/dev/null
     systemctl start nginx mysql php8.3-fpm cron
     systemctl restart webycp-agent
     wait_for_socket
     systemctl restart webycp-server
     wait_for_server
+    systemctl restart webycp-web
+    wait_for_web
     systemctl reload nginx
 }
 
@@ -343,9 +384,10 @@ main() {
     install_release
     install_config
     install_nginx
+    ensure_admin
     start_services
     log "Installation complete"
-    log "Bootstrap URL: https://SERVER_IP:8443"
+    log "Panel URL: https://SERVER_IP:8443"
 }
 
 main

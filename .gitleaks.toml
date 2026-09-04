@@ -1,0 +1,15 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Next.js generated build keys"
+paths = [
+  '''(^|/)web/\.next/cache/\.(previewinfo|rscinfo)$''',
+  '''(^|/)web/\.next/(standalone/\.next/)?prerender-manifest\.json$''',
+  '''(^|/)web/\.next/(standalone/\.next/)?server/server-reference-manifest\.json$''',
+]
+
+[[allowlists]]
+description = "Minified keyboard modifier false positive"
+regexTarget = "match"
+regexes = ['''r\.metaKey,''']

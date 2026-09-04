@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
@@ -15,7 +16,73 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 )
 
-func TestOpenRunsMigrationsAndPersistsBootstrap(t *testing.T) {
+func TestAdminCredentialMigrationPreservesExistingLogin(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "webycp.db")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.ExecContext(ctx, `
+		CREATE TABLE schema_migrations (name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL);
+		CREATE TABLE users (
+			id TEXT PRIMARY KEY,
+			email TEXT NOT NULL COLLATE NOCASE UNIQUE,
+			name TEXT NOT NULL,
+			password_hash TEXT NOT NULL,
+			role TEXT NOT NULL CHECK (role IN ('admin', 'user')),
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL
+		);
+		CREATE TABLE sessions (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			token_hash TEXT NOT NULL UNIQUE,
+			csrf_token TEXT NOT NULL,
+			expires_at INTEGER NOT NULL,
+			created_at INTEGER NOT NULL
+		);
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{
+		"0001_control_plane.sql", "0002_domains.sql", "0003_domain_lifecycle.sql",
+		"0004_domain_names.sql", "0005_v1_resources.sql",
+	} {
+		if _, err := db.ExecContext(ctx, "INSERT INTO schema_migrations VALUES (?, unixepoch())", name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	passwordHash, err := auth.HashPassword("existing secure password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO users VALUES (?, ?, ?, ?, 'admin', unixepoch(), unixepoch())
+	`, "0123456789abcdef0123456789abcdef", "admin@example.com", "Admin", passwordHash); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	store, err := Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	service := auth.NewService(store)
+	session, err := service.Login(ctx, "admin", "existing secure password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.User.Username != "admin" || session.User.Timezone != "UTC" || session.User.MustChangePassword {
+		t.Fatalf("migrated user = %+v", session.User)
+	}
+}
+
+func TestOpenRunsMigrationsAndPersistsAdmin(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "webycp.db")
 	store, err := Open(ctx, path)
@@ -24,23 +91,17 @@ func TestOpenRunsMigrationsAndPersistsBootstrap(t *testing.T) {
 	}
 
 	now := time.Now().UTC()
-	err = store.Bootstrap(ctx, auth.NewUser{
+	created, err := store.InitAdmin(ctx, auth.NewUser{
 		ID:           "user-1",
+		Username:     "admin",
 		Email:        "admin@example.com",
 		Name:         "Admin",
 		PasswordHash: "hash",
 		Role:         "admin",
 		CreatedAt:    now,
-	}, auth.NewSession{
-		ID:        "session-1",
-		UserID:    "user-1",
-		TokenHash: "token-hash",
-		CSRFToken: "csrf-token",
-		ExpiresAt: now.Add(time.Hour),
-		CreatedAt: now,
 	})
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || !created {
+		t.Fatalf("create admin: created=%v, error=%v", created, err)
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
@@ -152,8 +213,8 @@ func TestV1ResourceStoresCreateAtomically(t *testing.T) {
 	}
 	defer store.Close()
 	now := time.Now().UTC()
-	if err := store.Bootstrap(ctx, auth.NewUser{ID: "user-1", Email: "admin@example.com", Name: "Admin", PasswordHash: "hash", Role: "admin", CreatedAt: now}, auth.NewSession{ID: "session-1", UserID: "user-1", TokenHash: "hash", CSRFToken: "csrf", ExpiresAt: now.Add(time.Hour), CreatedAt: now}); err != nil {
-		t.Fatal(err)
+	if created, err := store.InitAdmin(ctx, auth.NewUser{ID: "user-1", Username: "admin", Email: "admin@example.com", Name: "Admin", PasswordHash: "hash", Role: "admin", CreatedAt: now}); err != nil || !created {
+		t.Fatalf("create admin: created=%v, error=%v", created, err)
 	}
 	node, err := store.EnsureLocal(ctx, "test", "/tmp/test-agent.sock")
 	if err != nil {

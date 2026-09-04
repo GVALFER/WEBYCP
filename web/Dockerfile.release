@@ -1,0 +1,21 @@
+FROM node@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS build
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+COPY . ./
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV WEBYCP_API_URL=http://127.0.0.1:8080
+
+RUN npm run build
+RUN mkdir -p /release/web/.next /release/runtime \
+    && cp -a .next/standalone/. /release/web/ \
+    && cp -a .next/static /release/web/.next/static \
+    && if [ -d public ]; then cp -a public /release/web/public; fi \
+    && cp /usr/local/bin/node /release/runtime/node
+
+FROM scratch
+COPY --from=build /release /

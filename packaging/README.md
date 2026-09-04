@@ -16,8 +16,9 @@ cd webycp-0.1.0-linux-amd64
 sudo ./packaging/ubuntu/install.sh
 ```
 
-The extracted release contains Linux amd64 binaries under `bin/` and the Vite
-production build under `web/dist/`. The installer also accepts `--source DIR`
+The extracted release contains Linux amd64 binaries under `bin/`, a bundled
+Node.js executable under `runtime/`, and the Next.js standalone build under
+`web/`. The installer also accepts `--source DIR`
 when the release files live elsewhere. Run:
 
 ```sh
@@ -25,38 +26,86 @@ sudo ./packaging/ubuntu/install.sh
 ```
 
 `--no-start` installs and validates the files without enabling or starting
-services; it is intended only for image construction and automated tests.
+services; it is intended only for image construction and automated tests. It
+does not create the administrator, preventing temporary credentials from being
+captured in image-build logs. Before the first service startup, initialize it
+inside the provisioned server:
 
-The first login is available at `https://SERVER_IP:8443` using a temporary
-self-signed certificate. Port 8443 is isolated from hosted websites. After a
-panel hostname resolves to the server, issue its Let's Encrypt certificate in
-the UI; the Agent then replaces the bootstrap listener with the final HTTPS
-listener on port 443.
+```sh
+sudo /usr/sbin/runuser -u webycp -- \
+    /usr/lib/webycp/webycp-server admin init
+```
+
+The installer creates the initial `admin` user and prints a random temporary
+password once. Sign in at `https://SERVER_IP:8443`, complete the administrator
+name and email, and replace the temporary password before the rest of the panel
+becomes available. Port 8443 uses a temporary self-signed certificate and is
+isolated from hosted websites. After a panel hostname resolves to the server,
+issue its Let's Encrypt certificate in the UI; the Agent then replaces the
+bootstrap listener with the final HTTPS listener on port 443.
 
 The installer is idempotent and preserves existing environment files and
 WEBYCP-managed Nginx panel configuration. It stops on conflicting identities,
 symlinks, or configuration owned by another application.
 
+## Upgrade and recovery
+
+Verify and extract the new release beside its `.sha256` file, then run the
+preflight and upgrade from the extracted directory:
+
+```sh
+sudo ./packaging/ubuntu/upgrade.sh --check
+sudo ./packaging/ubuntu/upgrade.sh
+```
+
+The upgrade requires a healthy existing installation. It stops only the WEBYCP
+Web, Server, and Agent services, then snapshots the current binaries, frontend,
+systemd units, web environment, panel Nginx configuration, and SQLite state.
+Database migrations run as the unprivileged `webycp` user before the services
+start. Nginx is validated, the Agent socket, Server API, and Next.js frontend
+must become ready, and the running version must match the release marker.
+
+If any step fails after shutdown, the command automatically restores the
+snapshot and restarts the previous version. Successful upgrade snapshots remain
+under `/var/lib/webycp/upgrades` with mode `0700`. To recover one explicitly:
+
+```sh
+sudo ./packaging/ubuntu/upgrade.sh \
+    --recover /var/lib/webycp/upgrades/EXACT_BACKUP_DIRECTORY
+```
+
+Recovery accepts only an exact snapshot directory below that root and creates a
+new safety snapshot before changing the installation. Agent/Server
+configuration, certificates, customer home directories, and backup artifacts
+are not replaced by either operation.
+
+For health checks, account restore, certificate troubleshooting, Agent recovery,
+and the full-host recovery boundary, follow the
+[operations runbook](../docs/operations.md).
+
 ## Service boundary
 
 - `webycp-server` runs as the unprivileged `webycp` user with no Linux
   capabilities. It can write only its private state directory.
+- `webycp-web` runs the bundled Next.js standalone server as the same
+  unprivileged user and forwards API requests to the loopback Go service.
 - `webycp-agent` runs as root because it owns the narrow, typed host operations.
   Its Unix socket is available to the `webycp` group and is never exposed over
   TCP.
 - The Agent keeps permission to create set-group-ID customer directories; that
   permission is required by the hosted-site ownership model.
-- Both services write structured logs to stdout for collection by journald.
+- All three services write logs to stdout for collection by journald.
 
 ## Filesystem layout
 
 | Path | Owner | Mode | Purpose |
 | --- | --- | --- | --- |
-| `/usr/lib/webycp` | `root:root` | `0755` | Server and Agent binaries |
-| `/usr/share/webycp/web` | `root:root` | `0755` | React production build |
+| `/usr/lib/webycp` | `root:root` | `0755` | Server, Agent, and bundled Node.js binaries |
+| `/usr/share/webycp/web` | `root:root` | `0755` | Next.js standalone production build |
 | `/etc/webycp` | `root:webycp` | `0750` | Service environment files |
 | `/etc/webycp/bootstrap` | `root:root` | `0700` | Temporary bootstrap TLS material |
 | `/var/lib/webycp/server` | `webycp:webycp` | `0700` | SQLite database and WAL files |
+| `/var/lib/webycp/upgrades` | `root:root` | `0700` | Upgrade and recovery snapshots |
 | `/home/.webycp-trash` | `root:root` | `0700` | Recoverable deleted accounts on the hosting filesystem |
 | `/var/lib/webycp/acme` | `root:webycp` | `0755` | HTTP-01 challenge webroot |
 | `/var/backups/webycp` | `root:root` | `0700` | Local backup artifacts |
@@ -64,5 +113,5 @@ symlinks, or configuration owned by another application.
 | `/run/webycp/agent.sock` | `root:webycp` | `0660` | Private Server-Agent transport |
 
 The installer must create the `webycp` system user and group before enabling
-the units. `server.env` must be owned by `root:webycp` with mode `0640`;
-`agent.env` must be owned by `root:root` with mode `0600`.
+the units. `server.env` and `web.env` must be owned by `root:webycp` with mode
+`0640`; `agent.env` must be owned by `root:root` with mode `0600`.

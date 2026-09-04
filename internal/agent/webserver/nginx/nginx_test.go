@@ -225,7 +225,7 @@ func TestPanelChallengeKeepsHTTPPanelAvailable(t *testing.T) {
 		string(bootstrap),
 		"server_name panel.example.com;",
 		"location ^~ /.well-known/acme-challenge/",
-		"proxy_pass http://127.0.0.1:8080;",
+		"proxy_pass http://127.0.0.1:3000;",
 	} {
 		if !strings.Contains(config, expected) {
 			t.Fatalf("panel challenge config is missing %q:\n%s", expected, config)

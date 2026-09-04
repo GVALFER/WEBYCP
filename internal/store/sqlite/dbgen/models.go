@@ -211,11 +211,14 @@ type Session struct {
 }
 
 type User struct {
-	ID           string `json:"id"`
-	Email        string `json:"email"`
-	Name         string `json:"name"`
-	PasswordHash string `json:"password_hash"`
-	Role         string `json:"role"`
-	CreatedAt    int64  `json:"created_at"`
-	UpdatedAt    int64  `json:"updated_at"`
+	ID                 string `json:"id"`
+	Email              string `json:"email"`
+	Name               string `json:"name"`
+	PasswordHash       string `json:"password_hash"`
+	Role               string `json:"role"`
+	CreatedAt          int64  `json:"created_at"`
+	UpdatedAt          int64  `json:"updated_at"`
+	Username           string `json:"username"`
+	MustChangePassword int64  `json:"must_change_password"`
+	Timezone           string `json:"timezone"`
 }

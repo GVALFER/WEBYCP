@@ -360,7 +360,7 @@ func renderLocations(socket string) string {
 
 func renderPanel(name, certificate, key string) []byte {
 	tls := ""
-	httpHandler := `proxy_pass http://127.0.0.1:8080;
+	httpHandler := `proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto http;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`
@@ -375,7 +375,7 @@ server {
     ssl_certificate_key %s;
     ssl_protocols TLSv1.2 TLSv1.3;
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto https;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -410,7 +410,7 @@ server {
         try_files $uri =404;
     }
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto http;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

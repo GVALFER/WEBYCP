@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -79,6 +80,41 @@ func (d *Driver) Ensure(ctx context.Context, account agentruntime.Account) (agen
 		)
 	}
 	return agentruntime.Pool{Socket: socket}, nil
+}
+
+func (d *Driver) Delete(ctx context.Context, accountID string) error {
+	if err := validate.ID("accountId", accountID); err != nil {
+		return err
+	}
+	path := filepath.Join(d.pools, "webycp-"+accountID+".conf")
+	previous, err := configfile.Take(path)
+	if err != nil {
+		return err
+	}
+	if !previous.Exists {
+		return nil
+	}
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("remove PHP-FPM pool: %w", err)
+	}
+	if err := d.run(ctx, phpFPMPath, "-t"); err != nil {
+		return errors.Join(
+			fmt.Errorf("validate PHP-FPM configuration: %w", err),
+			previous.Restore(),
+		)
+	}
+	if err := d.run(ctx, systemctlPath, "reload", phpFPMService); err != nil {
+		rollbackErr := previous.Restore()
+		validateErr := d.run(ctx, phpFPMPath, "-t")
+		reloadErr := d.run(ctx, systemctlPath, "reload", phpFPMService)
+		return errors.Join(
+			fmt.Errorf("reload PHP-FPM: %w", err),
+			rollbackErr,
+			wrapRecoveryError("validate restored PHP-FPM configuration", validateErr),
+			wrapRecoveryError("reload restored PHP-FPM configuration", reloadErr),
+		)
+	}
+	return nil
 }
 
 func validHome(path, systemUser string) error {

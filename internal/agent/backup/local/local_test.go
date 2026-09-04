@@ -5,11 +5,14 @@ import (
 	"errors"
 	"io"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/GVALFER/WEBYCP/internal/agent/backup"
+	"github.com/GVALFER/WEBYCP/internal/agent/hostuser"
 )
 
 func TestCreatePreviewAndPartialRestore(t *testing.T) {
@@ -19,6 +22,15 @@ func TestCreatePreviewAndPartialRestore(t *testing.T) {
 	accountID := "0123456789abcdef0123456789abcdef"
 	systemUser := "wcp_0123456789ab"
 	home := filepath.Join(driver.home, systemUser)
+	driver.lookup = func(string) (*user.User, error) {
+		return &user.User{
+			Uid: strconv.Itoa(os.Getuid()), Gid: strconv.Itoa(os.Getgid()),
+			Name: hostuser.Marker(accountID), HomeDir: home,
+		}, nil
+	}
+	driver.lookupGroup = func(string) (*user.Group, error) {
+		return &user.Group{Gid: strconv.Itoa(os.Getgid())}, nil
+	}
 	database := "wcp_01234567_app"
 	driver.dump = func(_ context.Context, writer io.Writer, name string, args ...string) error {
 		if name != dumpPath || args[len(args)-1] != database {
@@ -43,6 +55,9 @@ func TestCreatePreviewAndPartialRestore(t *testing.T) {
 	if err := os.WriteFile(filePath, []byte("before backup"), 0o640); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chmod(filepath.Dir(filePath), 0o750|os.ModeSetgid); err != nil {
+		t.Fatal(err)
+	}
 	artifact, err := driver.Create(context.Background(), backup.CreateRequest{
 		RunID: "abcdef0123456789abcdef0123456789", AccountID: accountID,
 		SystemUser: systemUser, IncludeFiles: true, Databases: []string{database},
@@ -59,7 +74,7 @@ func TestCreatePreviewAndPartialRestore(t *testing.T) {
 	if err != nil || manifest.RunID != "abcdef0123456789abcdef0123456789" {
 		t.Fatalf("manifest = %+v, error = %v", manifest, err)
 	}
-	if err := os.Remove(filePath); err != nil {
+	if err := os.RemoveAll(filepath.Join(home, "web")); err != nil {
 		t.Fatal(err)
 	}
 	metadata, err := driver.Restore(context.Background(), backup.RestoreRequest{ArtifactRequest: request, SystemUser: systemUser, Metadata: true})
@@ -82,6 +97,13 @@ func TestCreatePreviewAndPartialRestore(t *testing.T) {
 	data, err := os.ReadFile(filePath)
 	if err != nil || string(data) != "before backup" {
 		t.Fatalf("restored data = %q, error = %v", data, err)
+	}
+	info, err := os.Stat(filepath.Dir(filePath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&os.ModeSetgid == 0 {
+		t.Fatalf("restored directory mode = %v, want setgid", info.Mode())
 	}
 }
 

@@ -47,12 +47,12 @@ printf '%s\n' "$VERSION" |
     grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$' ||
     fail "version must use SemVer without a leading v, for example 1.0.0"
 
-for command in go node npm gzip; do
+for command in docker go node npm gzip; do
     command -v "$command" >/dev/null 2>&1 || fail "required command is missing: $command"
 done
 
 NODE_MAJOR=$(node -p 'Number(process.versions.node.split(".")[0])')
-[ "$NODE_MAJOR" -ge 22 ] || fail "Node.js 22 or newer is required"
+[ "$NODE_MAJOR" -ge 24 ] || fail "Node.js 24 or newer is required"
 
 COMMIT=${WEBYCP_RELEASE_COMMIT:-unknown}
 SOURCE_EPOCH=${SOURCE_DATE_EPOCH:-}
@@ -111,8 +111,9 @@ npm --prefix "$ROOT_DIR/web" ci --prefer-offline --no-audit --no-fund
 
 log "Running repository checks"
 make -C "$ROOT_DIR" check
+make -C "$ROOT_DIR" security
 
-mkdir -p "$RELEASE_DIR/bin" "$RELEASE_DIR/web"
+mkdir -p "$RELEASE_DIR/bin" "$RELEASE_DIR/docs"
 
 LDFLAGS="-s -w -X github.com/GVALFER/WEBYCP/internal/buildinfo.Version=$VERSION -X github.com/GVALFER/WEBYCP/internal/buildinfo.Commit=$COMMIT"
 
@@ -130,7 +131,20 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o "$RELEASE_DIR/bin/webycp-agent" \
     ./cmd/webycp-agent
 
-cp -R "$ROOT_DIR/web/dist" "$RELEASE_DIR/web/dist"
+log "Building the Linux amd64 Next.js standalone runtime"
+docker buildx build \
+    --platform linux/amd64 \
+    --output "type=local,dest=$RELEASE_DIR" \
+    --file "$ROOT_DIR/web/Dockerfile.release" \
+    "$ROOT_DIR/web"
+check_binary() {
+    binary=$1
+    magic=$(od -An -j0 -N4 -t x1 "$binary" | tr -d ' \n')
+    machine=$(od -An -j18 -N2 -t x1 "$binary" | tr -d ' \n')
+    [ "$magic" = 7f454c46 ] && [ "$machine" = 3e00 ] ||
+        fail "not a Linux amd64 binary: $binary"
+}
+check_binary "$RELEASE_DIR/runtime/node"
 mkdir -p \
     "$RELEASE_DIR/packaging/nginx" \
     "$RELEASE_DIR/packaging/systemd" \
@@ -143,13 +157,22 @@ cp \
 cp \
     "$ROOT_DIR/packaging/systemd/webycp-agent.service" \
     "$ROOT_DIR/packaging/systemd/webycp-server.service" \
+    "$ROOT_DIR/packaging/systemd/webycp-web.service" \
     "$RELEASE_DIR/packaging/systemd/"
 cp \
     "$ROOT_DIR/packaging/ubuntu/agent.env.example" \
     "$ROOT_DIR/packaging/ubuntu/install.sh" \
     "$ROOT_DIR/packaging/ubuntu/server.env.example" \
+    "$ROOT_DIR/packaging/ubuntu/upgrade.sh" \
+    "$ROOT_DIR/packaging/ubuntu/web.env.example" \
     "$RELEASE_DIR/packaging/ubuntu/"
-cp "$ROOT_DIR/LICENSE" "$ROOT_DIR/NOTICE" "$ROOT_DIR/README.md" "$RELEASE_DIR/"
+cp "$ROOT_DIR/docs/operations.md" "$RELEASE_DIR/docs/"
+cp \
+    "$ROOT_DIR/.gitleaks.toml" \
+    "$ROOT_DIR/LICENSE" \
+    "$ROOT_DIR/NOTICE" \
+    "$ROOT_DIR/README.md" \
+    "$RELEASE_DIR/"
 printf '%s\n' "$VERSION" >"$RELEASE_DIR/VERSION"
 
 find "$RELEASE_DIR" -type d -exec chmod 0755 {} +
@@ -157,7 +180,9 @@ find "$RELEASE_DIR" -type f -exec chmod 0644 {} +
 chmod 0755 \
     "$RELEASE_DIR/bin/webycp-agent" \
     "$RELEASE_DIR/bin/webycp-server" \
-    "$RELEASE_DIR/packaging/ubuntu/install.sh"
+    "$RELEASE_DIR/runtime/node" \
+    "$RELEASE_DIR/packaging/ubuntu/install.sh" \
+    "$RELEASE_DIR/packaging/ubuntu/upgrade.sh"
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -197,6 +222,9 @@ else
 fi
 
 mv -f -- "$ARCHIVE_TMP" "$OUTPUT_DIR/$ARCHIVE_NAME"
+
+"$ROOT_DIR/scripts/security.sh" \
+    --artifact "$OUTPUT_DIR/$ARCHIVE_NAME"
 
 if command -v sha256sum >/dev/null 2>&1; then
     CHECKSUM=$(sha256sum "$OUTPUT_DIR/$ARCHIVE_NAME" | awk '{print $1}')

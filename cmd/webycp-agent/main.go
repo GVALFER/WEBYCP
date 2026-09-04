@@ -39,8 +39,9 @@ func main() {
 	defer cleanup()
 
 	nginxDriver := nginx.New()
-	domainManager := agentdomain.New(phpfpm.New(), nginxDriver)
-	accountManager := agentaccount.NewLinux()
+	runtimeDriver := phpfpm.New()
+	domainManager := agentdomain.New(runtimeDriver, nginxDriver)
+	accountManager := agentaccount.New(agentaccount.NewLinux(), runtimeDriver)
 	server := &http.Server{
 		Handler: agentserver.New(agentserver.Options{
 			Version: buildinfo.Version, Accounts: accountManager, AccountActions: accountManager,

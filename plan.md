@@ -20,7 +20,7 @@ implementations, not through premature microservices or speculative features.
     - Configurations are validated before activation and written atomically.
 
 2. **Simple first deployment**
-    - One server, two Go processes, one React build, and one SQLite database.
+    - One server, two Go processes, one Next.js process, and one SQLite database.
     - Native Ubuntu packages are preferred over external repositories.
     - systemd owns process lifecycle and journald owns process logs.
 
@@ -46,18 +46,18 @@ implementations, not through premature microservices or speculative features.
 
 ### Frontend
 
-- React with TypeScript
-- Vite for development and production builds
-- React Router for application routing
+- Next.js App Router with React and TypeScript
+- Server-rendered authentication state in protected layouts
 - HeroUI for UI components
 - Tailwind CSS for styling
 - Lucide for icons
-- SWR for server-state cache, revalidation, mutations, and job polling
+- SWR for client server-state cache, focus revalidation, and mutations
 - `reqly-js` as the HTTP transport
 - `urlstate-js` for filters, search, pagination, tabs, and other URL state
 
-Vite is not a production server. The production build is served by the Go API
-service so the UI and REST API share the same origin.
+The production frontend runs as a Next.js standalone service. It resolves the
+session during server rendering and proxies `/api/v1` to the loopback Go API so
+the browser keeps one origin.
 
 ### Backend
 
@@ -86,12 +86,12 @@ hard-coded into domain logic.
 ## 4. High-Level Architecture
 
 ```text
-Browser
-   |
-   | HTTPS
-   v
+Browser -> Nginx -> webycp-web         unprivileged
+                       |-- Next.js SSR and client assets
+                       `-- /api/v1 proxy
+                              |
+                              v
 webycp-server                         unprivileged
-   |-- React static assets
    |-- REST API /api/v1
    |-- authentication and authorization
    |-- SQLite metadata
@@ -115,9 +115,9 @@ webycp-agent                          root
 ```text
 HTTPS client
    -> dedicated panel listener/reverse proxy
-   -> webycp-server on loopback
-      -> /api/v1/* for JSON
-      -> /* for the React application
+   -> webycp-web on loopback port 3000
+      -> Next.js routes and SSR
+      -> /api/v1/* proxy to webycp-server on loopback port 8080
 ```
 
 The panel Nginx configuration must be isolated from generated customer site
@@ -130,18 +130,26 @@ known valid Nginx configuration.
 
 Runs under an unprivileged `webycp` system account and owns:
 
-- Static frontend delivery
 - Authentication, sessions, and authorization
 - REST input validation and response serialization
 - Panel metadata and database migrations
 - Desired resource state
 - Persistent jobs and retry policy
 - Audit records
-- Calls to the local Agent
 - Health and readiness endpoints
+- Calls to the local Agent
 
 It must not modify system users, `/etc`, Nginx, PHP-FPM, MySQL, crontabs, or
 backup directories directly.
+
+### `webycp-web`
+
+Runs under the unprivileged `webycp` system account and owns:
+
+- Next.js routes and server rendering
+- Server-side session resolution in protected layouts
+- Static frontend assets
+- Same-origin proxying of `/api/v1` to `webycp-server`
 
 ### `webycp-agent`
 
@@ -173,26 +181,32 @@ webycp/
 |-- web/
 |   |-- src/
 |   |   |-- app/
+|   |   |   |-- (protected)/
+|   |   |   |   |-- (root)/
+|   |   |   |   |-- accounts/
+|   |   |   |   |-- domains/
+|   |   |   |   |-- certificates/
+|   |   |   |   |-- databases/
+|   |   |   |   |-- cron/
+|   |   |   |   |-- backups/
+|   |   |   |   |-- jobs/
+|   |   |   |   `-- profile/
+|   |   |   `-- login/
 |   |   |-- components/
-|   |   |-- features/
-|   |   |   |-- accounts/
-|   |   |   |-- domains/
-|   |   |   |-- databases/
-|   |   |   |-- cron/
-|   |   |   |-- certificates/
-|   |   |   |-- backups/
-|   |   |   `-- jobs/
-|   |   |-- hooks/
+|   |   |   `-- layout/
+|   |   |-- contracts/
+|   |   |   |-- schema.d.ts
+|   |   |   `-- types.ts
 |   |   |-- lib/
 |   |   |   |-- api.ts
 |   |   |   `-- swr.ts
-|   |   |-- routes/
+|   |   |-- providers/
 |   |   `-- utils/
 |   |       |-- classnames.ts
 |   |       |-- format.ts
 |   |       `-- validation.ts
 |   |-- package.json
-|   `-- vite.config.ts
+|   `-- next.config.ts
 |
 |-- cmd/
 |   |-- webycp-server/
@@ -247,7 +261,15 @@ webycp/
 - `web/src/utils` contains pure, framework-independent frontend helpers.
 - `web/src/lib` contains configured integrations such as the API client and SWR
   configuration.
-- Feature-specific formatters, schemas, and hooks stay inside the feature.
+- Each route loads its initial data in `page.tsx`, passes it to the adjacent
+  client component, and seeds SWR through `fallbackData`.
+- Route-specific mutation forms and controls stay in the route's `actions`
+  directory. Page clients do not issue POST, PATCH, PUT, or DELETE requests.
+- Submitted forms use React Hook Form with `valibotResolver`, the shared
+  `Form` context wrapper, and reusable fields from `web/src/components/form`.
+  Validation belongs in the resolver rather than manual `safeParse` calls in
+  submit handlers.
+- Route-specific formatters, schemas, and hooks stay inside the route.
 - Go does not use a generic `utils` package.
 - Reusable Go behavior uses focused packages such as:
     - `fsx` for atomic files, permissions, and ownership
@@ -381,8 +403,9 @@ system therefore uses desired and observed state:
 On restart, interrupted jobs are recovered and reconciled according to their
 idempotency and retry policy. Only independent resources may run concurrently.
 
-SWR polls active jobs in v1. Server-Sent Events may be added later without
-changing the job model.
+SWR revalidates on focus and mutations update affected cache keys explicitly.
+Active jobs are not polled continuously. Server-Sent Events may be added later
+without changing the job model.
 
 ## 11. SSL/TLS Scope for v1
 
@@ -425,7 +448,7 @@ must not implement the protocol or certificate primitives from scratch.
 
 ### Included
 
-- First-admin bootstrap
+- Installer-generated first-admin credentials and mandatory password change
 - Session authentication and basic admin/user authorization
 - Hosting accounts backed by isolated Linux users
 - Domains, aliases, document roots, and enable/disable state
@@ -485,6 +508,7 @@ Systemd units:
 
 - `webycp-server.service`
 - `webycp-agent.service`
+- `webycp-web.service`
 
 The installer must never overwrite unrelated user-managed service
 configuration. WEBYCP edits only files and include directories it owns.
@@ -591,7 +615,7 @@ stored in this repository, generated artifacts, logs, or the napkin.
 
 ### M0 — Architecture and project decisions
 
-- [x] Agree on React/Vite, Go API, Go Agent, SQLite, and Ubuntu 24.04.
+- [x] Agree on Next.js SSR, Go API, Go Agent, SQLite, and Ubuntu 24.04.
 - [x] Agree on SWR, `reqly-js`, and `urlstate-js`.
 - [x] Include full SSL/TLS lifecycle in v1.
 - [x] Define the initial repository and process boundaries.
@@ -605,7 +629,7 @@ decisions are recorded before public packaging.
 ### M1 — Scaffold and developer workflow
 
 - [x] Create the Go module and both commands.
-- [x] Create the React/Vite application.
+- [x] Create the Next.js App Router application.
 - [x] Configure HeroUI, Tailwind, Lucide, SWR, `reqly-js`, and `urlstate-js`.
 - [x] Add OpenAPI contracts and code-generation commands.
 - [x] Add lint, Go format, type-check, test, and build commands.
@@ -619,7 +643,7 @@ the frontend production build succeeds, and generated contracts are current.
 - [x] Add configuration loading and structured logging.
 - [x] Add SQLite migrations and `sqlc` queries.
 - [x] Add users, sessions, accounts, nodes, jobs, job steps, and audit events.
-- [x] Implement first-admin bootstrap and login/logout.
+- [x] Generate the initial administrator during installation and require a new password.
 - [x] Implement the Agent Unix socket, protocol version, and health handshake.
 - [x] Add the first persistent worker and interrupted-job recovery.
 
@@ -696,9 +720,9 @@ artifact and served successfully afterward.
 - [x] Add systemd sandboxing appropriate to each process.
 - [x] Add production configuration and filesystem permissions.
 - [x] Add reproducible Linux amd64 release archives and SHA-256 checksums.
-- [ ] Add install, upgrade, migration, and recovery commands.
-- [ ] Add dependency, security, and secret scanning.
-- [ ] Document backup, restore, certificate, and Agent recovery procedures.
+- [x] Add install, upgrade, migration, and recovery commands.
+- [x] Add dependency, security, and secret scanning.
+- [x] Document backup, restore, certificate, and Agent recovery procedures.
 
 Verification: installation on a clean Ubuntu 24.04 VM is repeatable, upgrades
 preserve state, and removal does not delete customer data without an explicit
@@ -706,13 +730,15 @@ destructive option.
 
 ### M9 — External VPS validation and v1 release candidate
 
-- [ ] Rotate chat-shared credentials and install a temporary SSH key.
+- [ ] Rotate the root password shared through chat.
+- [x] Install and remove a dedicated temporary SSH key.
 - [x] Perform read-only host preflight.
-- [ ] Confirm snapshot/recovery options.
+- [x] Create and verify application-level snapshot/recovery points.
 - [x] Install the release candidate.
-- [ ] Run the complete lifecycle test suite.
-- [ ] Review logs, permissions, recovery behavior, and resource cleanup.
-- [ ] Remove temporary access after testing.
+- [x] Validate generated admin credentials and forced rotation on Ubuntu 24.04.
+- [x] Run the complete lifecycle test suite.
+- [x] Review logs, permissions, recovery behavior, and resource cleanup.
+- [x] Remove temporary access after testing.
 
 Verification: all v1 acceptance criteria pass on a fresh Ubuntu 24.04 host and
 the host can be recovered from every intentionally tested failure.
@@ -734,12 +760,16 @@ Version 1 is complete only when:
 - Automated tests and the external Ubuntu 24.04 lifecycle suite pass.
 - Installation, upgrade, backup, restore, and recovery are documented.
 
-The M3–M7 checkboxes record completed implementation and local automated
-coverage. Their real Ubuntu, MySQL, cron, and ACME acceptance checks remain part
-of M9 and must not be treated as complete yet.
+The M3–M7 implementation and real Ubuntu acceptance checks are complete. M9
+also verified MySQL isolation, real cron execution, backup retention and full
+restore, ACME failure safety and renewal, service restart recovery, permissions,
+generated administrator rotation and reset, upgrade state preservation, and
+complete cleanup of test resources.
 
 ## 19. Immediate Next Step
 
-M8 is in progress. Add the upgrade, migration, and recovery workflow, then
-validate the service sandbox on a disposable Ubuntu 24.04 environment. External
-VPS validation follows only in M9 and only under the access policy above.
+The hosting lifecycle and administrator acceptance suites are complete. Next,
+rotate the root password that was shared through chat, review and commit the
+candidate from a clean worktree, then create the signed release tag. An
+off-host/provider snapshot remains strongly recommended in addition to the
+verified application-level recovery points.

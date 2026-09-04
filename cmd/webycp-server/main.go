@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -30,6 +31,14 @@ func main() {
 	if buildinfo.Show(os.Args, os.Stdout) {
 		return
 	}
+	args := os.Args[1:]
+	migrateOnly := len(args) == 1 && args[0] == "migrate"
+	adminCommand := (len(args) == 2 && args[0] == "admin" && args[1] == "init") ||
+		(len(args) == 3 && args[0] == "admin" && args[1] == "reset-password")
+	if len(args) > 0 && !migrateOnly && !adminCommand {
+		usage()
+		os.Exit(2)
+	}
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	ctx, stop := signalx.Context()
@@ -40,6 +49,27 @@ func main() {
 	if err != nil {
 		logger.Error("failed to open database", "error", err, "path", settings.DatabasePath)
 		os.Exit(1)
+	}
+	if migrateOnly {
+		if err := store.Close(); err != nil {
+			logger.Error("failed to close database", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("database migrations complete", "path", settings.DatabasePath)
+		return
+	}
+	authService := auth.NewService(store)
+	if adminCommand {
+		if err := runAdmin(ctx, authService, args); err != nil {
+			fmt.Fprintln(os.Stderr, "WEBYCP admin:", err)
+			store.Close()
+			os.Exit(1)
+		}
+		if err := store.Close(); err != nil {
+			fmt.Fprintln(os.Stderr, "WEBYCP admin: close database:", err)
+			os.Exit(1)
+		}
+		return
 	}
 	defer store.Close()
 
@@ -138,8 +168,8 @@ func main() {
 
 	server := &http.Server{
 		Handler: httpapi.New(httpapi.Options{
-			Version: buildinfo.Version, WebDir: settings.WebDir,
-			SecureCookie: settings.SecureCookie, Auth: auth.NewService(store),
+			Version:      buildinfo.Version,
+			SecureCookie: settings.SecureCookie, Auth: authService,
 			Accounts: accountService, Domains: domainService, Databases: databaseService, Cron: cronService,
 			Certificates: certificateService,
 			Backups:      backupService,
@@ -156,4 +186,39 @@ func main() {
 	}
 
 	logger.Info("server stopped")
+}
+
+func usage() {
+	fmt.Fprintln(
+		os.Stderr,
+		"usage: webycp-server [--version|migrate|admin init|admin reset-password USERNAME]",
+	)
+}
+
+func runAdmin(ctx context.Context, service *auth.Service, args []string) error {
+	if args[1] == "init" {
+		credentials, created, err := service.InitAdmin(ctx)
+		if err != nil {
+			return err
+		}
+		if !created {
+			fmt.Fprintln(os.Stdout, "Initial administrator already exists.")
+			return nil
+		}
+		printCredentials("Initial administrator created.", credentials)
+		return nil
+	}
+	credentials, err := service.ResetPassword(ctx, args[2])
+	if err != nil {
+		return err
+	}
+	printCredentials("Administrator password reset.", credentials)
+	return nil
+}
+
+func printCredentials(message string, credentials auth.Credentials) {
+	fmt.Fprintln(os.Stdout, message)
+	fmt.Fprintln(os.Stdout, "Username:", credentials.Username)
+	fmt.Fprintln(os.Stdout, "Temporary password:", credentials.Password)
+	fmt.Fprintln(os.Stdout, "Password change required on first login.")
 }

@@ -378,6 +378,7 @@ type AccountListResponse struct {
 type AuthResponse struct {
 	CsrfToken string    `json:"csrfToken"`
 	ExpiresAt time.Time `json:"expiresAt"`
+	Timezone  string    `json:"timezone"`
 	User      User      `json:"user"`
 }
 
@@ -464,18 +465,6 @@ type BackupRunListResponse struct {
 type BackupRunResponse struct {
 	Job Job       `json:"job"`
 	Run BackupRun `json:"run"`
-}
-
-// BootstrapRequest defines model for BootstrapRequest.
-type BootstrapRequest struct {
-	Email    openapi_types.Email `json:"email"`
-	Name     string              `json:"name"`
-	Password string              `json:"password"`
-}
-
-// BootstrapResponse defines model for BootstrapResponse.
-type BootstrapResponse struct {
-	Required bool `json:"required"`
 }
 
 // Certificate defines model for Certificate.
@@ -775,8 +764,8 @@ type JobStepStatus string
 
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
-	Email    openapi_types.Email `json:"email"`
-	Password string              `json:"password"`
+	Password string `json:"password"`
+	Username string `json:"username"`
 }
 
 // Node defines model for Node.
@@ -825,13 +814,25 @@ type UpdateEnabledRequest struct {
 	Enabled bool `json:"enabled"`
 }
 
+// UpdateProfileRequest defines model for UpdateProfileRequest.
+type UpdateProfileRequest struct {
+	CurrentPassword *string             `json:"currentPassword,omitempty"`
+	Email           openapi_types.Email `json:"email"`
+	Name            string              `json:"name"`
+	Password        *string             `json:"password,omitempty"`
+	Timezone        string              `json:"timezone"`
+	Username        string              `json:"username"`
+}
+
 // User defines model for User.
 type User struct {
-	CreatedAt time.Time           `json:"createdAt"`
-	Email     openapi_types.Email `json:"email"`
-	Id        string              `json:"id"`
-	Name      string              `json:"name"`
-	Role      UserRole            `json:"role"`
+	CreatedAt          time.Time           `json:"createdAt"`
+	Email              openapi_types.Email `json:"email"`
+	Id                 string              `json:"id"`
+	MustChangePassword bool                `json:"mustChangePassword"`
+	Name               string              `json:"name"`
+	Role               UserRole            `json:"role"`
+	Username           string              `json:"username"`
 }
 
 // UserRole defines model for User.Role.
@@ -931,6 +932,11 @@ type SetAccountParams struct {
 
 // LogoutParams defines parameters for Logout.
 type LogoutParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// UpdateProfileParams defines parameters for UpdateProfile.
+type UpdateProfileParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
@@ -1073,6 +1079,9 @@ type SetAccountJSONRequestBody = UpdateEnabledRequest
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
 
+// UpdateProfileJSONRequestBody defines body for UpdateProfile for application/json ContentType.
+type UpdateProfileJSONRequestBody = UpdateProfileRequest
+
 // RestoreBackupJSONRequestBody defines body for RestoreBackup for application/json ContentType.
 type RestoreBackupJSONRequestBody = RestoreBackupRequest
 
@@ -1081,9 +1090,6 @@ type CreateBackupPlanJSONRequestBody = WriteBackupPlanRequest
 
 // SetBackupPlanJSONRequestBody defines body for SetBackupPlan for application/json ContentType.
 type SetBackupPlanJSONRequestBody = WriteBackupPlanRequest
-
-// CreateBootstrapJSONRequestBody defines body for CreateBootstrap for application/json ContentType.
-type CreateBootstrapJSONRequestBody = BootstrapRequest
 
 // IssuePanelCertificateJSONRequestBody defines body for IssuePanelCertificate for application/json ContentType.
 type IssuePanelCertificateJSONRequestBody = IssuePanelCertificateRequest
