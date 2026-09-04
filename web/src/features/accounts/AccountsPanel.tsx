@@ -1,71 +1,99 @@
-import { Button, Input, Label, TextField } from "@heroui/react";
+import { Button, Input, Label, TextField, toast } from "@heroui/react";
 import { Plus, Power, Trash2, UserRound } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type SubmitEvent, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
-
-import {
-  createAccount,
-  deleteAccount,
-  fetcher,
-  setAccount,
-  type AccountListResponse,
-  type AuthResponse,
-} from "../../lib/api";
+import * as v from "valibot";
+import type {
+  AccountJobResponse,
+  AccountListResponse,
+} from "../../api/types";
+import { Confirm } from "../../components/Confirm";
+import { api, fetcher } from "../../lib/api";
 import { cn } from "../../utils/classnames";
 import { formatDate } from "../../utils/date";
 import { errorMessage } from "../../utils/errors";
 import { statusClass } from "../../utils/status";
+import { issueMessage, nameField } from "../../utils/validation";
 
 type Props = {
   nodeId: string;
-  session: AuthResponse;
 };
 
-export const AccountsPanel = ({ nodeId, session }: Props) => {
+export const AccountsPanel = ({ nodeId }: Props) => {
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
   const [actionId, setActionId] = useState("");
-  const { mutate: mutateKey } = useSWRConfig();
-  const { data, mutate } = useSWR<AccountListResponse>("accounts", fetcher, {
-    refreshInterval: 2_000,
-  });
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const { mutate: mutateKey } = useSWRConfig();
+  const { data, mutate } = useSWR<AccountListResponse>("accounts", fetcher);
+
+  const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    const result = v.safeParse(nameField, name);
+    if (!result.success) {
+      toast.warning("Check the account name", {
+        description: issueMessage(result.issues),
+      });
+      return;
+    }
+
     setPending(true);
-    setError("");
+
     try {
-      await createAccount({ name, nodeId }, session.csrfToken);
+      await api
+        .post("accounts", {
+          json: {
+            name: result.output,
+            nodeId
+          }
+        })
+        .json<AccountJobResponse>();
       setName("");
       await Promise.all([mutate(), mutateKey("jobs")]);
+      toast.success("Account queued for creation");
     } catch (requestError) {
-      setError(await errorMessage(requestError));
+      toast.danger("Account action failed", {
+        description: await errorMessage(requestError),
+      });
     } finally {
       setPending(false);
     }
   };
 
-  const runAction = async (id: string, name: string, enabled?: boolean) => {
-    if (enabled === undefined && !window.confirm(`Delete ${name}? The account must be empty and its home will be quarantined.`)) return;
+  const runAction = async (id: string, enabled?: boolean) => {
     setActionId(id);
-    setError("");
+
     try {
-      if (enabled === undefined) await deleteAccount(id, session.csrfToken);
-      else await setAccount(id, enabled, session.csrfToken);
+      const path = `accounts/${encodeURIComponent(id)}`;
+
+      if (enabled === undefined) {
+        await api.delete(path).json<AccountJobResponse>();
+      } else {
+        await api.patch(path, { json: { enabled } }).json<AccountJobResponse>();
+      }
       await Promise.all([mutate(), mutateKey("jobs")]);
+      toast.success(
+        enabled === undefined
+          ? "Account queued for deletion"
+          : enabled
+            ? "Account enabled"
+            : "Account disabled",
+      );
     } catch (requestError) {
-      setError(await errorMessage(requestError));
+      toast.danger("Account action failed", {
+        description: await errorMessage(requestError),
+      });
     } finally {
       setActionId("");
     }
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <section className="overflow-hidden rounded-2xl border border-divider bg-surface">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <section className="panel-card overflow-hidden">
         <div className="border-b border-divider px-6 py-5">
-          <h2 className="text-lg font-semibold">Hosting accounts</h2>
+          <h2 className="text-base font-semibold">Hosting accounts</h2>
           <div className="mt-1 text-sm text-foreground-500">
             Isolated Linux identities owned by panel users.
           </div>
@@ -78,7 +106,7 @@ export const AccountsPanel = ({ nodeId, session }: Props) => {
                 className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex items-center gap-4">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-default/10">
+                  <div className="icon-box">
                     <UserRound className="size-5" aria-hidden="true" />
                   </div>
                   <div>
@@ -107,20 +135,31 @@ export const AccountsPanel = ({ nodeId, session }: Props) => {
                       variant="tertiary"
                       aria-label={account.enabled ? `Disable ${account.name}` : `Enable ${account.name}`}
                       isDisabled={account.status === "pending" || actionId === account.id}
-                      onPress={() => void runAction(account.id, account.name, !account.enabled)}
+                      onPress={() => void runAction(account.id, !account.enabled)}
                     >
                       <Power className="size-4" aria-hidden="true" />
                     </Button>
-                    <Button
-                      isIconOnly
-                      size="sm"
-                      variant="danger-soft"
-                      aria-label={`Delete ${account.name}`}
-                      isDisabled={account.status === "pending" || actionId === account.id}
-                      onPress={() => void runAction(account.id, account.name)}
+                    <Confirm
+                      title={`Delete ${account.name}?`}
+                      description="The account must be empty. Its home directory will be moved to the recovery trash."
+                      action="Delete account"
+                      onConfirm={() =>
+                        void runAction(account.id)
+                      }
                     >
-                      <Trash2 className="size-4" aria-hidden="true" />
-                    </Button>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="danger-soft"
+                        aria-label={`Delete ${account.name}`}
+                        isDisabled={
+                          account.status === "pending" ||
+                          actionId === account.id
+                        }
+                      >
+                        <Trash2 className="size-4" aria-hidden="true" />
+                      </Button>
+                    </Confirm>
                   </div>
                 </div>
               </div>
@@ -133,8 +172,8 @@ export const AccountsPanel = ({ nodeId, session }: Props) => {
         </div>
       </section>
 
-      <aside className="h-fit rounded-2xl border border-divider bg-surface p-6">
-        <h2 className="text-lg font-semibold">Create account</h2>
+      <aside className="panel-card h-fit p-6">
+        <h2 className="text-base font-semibold">Create account</h2>
         <div className="mt-1 text-sm leading-6 text-foreground-500">
           This queues an isolated Linux user on the selected node.
         </div>
@@ -148,11 +187,6 @@ export const AccountsPanel = ({ nodeId, session }: Props) => {
               onChange={(event) => setName(event.currentTarget.value)}
             />
           </TextField>
-          {error && (
-            <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-              {error}
-            </div>
-          )}
           <Button
             type="submit"
             variant="primary"

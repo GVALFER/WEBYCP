@@ -1,12 +1,14 @@
 import { Button, Spinner } from "@heroui/react";
 import { Server } from "lucide-react";
 import { HTTPError } from "reqly-js";
+import { useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import useSWR from "swr";
 
+import type { AuthResponse, BootstrapResponse } from "../api/types";
 import { AuthScreen } from "../features/auth/AuthScreen";
 import { Dashboard } from "../features/dashboard/Dashboard";
-import { fetcher, type AuthResponse, type BootstrapResponse } from "../lib/api";
+import { fetcher, setCsrfToken } from "../lib/api";
 
 const Loading = () => (
   <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
@@ -35,35 +37,53 @@ const Unavailable = ({ retry }: { retry: () => void }) => (
 );
 
 const Root = () => {
+  const [sessionChecked, setSessionChecked] = useState(false);
   const {
     data: bootstrap,
     error: bootstrapError,
     isLoading: bootstrapLoading,
     mutate: mutateBootstrap,
   } = useSWR<BootstrapResponse>("bootstrap", fetcher);
+
   const {
     data: session,
     error: sessionError,
-    isLoading: sessionLoading,
     mutate: mutateSession,
   } = useSWR<AuthResponse>(
     bootstrap && !bootstrap.required ? "auth/me" : null,
     fetcher,
+    {
+      onError: () => setSessionChecked(true),
+      onSuccess: () => setSessionChecked(true),
+    },
   );
 
-  if (bootstrapLoading) return <Loading />;
+  useEffect(() => {
+    setCsrfToken(session?.csrfToken);
+  }, [session?.csrfToken]);
+
+  if (bootstrapLoading && !bootstrap && !bootstrapError) {
+    return <Loading />;
+  }
+
   if (bootstrapError || !bootstrap) {
     return <Unavailable retry={() => void mutateBootstrap()} />;
   }
 
   const authenticated = (next: AuthResponse) => {
+    setCsrfToken(next.csrfToken);
     void mutateBootstrap({ required: false }, false);
     void mutateSession(next, false);
   };
+
   if (bootstrap.required) {
     return <AuthScreen mode="bootstrap" onSuccess={authenticated} />;
   }
-  if (sessionLoading) return <Loading />;
+
+  if (!sessionChecked && !session && !sessionError) {
+    return <Loading />;
+  }
+
   if (!session) {
     if (
       sessionError instanceof HTTPError &&
@@ -77,7 +97,10 @@ const Root = () => {
   return (
     <Dashboard
       session={session}
-      onLogout={() => void mutateSession(undefined, false)}
+      onLogout={() => {
+        setCsrfToken();
+        void mutateSession(undefined, false);
+      }}
     />
   );
 };

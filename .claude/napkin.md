@@ -70,3 +70,7 @@
    Do instead: leave TypeScript, React, CSS, and JSON formatting to the user's editor; retain `gofmt` for Go source files.
 3. **[2026-09-03] Prefer the global Playwright MCP for browser QA**
    Do instead: use the globally available Playwright MCP for local UI validation when it is callable.
+4. **[2026-09-04] Never poll frontend resources by default**
+   Do instead: let SWR fetch on mount and revalidate on focus, then call `mutate` after successful writes.
+5. **[2026-09-04] Avoid native browser dialogs and repeated request feedback**
+   Do instead: use the shared HeroUI `Confirm` component for destructive choices, a HeroUI modal for editable prompts, and HeroUI toasts for action feedback.

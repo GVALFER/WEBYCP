@@ -1,4 +1,4 @@
-import { Button, Input, Label, TextField } from "@heroui/react";
+import { Button, Input, Label, TextField, toast } from "@heroui/react";
 import {
   CornerDownRight,
   Globe2,
@@ -9,48 +9,42 @@ import {
 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
+import * as v from "valibot";
 
-import {
-  createDomain,
-  createDomainAlias,
-  deleteDomain,
-  deleteDomainAlias,
-  fetcher,
-  renameDomain,
-  renameDomainAlias,
-  setDomain,
-  setDomainAlias,
-  type AccountListResponse,
-  type AuthResponse,
-  type DomainAliasListResponse,
-  type DomainListResponse,
-} from "../../lib/api";
+import type {
+  AccountListResponse,
+  DomainAliasJobResponse,
+  DomainAliasListResponse,
+  DomainJobResponse,
+  DomainListResponse,
+} from "../../api/types";
+import { Confirm } from "../../components/Confirm";
+import { SelectField } from "../../components/SelectField";
+import { TextDialog } from "../../components/TextDialog";
+import { api, fetcher } from "../../lib/api";
 import { cn } from "../../utils/classnames";
 import { formatDate } from "../../utils/date";
 import { errorMessage } from "../../utils/errors";
 import { statusClass } from "../../utils/status";
+import { domainField, issueMessage } from "../../utils/validation";
 
-type Props = {
-  session: AuthResponse;
-};
-
-export const DomainsPanel = ({ session }: Props) => {
+export const DomainsPanel = () => {
   const [accountId, setAccountId] = useState("");
   const [domainName, setDomainName] = useState("");
   const [domainPending, setDomainPending] = useState(false);
-  const [domainError, setDomainError] = useState("");
   const [domainId, setDomainId] = useState("");
   const [aliasName, setAliasName] = useState("");
   const [aliasPending, setAliasPending] = useState(false);
-  const [aliasError, setAliasError] = useState("");
   const [actionId, setActionId] = useState("");
-  const [actionError, setActionError] = useState("");
+  const [edit, setEdit] = useState<{
+    kind: "domain" | "alias";
+    id: string;
+    name: string;
+  } | null>(null);
   const { mutate: mutateKey } = useSWRConfig();
-  const { data: accounts } = useSWR<AccountListResponse>("accounts", fetcher, {
-    refreshInterval: 2_000,
-  });
+  const { data: accounts } = useSWR<AccountListResponse>("accounts", fetcher);
   const { data: domains, mutate: mutateDomains } =
-    useSWR<DomainListResponse>("domains", fetcher, { refreshInterval: 2_000 });
+    useSWR<DomainListResponse>("domains", fetcher);
   const activeAccounts = accounts?.items.filter(
     (account) => account.status === "active",
   );
@@ -66,9 +60,7 @@ export const DomainsPanel = ({ session }: Props) => {
     ? `domains/${encodeURIComponent(selectedDomain)}/aliases`
     : null;
   const { data: aliases, mutate: mutateAliases } =
-    useSWR<DomainAliasListResponse>(aliasKey, fetcher, {
-      refreshInterval: 2_000,
-    });
+    useSWR<DomainAliasListResponse>(aliasKey, fetcher);
   const accountNames = new Map(
     accounts?.items.map((account) => [account.id, account.name]),
   );
@@ -79,17 +71,27 @@ export const DomainsPanel = ({ session }: Props) => {
   const submitDomain = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedAccount) return;
+    const result = v.safeParse(domainField, domainName);
+    if (!result.success) {
+      toast.warning("Check the domain name", {
+        description: issueMessage(result.issues),
+      });
+      return;
+    }
     setDomainPending(true);
-    setDomainError("");
     try {
-      await createDomain(
-        { accountId: selectedAccount, name: domainName },
-        session.csrfToken,
-      );
+      await api
+        .post("domains", {
+          json: { accountId: selectedAccount, name: result.output },
+        })
+        .json<DomainJobResponse>();
       setDomainName("");
       await Promise.all([mutateDomains(), mutateKey("jobs")]);
+      toast.success("Domain queued for creation");
     } catch (requestError) {
-      setDomainError(await errorMessage(requestError));
+      toast.danger("Domain action failed", {
+        description: await errorMessage(requestError),
+      });
     } finally {
       setDomainPending(false);
     }
@@ -98,103 +100,125 @@ export const DomainsPanel = ({ session }: Props) => {
   const submitAlias = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedDomain) return;
+    const result = v.safeParse(domainField, aliasName);
+    if (!result.success) {
+      toast.warning("Check the alias name", {
+        description: issueMessage(result.issues),
+      });
+      return;
+    }
     setAliasPending(true);
-    setAliasError("");
     try {
-      await createDomainAlias(
-        selectedDomain,
-        { name: aliasName },
-        session.csrfToken,
-      );
+      await api
+        .post(`domains/${encodeURIComponent(selectedDomain)}/aliases`, {
+          json: { name: result.output },
+        })
+        .json<DomainAliasJobResponse>();
       setAliasName("");
       await Promise.all([mutateAliases(), mutateKey("jobs")]);
+      toast.success("Alias queued for creation");
     } catch (requestError) {
-      setAliasError(await errorMessage(requestError));
+      toast.danger("Alias action failed", {
+        description: await errorMessage(requestError),
+      });
     } finally {
       setAliasPending(false);
     }
   };
 
-  const runDomainAction = async (id: string, name: string, enabled?: boolean) => {
-    if (
-      enabled === undefined &&
-      !window.confirm(
-        `Delete ${name}? Its document root will be moved to the recovery trash.`,
-      )
-    ) {
-      return;
-    }
+  const runDomainAction = async (id: string, enabled?: boolean) => {
     await runAction(`domain:${id}`, false, async () => {
+      const path = `domains/${encodeURIComponent(id)}`;
       if (enabled === undefined) {
-        await deleteDomain(id, session.csrfToken);
+        await api.delete(path).json<DomainJobResponse>();
       } else {
-        await setDomain(id, enabled, session.csrfToken);
+        await api.patch(path, { json: { enabled } }).json<DomainJobResponse>();
       }
-    });
+    }, enabled === undefined ? "Domain queued for deletion" : enabled ? "Domain enabled" : "Domain disabled");
   };
 
-  const runAliasAction = async (id: string, name: string, enabled?: boolean) => {
+  const runAliasAction = async (id: string, enabled?: boolean) => {
     if (!selectedDomain) return;
-    if (enabled === undefined && !window.confirm(`Delete alias ${name}?`)) return;
     await runAction(`alias:${id}`, true, async () => {
+      const path = `domains/${encodeURIComponent(selectedDomain)}/aliases/${encodeURIComponent(id)}`;
       if (enabled === undefined) {
-        await deleteDomainAlias(selectedDomain, id, session.csrfToken);
+        await api.delete(path).json<DomainAliasJobResponse>();
       } else {
-        await setDomainAlias(selectedDomain, id, enabled, session.csrfToken);
+        await api
+          .patch(path, { json: { enabled } })
+          .json<DomainAliasJobResponse>();
       }
-    });
+    }, enabled === undefined ? "Alias queued for deletion" : enabled ? "Alias enabled" : "Alias disabled");
   };
 
   const runAction = async (
     id: string,
     alias: boolean,
     action: () => Promise<void>,
+    success: string,
   ) => {
     setActionId(id);
-    setActionError("");
     try {
       await action();
       const refreshes = [mutateDomains(), mutateKey("jobs")];
       if (alias) refreshes.push(mutateAliases());
       await Promise.all(refreshes);
+      toast.success(success);
     } catch (requestError) {
-      setActionError(await errorMessage(requestError));
+      toast.danger("Domain action failed", {
+        description: await errorMessage(requestError),
+      });
     } finally {
       setActionId("");
     }
   };
 
-  const renamePrimary = async (id: string, current: string) => {
-    const name = window.prompt("New domain name", current)?.trim();
-    if (!name || name === current) return;
-    await runAction(`domain:${id}`, false, async () => {
-      await renameDomain(id, name, session.csrfToken);
-    });
-  };
-
-  const renameAlias = async (id: string, current: string) => {
-    if (!selectedDomain) return;
-    const name = window.prompt("New alias name", current)?.trim();
-    if (!name || name === current) return;
-    await runAction(`alias:${id}`, true, async () => {
-      await renameDomainAlias(selectedDomain, id, name, session.csrfToken);
-    });
+  const rename = async (name: string) => {
+    if (!edit || name === edit.name) {
+      setEdit(null);
+      return;
+    }
+    const result = v.safeParse(domainField, name);
+    if (!result.success) {
+      toast.warning("Check the hostname", {
+        description: issueMessage(result.issues),
+      });
+      return;
+    }
+    const editing = edit;
+    const isAlias = editing.kind === "alias";
+    if (isAlias && !selectedDomain) return;
+    const path = isAlias
+      ? `domains/${encodeURIComponent(selectedDomain)}/aliases/${encodeURIComponent(editing.id)}`
+      : `domains/${encodeURIComponent(editing.id)}`;
+    await runAction(
+      `${editing.kind}:${editing.id}`,
+      isAlias,
+      async () => {
+        if (isAlias) {
+          await api
+            .patch(path, { json: { name: result.output } })
+            .json<DomainAliasJobResponse>();
+        } else {
+          await api
+            .patch(path, { json: { name: result.output } })
+            .json<DomainJobResponse>();
+        }
+      },
+      isAlias ? "Alias rename queued" : "Domain rename queued",
+    );
+    setEdit(null);
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="space-y-6">
-        <section className="overflow-hidden rounded-2xl border border-divider bg-surface">
+        <section className="panel-card overflow-hidden">
           <div className="border-b border-divider px-6 py-5">
-            <h2 className="text-lg font-semibold">Domains</h2>
+            <h2 className="text-base font-semibold">Domains</h2>
             <div className="mt-1 text-sm text-foreground-500">
               Nginx sites and isolated document roots.
             </div>
-            {actionError && (
-              <div className="mt-3 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-                {actionError}
-              </div>
-            )}
           </div>
           <div className="divide-y divide-divider">
             {domains?.items.length ? (
@@ -204,7 +228,7 @@ export const DomainsPanel = ({ session }: Props) => {
                   className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="flex size-10 items-center justify-center rounded-xl bg-default/10">
+                    <div className="icon-box">
                       <Globe2 className="size-5" aria-hidden="true" />
                     </div>
                     <div>
@@ -234,7 +258,13 @@ export const DomainsPanel = ({ session }: Props) => {
                         variant="tertiary"
                         aria-label={`Rename ${domain.name}`}
                         isDisabled={domain.status !== "active" || actionId === `domain:${domain.id}`}
-                        onPress={() => renamePrimary(domain.id, domain.name)}
+                        onPress={() =>
+                          setEdit({
+                            kind: "domain",
+                            id: domain.id,
+                            name: domain.name,
+                          })
+                        }
                       >
                         <Pencil className="size-4" aria-hidden="true" />
                       </Button>
@@ -244,20 +274,31 @@ export const DomainsPanel = ({ session }: Props) => {
                         variant="tertiary"
                         aria-label={domain.enabled ? `Disable ${domain.name}` : `Enable ${domain.name}`}
                         isDisabled={domain.status === "pending" || actionId === `domain:${domain.id}`}
-                        onPress={() => runDomainAction(domain.id, domain.name, !domain.enabled)}
+                        onPress={() =>
+                          void runDomainAction(domain.id, !domain.enabled)
+                        }
                       >
                         <Power className="size-4" aria-hidden="true" />
                       </Button>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="danger-soft"
-                        aria-label={`Delete ${domain.name}`}
-                        isDisabled={domain.status === "pending" || actionId === `domain:${domain.id}`}
-                        onPress={() => runDomainAction(domain.id, domain.name)}
+                      <Confirm
+                        title={`Delete ${domain.name}?`}
+                        description="Its document root will be moved to the recovery trash."
+                        action="Delete domain"
+                        onConfirm={() => void runDomainAction(domain.id)}
                       >
-                        <Trash2 className="size-4" aria-hidden="true" />
-                      </Button>
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="danger-soft"
+                          aria-label={`Delete ${domain.name}`}
+                          isDisabled={
+                            domain.status === "pending" ||
+                            actionId === `domain:${domain.id}`
+                          }
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </Button>
+                      </Confirm>
                     </div>
                   </div>
                 </div>
@@ -270,9 +311,9 @@ export const DomainsPanel = ({ session }: Props) => {
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-2xl border border-divider bg-surface">
+        <section className="panel-card overflow-hidden">
           <div className="border-b border-divider px-6 py-5">
-            <h2 className="text-lg font-semibold">Aliases</h2>
+            <h2 className="text-base font-semibold">Aliases</h2>
             <div className="mt-1 text-sm text-foreground-500">
               {currentDomain
                 ? `Names serving the ${currentDomain.name} document root.`
@@ -308,7 +349,13 @@ export const DomainsPanel = ({ session }: Props) => {
                       variant="tertiary"
                       aria-label={`Rename ${alias.name}`}
                       isDisabled={alias.status === "pending" || actionId === `alias:${alias.id}`}
-                      onPress={() => renameAlias(alias.id, alias.name)}
+                      onPress={() =>
+                        setEdit({
+                          kind: "alias",
+                          id: alias.id,
+                          name: alias.name,
+                        })
+                      }
                     >
                       <Pencil className="size-4" aria-hidden="true" />
                     </Button>
@@ -318,20 +365,31 @@ export const DomainsPanel = ({ session }: Props) => {
                       variant="tertiary"
                       aria-label={alias.enabled ? `Disable ${alias.name}` : `Enable ${alias.name}`}
                       isDisabled={alias.status === "pending" || actionId === `alias:${alias.id}`}
-                      onPress={() => runAliasAction(alias.id, alias.name, !alias.enabled)}
+                      onPress={() =>
+                        void runAliasAction(alias.id, !alias.enabled)
+                      }
                     >
                       <Power className="size-4" aria-hidden="true" />
                     </Button>
-                    <Button
-                      isIconOnly
-                      size="sm"
-                      variant="danger-soft"
-                      aria-label={`Delete ${alias.name}`}
-                      isDisabled={alias.status === "pending" || actionId === `alias:${alias.id}`}
-                      onPress={() => runAliasAction(alias.id, alias.name)}
+                    <Confirm
+                      title={`Delete ${alias.name}?`}
+                      description="This hostname will stop serving the primary domain."
+                      action="Delete alias"
+                      onConfirm={() => void runAliasAction(alias.id)}
                     >
-                      <Trash2 className="size-4" aria-hidden="true" />
-                    </Button>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="danger-soft"
+                        aria-label={`Delete ${alias.name}`}
+                        isDisabled={
+                          alias.status === "pending" ||
+                          actionId === `alias:${alias.id}`
+                        }
+                      >
+                        <Trash2 className="size-4" aria-hidden="true" />
+                      </Button>
+                    </Confirm>
                   </div>
                 </div>
               ))
@@ -345,30 +403,20 @@ export const DomainsPanel = ({ session }: Props) => {
       </div>
 
       <div className="space-y-6">
-        <aside className="rounded-2xl border border-divider bg-surface p-6">
-          <h2 className="text-lg font-semibold">Add domain</h2>
+        <aside className="panel-card p-6">
+          <h2 className="text-base font-semibold">Add domain</h2>
           <div className="mt-1 text-sm leading-6 text-foreground-500">
             Creates the document root and validates services before reloading.
           </div>
           <form className="mt-6 space-y-5" onSubmit={submitDomain}>
-            <label className="block space-y-2">
-              <span className="text-sm font-medium">Hosting account</span>
-              <select
-                required
-                value={selectedAccount}
-                onChange={(event) => setAccountId(event.currentTarget.value)}
-                className="h-10 w-full rounded-lg border border-divider bg-background px-3 text-sm outline-none focus:border-accent"
-              >
-                {!activeAccounts?.length && (
-                  <option value="">No active accounts</option>
-                )}
-                {activeAccounts?.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SelectField
+              required
+              label="Hosting account"
+              value={selectedAccount}
+              options={activeAccounts ?? []}
+              empty="No active accounts"
+              onChange={setAccountId}
+            />
             <TextField fullWidth isRequired>
               <Label>Domain name</Label>
               <Input
@@ -381,11 +429,6 @@ export const DomainsPanel = ({ session }: Props) => {
                 onChange={(event) => setDomainName(event.currentTarget.value)}
               />
             </TextField>
-            {domainError && (
-              <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-                {domainError}
-              </div>
-            )}
             <Button
               type="submit"
               variant="primary"
@@ -398,30 +441,20 @@ export const DomainsPanel = ({ session }: Props) => {
           </form>
         </aside>
 
-        <aside className="rounded-2xl border border-divider bg-surface p-6">
-          <h2 className="text-lg font-semibold">Add alias</h2>
+        <aside className="panel-card p-6">
+          <h2 className="text-base font-semibold">Add alias</h2>
           <div className="mt-1 text-sm leading-6 text-foreground-500">
             Points another hostname at an existing domain.
           </div>
           <form className="mt-6 space-y-5" onSubmit={submitAlias}>
-            <label className="block space-y-2">
-              <span className="text-sm font-medium">Primary domain</span>
-              <select
-                required
-                value={selectedDomain}
-                onChange={(event) => setDomainId(event.currentTarget.value)}
-                className="h-10 w-full rounded-lg border border-divider bg-background px-3 text-sm outline-none focus:border-accent"
-              >
-                {!activeDomains?.length && (
-                  <option value="">No active domains</option>
-                )}
-                {activeDomains?.map((domain) => (
-                  <option key={domain.id} value={domain.id}>
-                    {domain.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SelectField
+              required
+              label="Primary domain"
+              value={selectedDomain}
+              options={activeDomains ?? []}
+              empty="No active domains"
+              onChange={setDomainId}
+            />
             <TextField fullWidth isRequired>
               <Label>Alias name</Label>
               <Input
@@ -434,11 +467,6 @@ export const DomainsPanel = ({ session }: Props) => {
                 onChange={(event) => setAliasName(event.currentTarget.value)}
               />
             </TextField>
-            {aliasError && (
-              <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-                {aliasError}
-              </div>
-            )}
             <Button
               type="submit"
               variant="primary"
@@ -451,6 +479,17 @@ export const DomainsPanel = ({ session }: Props) => {
           </form>
         </aside>
       </div>
+      <TextDialog
+        open={edit !== null}
+        title={edit?.kind === "alias" ? "Rename alias" : "Rename domain"}
+        label="Hostname"
+        value={edit?.name ?? ""}
+        pending={actionId !== ""}
+        onOpenChange={(open) => {
+          if (!open) setEdit(null);
+        }}
+        onSubmit={(value) => void rename(value)}
+      />
     </div>
   );
 };
