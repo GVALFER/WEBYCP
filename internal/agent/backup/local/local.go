@@ -37,6 +37,8 @@ const (
 
 var checksumPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
+var _ backup.Driver = (*Driver)(nil)
+
 type Driver struct {
 	root        string
 	home        string
@@ -127,8 +129,8 @@ func (d *Driver) Restore(ctx context.Context, request backup.RestoreRequest) (st
 	if err != nil {
 		return "", err
 	}
-	if !request.Files && !request.Databases && !request.Metadata {
-		return "", &validate.Error{Field: "scope", Message: "Select at least one restore scope"}
+	if err := manifest.ValidateScope(request.Files, request.Databases, request.Metadata); err != nil {
+		return "", err
 	}
 	if err := d.validateAccount(request.AccountID, request.SystemUser); err != nil {
 		return "", err
@@ -291,6 +293,8 @@ func inspectArchive(filePath, accountID string) (backupfmt.Manifest, error) {
 	defer file.Close()
 	defer gz.Close()
 	computed := make(map[string]backupfmt.Entry)
+	seen := make(map[string]bool)
+	hasFiles, hasDatabases, hasMetadata := false, false, false
 	var manifest backupfmt.Manifest
 	for {
 		header, err := reader.Next()
@@ -303,6 +307,13 @@ func inspectArchive(filePath, accountID string) (backupfmt.Manifest, error) {
 		if !validEntryPath(header.Name) || (header.Typeflag != tar.TypeReg && header.Typeflag != tar.TypeDir) {
 			return backupfmt.Manifest{}, fmt.Errorf("unsafe backup entry: %s", header.Name)
 		}
+		if seen[header.Name] {
+			return backupfmt.Manifest{}, fmt.Errorf("duplicate backup entry: %s", header.Name)
+		}
+		seen[header.Name] = true
+		hasFiles = hasFiles || strings.HasPrefix(header.Name, "files/")
+		hasDatabases = hasDatabases || strings.HasPrefix(header.Name, "databases/") && header.Typeflag == tar.TypeReg
+		hasMetadata = hasMetadata || header.Name == "metadata.json" && header.Typeflag == tar.TypeReg
 		if header.Name == "manifest.json" {
 			if header.Size > 1<<20 || json.NewDecoder(io.LimitReader(reader, header.Size)).Decode(&manifest) != nil {
 				return backupfmt.Manifest{}, fmt.Errorf("backup manifest is invalid")
@@ -317,8 +328,15 @@ func inspectArchive(filePath, accountID string) (backupfmt.Manifest, error) {
 			computed[header.Name] = backupfmt.Entry{Path: header.Name, Size: header.Size, Checksum: hex.EncodeToString(hash.Sum(nil))}
 		}
 	}
+	// tar EOF can occur before gzip's checksum and size trailer have been read.
+	if _, err := io.Copy(io.Discard, gz); err != nil {
+		return backupfmt.Manifest{}, fmt.Errorf("read backup trailer: %w", err)
+	}
 	if manifest.Version != backupfmt.Version || manifest.AccountID != accountID || validate.ID("runId", manifest.RunID) != nil {
 		return backupfmt.Manifest{}, fmt.Errorf("backup manifest identity is invalid")
+	}
+	if hasFiles && !manifest.Files || hasDatabases != manifest.Databases || hasMetadata != manifest.Metadata {
+		return backupfmt.Manifest{}, fmt.Errorf("backup manifest scope does not match its content")
 	}
 	if len(manifest.Entries) != len(computed) {
 		return backupfmt.Manifest{}, fmt.Errorf("backup manifest entry count does not match")
@@ -328,6 +346,7 @@ func inspectArchive(filePath, accountID string) (backupfmt.Manifest, error) {
 		if !ok || actual.Size != entry.Size || actual.Checksum != entry.Checksum {
 			return backupfmt.Manifest{}, fmt.Errorf("backup entry checksum does not match: %s", entry.Path)
 		}
+		delete(computed, entry.Path)
 	}
 	return manifest, nil
 }

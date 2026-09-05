@@ -1,7 +1,10 @@
 package local
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -13,6 +16,7 @@ import (
 
 	"github.com/GVALFER/WEBYCP/internal/agent/backup"
 	"github.com/GVALFER/WEBYCP/internal/agent/hostuser"
+	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 )
 
 func TestCreatePreviewAndPartialRestore(t *testing.T) {
@@ -141,5 +145,94 @@ func TestSafeTargetRejectsExistingSymlink(t *testing.T) {
 	}
 	if _, err := safeTarget(root, "web/index.html"); err == nil {
 		t.Fatal("expected symlink target to be rejected")
+	}
+}
+
+func TestPreviewRejectsIncompleteArchive(t *testing.T) {
+	accountID := "0123456789abcdef0123456789abcdef"
+	for _, test := range []struct {
+		name                          string
+		metadata, truncate, duplicate bool
+	}{
+		{name: "missing metadata", metadata: true},
+		{name: "truncated gzip trailer", truncate: true},
+		{name: "duplicate manifest", duplicate: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			driver := New()
+			driver.root = t.TempDir()
+			root := filepath.Join(driver.root, accountID)
+			if err := os.Mkdir(root, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			runID := "abcdef0123456789abcdef0123456789"
+			filePath := filepath.Join(root, runID+".tar.gz")
+			file, err := os.Create(filePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			gz := gzip.NewWriter(file)
+			writer := tar.NewWriter(gz)
+			value, err := json.Marshal(backupfmt.Manifest{Version: backupfmt.Version, AccountID: accountID, RunID: runID, Metadata: test.metadata})
+			if err != nil {
+				t.Fatal(err)
+			}
+			count := 1
+			if test.duplicate {
+				count = 2
+			}
+			for range count {
+				if err := writer.WriteHeader(&tar.Header{Name: "manifest.json", Mode: 0o600, Size: int64(len(value)), Typeflag: tar.TypeReg}); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := writer.Write(value); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := errors.Join(writer.Close(), gz.Close(), file.Close()); err != nil {
+				t.Fatal(err)
+			}
+			if test.truncate {
+				info, err := os.Stat(filePath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Truncate(filePath, info.Size()-4); err != nil {
+					t.Fatal(err)
+				}
+			}
+			checksum, _, err := fileChecksum(filePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := backup.ArtifactRequest{AccountID: accountID, Path: filePath, Checksum: checksum}
+			if _, err := driver.Preview(context.Background(), request); err == nil {
+				t.Fatal("incomplete archive accepted even with a matching outer checksum")
+			}
+		})
+	}
+}
+
+func TestRestoreRejectsMissingScopeBeforeWrites(t *testing.T) {
+	driver := New()
+	driver.root = t.TempDir()
+	accountID := "0123456789abcdef0123456789abcdef"
+	artifact, err := driver.Create(context.Background(), backup.CreateRequest{
+		RunID: "abcdef0123456789abcdef0123456789", AccountID: accountID,
+		SystemUser: "wcp_0123456789ab", Metadata: `{}`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	driver.lookup = func(string) (*user.User, error) {
+		t.Fatal("restore reached host identity lookup with an invalid scope")
+		return nil, nil
+	}
+	_, err = driver.Restore(context.Background(), backup.RestoreRequest{
+		ArtifactRequest: backup.ArtifactRequest{AccountID: accountID, Path: artifact.Path, Checksum: artifact.Checksum},
+		SystemUser:      "wcp_0123456789ab", Files: true,
+	})
+	if err == nil {
+		t.Fatal("missing file scope accepted")
 	}
 }

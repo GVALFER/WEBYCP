@@ -40,6 +40,7 @@ export type CronJobListResponse = components["schemas"]["CronJobListResponse"];
 export type CronJobResponse = components["schemas"]["CronJobResponse"];
 export type WriteCronJobRequest = components["schemas"]["WriteCronJobRequest"];
 export type BackupPlan = components["schemas"]["BackupPlan"];
+export type BackupArtifact = components["schemas"]["BackupArtifact"];
 export type BackupPlanListResponse = components["schemas"]["BackupPlanListResponse"];
 export type BackupRunListResponse = components["schemas"]["BackupRunListResponse"];
 export type BackupArtifactListResponse = components["schemas"]["BackupArtifactListResponse"];

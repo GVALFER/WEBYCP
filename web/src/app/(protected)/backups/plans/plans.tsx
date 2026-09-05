@@ -6,7 +6,6 @@ import { Table, type TableColumn } from "@/components/table/table";
 import { useTable } from "@/components/table/useTable";
 import type {
     AccountListResponse,
-    BackupArtifactListResponse,
     BackupPlanListResponse,
     BackupRunListResponse,
     ServiceSettings,
@@ -14,28 +13,24 @@ import type {
 import { useTimezone } from "@/hooks/useDate";
 import { cn } from "@/utils/classnames";
 import { statusClass } from "@/utils/status";
-import BackupArtifactActions from "./actions/backupArtifactActions";
 import BackupPlanActions from "./actions/backupPlanActions";
-import CreateBackup from "./actions/createBackup";
+import PlanForm from "./actions/planForm";
 
-type BackupsProps = {
+type Props = {
     accounts: AccountListResponse;
     plans: BackupPlanListResponse;
     runs: BackupRunListResponse;
-    artifacts: BackupArtifactListResponse;
     settings: ServiceSettings;
 };
 
 type Plan = BackupPlanListResponse["items"][number];
 type Run = BackupRunListResponse["items"][number];
-type Artifact = BackupArtifactListResponse["items"][number];
 
-const Backups = ({ accounts, plans, runs, artifacts, settings: initialSettings }: BackupsProps) => {
+const Plans = ({ accounts, plans, runs, settings: initialSettings }: Props) => {
     const { dt } = useTimezone();
 
     const plansTable = useTable(plans.pagination, "plans");
     const runsTable = useTable(runs.pagination, "runs");
-    const artifactsTable = useTable(artifacts.pagination, "artifacts");
 
     const { data: planData } = useSWR<BackupPlanListResponse>(`backup-plans${plansTable.query}`, {
         fallbackData: plansTable.isInitialQuery ? plans : undefined,
@@ -43,10 +38,6 @@ const Backups = ({ accounts, plans, runs, artifacts, settings: initialSettings }
     const { data: runData } = useSWR<BackupRunListResponse>(`backup-runs${runsTable.query}`, {
         fallbackData: runsTable.isInitialQuery ? runs : undefined,
     });
-    const { data: artifactData } = useSWR<BackupArtifactListResponse>(
-        `backup-artifacts${artifactsTable.query}`,
-        { fallbackData: artifactsTable.isInitialQuery ? artifacts : undefined },
-    );
     const { data: settings = initialSettings } = useSWR<ServiceSettings>("service-settings", {
         fallbackData: initialSettings,
     });
@@ -78,7 +69,7 @@ const Backups = ({ accounts, plans, runs, artifacts, settings: initialSettings }
             id: "schedule",
             label: "Schedule",
             cellClassName: "whitespace-nowrap text-foreground-500",
-            render: (plan) => plan.schedule || "Manual only",
+            render: (plan) => !plan.enabled ? "Disabled" : plan.schedule || "Manual only",
         },
         {
             id: "nextRun",
@@ -97,40 +88,12 @@ const Backups = ({ accounts, plans, runs, artifacts, settings: initialSettings }
             label: "Actions",
             headerClassName: "text-end",
             cellClassName: "w-px whitespace-nowrap",
-            render: (plan) => <BackupPlanActions plan={plan} />,
-        },
-    ];
-
-    const artifactColumns: TableColumn<Artifact>[] = [
-        {
-            id: "artifact",
-            label: "Artifact",
-            isRowHeader: true,
-            render: (artifact) => (
-                <div>
-                    <div className="font-medium">{dt(artifact.createdAt)}</div>
-                    <div className="mt-1 font-mono text-xs text-foreground-400">{artifact.id}</div>
+            render: (plan) => (
+                <div className="flex items-center gap-2">
+                    <PlanForm accounts={accounts} driver={plan.storageDriver} plan={plan} />
+                    <BackupPlanActions plan={plan} />
                 </div>
             ),
-        },
-        {
-            id: "size",
-            label: "Size",
-            cellClassName: "whitespace-nowrap text-foreground-500",
-            render: (artifact) => `${(artifact.size / 1_048_576).toFixed(2)} MB`,
-        },
-        {
-            id: "checksum",
-            label: "SHA-256",
-            cellClassName: "font-mono text-xs text-foreground-500",
-            render: (artifact) => `${artifact.checksum.slice(0, 12)}…`,
-        },
-        {
-            id: "actions",
-            label: "Actions",
-            headerClassName: "text-end",
-            cellClassName: "w-px whitespace-nowrap",
-            render: (artifact) => <BackupArtifactActions artifact={artifact} />,
         },
     ];
 
@@ -184,16 +147,9 @@ const Backups = ({ accounts, plans, runs, artifacts, settings: initialSettings }
                             Scheduled and on-demand local backups with retention.
                         </div>
                     </div>
-                    <CreateBackup accounts={accounts} driver={settings.defaults.backupDriver} />
+                    <PlanForm accounts={accounts} driver={settings.defaults.backupDriver} />
                 </div>
                 <Table table={plansTable} columns={planColumns} data={planData} />
-            </section>
-
-            <section className="panel-card overflow-hidden">
-                <div className="px-6 py-5">
-                    <h2 className="text-base font-semibold">Verified artifacts</h2>
-                </div>
-                <Table table={artifactsTable} columns={artifactColumns} data={artifactData} />
             </section>
 
             <section className="panel-card overflow-hidden">
@@ -206,4 +162,4 @@ const Backups = ({ accounts, plans, runs, artifacts, settings: initialSettings }
     );
 };
 
-export default Backups;
+export default Plans;

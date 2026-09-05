@@ -28,6 +28,10 @@ type RestoreRequest struct {
 	Files, Databases, Metadata bool
 }
 
+// Driver owns artifact storage and restores on the account's node. Preview and
+// Restore must verify archive identity, paths and checksums before any writes.
+// Restore must honor the selected scope and repair managed file ownership.
+// Delete is idempotent; a missing artifact is already deleted.
 type Driver interface {
 	Create(context.Context, CreateRequest) (Artifact, error)
 	Preview(context.Context, ArtifactRequest) (backupfmt.Manifest, error)

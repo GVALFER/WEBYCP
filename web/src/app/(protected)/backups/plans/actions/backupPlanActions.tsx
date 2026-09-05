@@ -69,7 +69,7 @@ const BackupPlanActions = ({ plan }: BackupPlanActionsProps) => {
             </Button>
             <Confirm
                 title={`Delete ${plan.name}?`}
-                description="The schedule will be removed. Existing backup artifacts will be retained."
+                description="The schedule will be removed. Existing backup archives will be retained."
                 action="Delete plan"
                 onConfirm={remove}
             >

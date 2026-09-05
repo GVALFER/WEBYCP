@@ -9,6 +9,8 @@
 
 ## Shell & Tool Reliability
 
+1. **[2026-09-05] Removed Next.js routes can leave stale dev type validators**
+   Do instead: move only the generated `.next/dev` cache aside when it still imports deleted pages; regenerate build types instead of restoring obsolete routes.
 1. **[2026-09-04] Release builds require Node.js 24 and Docker Buildx**
    Do instead: verify `node --version` before release, select the installed NVM Node 24 when needed, and build the pinned Linux amd64 Next.js standalone runtime through Docker.
 2. **[2026-09-04] Gitleaks must recognize Next.js dev build keys**

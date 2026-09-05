@@ -188,8 +188,8 @@ func (s *Service) Restore(ctx context.Context, id, userID string, admin bool, sc
 	if err != nil {
 		return jobs.Job{}, err
 	}
-	if !scope.Files && !scope.Databases && !scope.Metadata {
-		return jobs.Job{}, ErrScope
+	if err := artifact.Manifest.ValidateScope(scope.Files, scope.Databases, scope.Metadata); err != nil {
+		return jobs.Job{}, err
 	}
 	jobID, err := idgen.ID()
 	if err != nil {

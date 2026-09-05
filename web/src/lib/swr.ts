@@ -7,4 +7,5 @@ export const swrConfig: SWRConfiguration = {
     revalidateOnReconnect: false,
     revalidateIfStale: false,
     shouldRetryOnError: false,
+    keepPreviousData: true,
 };

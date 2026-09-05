@@ -581,8 +581,10 @@ Selected implementation: PowerDNS Authoritative Server with its SQLite backend
 and loopback HTTP API.
 
 Status: implementation, release, real provider lifecycle, VPS upgrade, rollback,
-and recovery verification are complete. The visual browser pass remains pending
-because no global browser instance was available during acceptance.
+and recovery verification are complete. During Step 6, global Playwright checked
+Zones, Providers, Nameservers and the nameserver modal. The full record-editor
+visual pass remains pending. The empty-zone warning needs a dark-theme contrast
+adjustment; it was recorded without expanding the backup changes.
 
 Deliverables:
 
@@ -601,6 +603,36 @@ Verification:
 - Stop for review.
 
 ### Step 6 — Backups and destinations
+
+Status: implemented and deployed to the Ubuntu 24.04 test VPS as `0.1.1-rc.18`.
+Ready for review; Step 7 has not started. The local driver contract and observed
+node capabilities are reused; no remote provider has been selected.
+
+Acceptance evidence:
+
+- Repository checks, frontend production build, Linux release build and security
+  checks passed. The release artifact passed the secret scan.
+- Four SSR routes load Plans, Archives, Restore and Destinations. Plans and runs
+  keep independent dotted URL pagination; the shared archive table only renders
+  supplied data and contains no fetches.
+- Global Playwright verified plan creation (including edited numeric retention),
+  archive preview, empty-scope rejection, full and files-only restore submission,
+  destination display and explicit Agent checks. Light and dark pages were
+  inspected, with no browser console errors in the inspected flows.
+- The Playwright connection closed during the final independent-pagination
+  interaction check. That browser check, the edit-plan interaction and the
+  mobile visual pass remain pending; do not claim them as completed.
+- An isolated VPS account passed manual and scheduled backups, files-only,
+  databases-only, metadata-only and full restores. File contents, MySQL rows,
+  Unix ownership/modes and Website reactivation were checked independently.
+- Retention removed the older archive from the scheduled plan without touching
+  another plan. Requesting an absent database scope returned HTTP 422.
+- Unit tests reject corrupt archives, missing metadata, truncated gzip trailers,
+  duplicate manifest entries and empty/absent restore scopes before host writes.
+- The temporary account, website, database, plans and archives were removed.
+  The account home remains recoverable under the panel's quarantine directory.
+- Upgrade recovery snapshot:
+  `/var/lib/webycp/upgrades/before-0.1.1-rc.18-20260905T145337Z.vk8Lnu`.
 
 Deliverables:
 
@@ -674,5 +706,6 @@ A step is complete only when:
 
 ## 12. Immediate Next Step
 
-Review **Step 5 — DNS foundation** and complete its visual pass when the global
-browser is available. Do not begin Step 6 until the result has been reviewed.
+Review **Step 6 — Backups and destinations** on the test VPS. Complete the
+outstanding browser checks when global Playwright reconnects. Do not begin
+Step 7 until this step has been reviewed.

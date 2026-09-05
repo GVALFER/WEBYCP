@@ -86,13 +86,13 @@ through command-line arguments, environment variables, or service logs.
 
 ## Account backups
 
-Create backup plans from **Backups** in the panel. A plan belongs to one active
+Create or edit plans from **Backups → Plans** in the panel. A plan belongs to one active
 hosting account and may contain its files, databases, or both. An empty schedule
 makes the plan manual-only; scheduled plans use standard five-field cron syntax
 in UTC. Retention is between 1 and 100 completed artifacts per plan.
 
 Use **Run now**, then confirm that the run is `succeeded` and that a new entry
-appears under **Verified artifacts**. An artifact is not usable until both have
+appears under **Backups → Archives**. An artifact is not usable until both have
 happened.
 
 Artifacts are stored as root-only files at:
@@ -104,13 +104,24 @@ Artifacts are stored as root-only files at:
 Do not rename or move individual artifacts. Their exact path and SHA-256 value
 are recorded in SQLite.
 
+**Backups → Destinations** shows the storage reported by each node and when it
+was checked. Use **Check agent** to refresh this observation. The local driver
+stores archives on the account's node; a node ID plus a storage driver identifies
+the destination. There are no remote credentials or destination configuration
+records yet. A remote provider must be selected before adding its implementation.
+
+All drivers implement creation, verified preview, scoped restore and idempotent
+deletion. Preview and restore must verify identity, entry paths and checksums
+before writing. Restore must reject absent scopes and repair managed ownership;
+the control plane reconciles selected metadata after the Agent succeeds.
+
 ### Backup coverage
 
-| Scope     | Included                                                 | Not included                                                                   |
-| --------- | -------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Files     | The managed account home directory                       | Symlinks; their presence fails the backup                                      |
-| Databases | Dumps of active databases, including routines and events | MySQL users, passwords, and grants                                             |
-| Metadata  | Domains, aliases, database definitions, and cron jobs    | Account records, sessions, backup plans, certificate records, and private keys |
+| Scope     | Included                                                       | Not included                                                                |
+| --------- | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Files     | The managed account home directory                             | Symlinks; their presence fails the backup                                   |
+| Databases | Dumps of active databases, including routines and events       | MySQL users, passwords, and grants                                          |
+| Metadata  | Websites, domain bindings, database definitions, and cron jobs | Accounts, DNS zones, sessions, backup plans, certificates, and private keys |
 
 Local artifacts share the managed server's failure domain. Copy
 `/var/backups/webycp` to protected off-host storage or include it in a verified
@@ -120,9 +131,12 @@ infrastructure snapshot. Preserve ownership and permissions.
 
 1. Run and verify a fresh backup of the current account state.
 2. Confirm that the account is active and that all health checks pass.
-3. Select **Restore** on the required verified artifact.
-4. Review the confirmation carefully. The current UI restores every scope
-   present in the artifact; the REST API supports selecting individual scopes.
+3. Open **Backups → Restore** and select the required archive. Opening its modal
+   verifies the actual archive on its server before offering restore options.
+4. Review the archive identity and select files, database contents, metadata,
+   or all available scopes. Absent content cannot be selected. Submit only after
+   reviewing the overwrite warning; the Agent verifies the archive again when
+   the restore job executes.
 5. Monitor **Jobs** until the restore job is `succeeded`.
 6. Test the restored websites, database contents, and cron definitions.
 7. Recreate or rotate database-user credentials and grants when required; they

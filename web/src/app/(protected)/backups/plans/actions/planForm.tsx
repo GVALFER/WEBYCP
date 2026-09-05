@@ -2,6 +2,7 @@
 
 import { valibotResolver } from "@hookform/resolvers/valibot";
 import { toast } from "@heroui/react";
+import { Pencil } from "lucide-react";
 import { useCallback, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import useSWR, { useSWRConfig } from "swr";
@@ -24,9 +25,7 @@ const formSchema = v.pipe(
         name: nameField,
         schedule: scheduleField,
         retentionCount: v.pipe(
-            v.string(),
-            v.regex(/^\d+$/, "Enter a whole retention number."),
-            v.transform(Number),
+            v.number("Enter a retention number."),
             v.integer("Enter a whole retention number."),
             v.minValue(1, "Keep at least one backup."),
             v.maxValue(100, "Keep no more than 100 backups."),
@@ -34,6 +33,7 @@ const formSchema = v.pipe(
         includeFiles: v.boolean(),
         includeDatabases: v.boolean(),
         storageDriver: v.literal("local"),
+        enabled: v.boolean(),
     }),
     v.forward(
         v.partialCheck(
@@ -48,12 +48,13 @@ const formSchema = v.pipe(
 type FormInputValues = v.InferInput<typeof formSchema>;
 type FormValues = v.InferOutput<typeof formSchema>;
 
-type CreateBackupProps = {
+type Props = {
     accounts: AccountListResponse;
     driver: ServiceDefaults["backupDriver"];
+    plan?: BackupPlan;
 };
 
-const CreateBackup = ({ accounts, driver }: CreateBackupProps) => {
+const PlanForm = ({ accounts, driver, plan }: Props) => {
     const [open, setOpen] = useState(false);
 
     const [pending, startTransition] = useTransition();
@@ -66,18 +67,38 @@ const CreateBackup = ({ accounts, driver }: CreateBackupProps) => {
     const options =
         data?.items.filter((account) => account.status === "active" && account.enabled) ?? [];
 
+    const defaults: FormInputValues = plan
+        ? {
+              accountId: plan.accountId,
+              name: plan.name,
+              schedule: plan.schedule,
+              retentionCount: plan.retentionCount,
+              includeFiles: plan.includeFiles,
+              includeDatabases: plan.includeDatabases,
+              storageDriver: plan.storageDriver,
+              enabled: plan.enabled,
+          }
+        : {
+              accountId: options[0]?.id ?? "",
+              name: "Daily backup",
+              schedule: "0 3 * * *",
+              retentionCount: 7,
+              includeFiles: true,
+              includeDatabases: true,
+              storageDriver: driver,
+              enabled: true,
+          };
+
     const form = useForm<FormInputValues, unknown, FormValues>({
         resolver: valibotResolver(formSchema),
-        defaultValues: {
-            accountId: options[0]?.id ?? "",
-            name: "Daily backup",
-            schedule: "0 3 * * *",
-            retentionCount: "7",
-            includeFiles: true,
-            includeDatabases: true,
-            storageDriver: driver,
-        },
+        defaultValues: defaults,
     });
+
+    const changeOpen = (value: boolean) => {
+        if (pending) return;
+        if (value) form.reset(defaults);
+        setOpen(value);
+    };
 
     const accountId = useWatch({ control: form.control, name: "accountId" });
     const files = useWatch({ control: form.control, name: "includeFiles" });
@@ -87,9 +108,13 @@ const CreateBackup = ({ accounts, driver }: CreateBackupProps) => {
         (values: FormValues) => {
             startTransition(async () => {
                 try {
-                    await api
-                        .post("backup-plans", { json: { ...values, enabled: true } })
-                        .json<BackupPlan>();
+                    if (plan) {
+                        await api.patch(`backup-plans/${encodeURIComponent(plan.id)}`, {
+                            json: values,
+                        }).json<BackupPlan>();
+                    } else {
+                        await api.post("backup-plans", { json: values }).json<BackupPlan>();
+                    }
 
                     await mutate((key) =>
                         isPageKey(
@@ -103,7 +128,7 @@ const CreateBackup = ({ accounts, driver }: CreateBackupProps) => {
                     );
 
                     setOpen(false);
-                    toast.success("Backup plan created");
+                    toast.success(plan ? "Backup plan updated" : "Backup plan created");
                 } catch (error) {
                     toast.danger("Backup action failed", {
                         description: await errorMessage(error),
@@ -111,30 +136,34 @@ const CreateBackup = ({ accounts, driver }: CreateBackupProps) => {
                 }
             });
         },
-        [mutate],
+        [mutate, plan],
     );
 
     return (
         <Form {...form}>
             <FormModal
                 open={open}
-                title="Create backup plan"
-                description="Creates a scheduled or on-demand local backup plan."
-                triggerLabel="Create backup plan"
-                submitLabel="Create plan"
+                title={plan ? "Edit backup plan" : "Create backup plan"}
+                description="Account backups stored on the account's server. Schedules run in UTC."
+                triggerLabel={plan ? `Edit ${plan.name}` : "Create backup plan"}
+                triggerIcon={plan ? <Pencil className="size-4" /> : undefined}
+                triggerVariant={plan ? "secondary" : "primary"}
+                submitLabel={plan ? "Save plan" : "Create plan"}
                 pending={pending}
                 size="lg"
                 submitDisabled={!accountId || (!files && !databases)}
-                onOpenChange={setOpen}
+                onOpenChange={changeOpen}
                 onSubmit={form.handleSubmit(handleSubmit)}
             >
-                <FormSelect
-                    name="accountId"
-                    label="Hosting account"
-                    options={options}
-                    empty="No active accounts"
-                    required
-                />
+                {!plan && (
+                    <FormSelect
+                        name="accountId"
+                        label="Hosting account"
+                        options={options}
+                        empty="No active accounts"
+                        required
+                    />
+                )}
                 <FormInput name="name" label="Name" maxLength={80} required />
                 <FormInput
                     inputClassName="font-mono"
@@ -159,10 +188,11 @@ const CreateBackup = ({ accounts, driver }: CreateBackupProps) => {
                 <div className="space-y-3 pt-1">
                     <FormCheckbox name="includeFiles" label="Files" />
                     <FormCheckbox name="includeDatabases" label="Databases" />
+                    <FormCheckbox name="enabled" label="Enable schedule" />
                 </div>
             </FormModal>
         </Form>
     );
 };
 
-export default CreateBackup;
+export default PlanForm;

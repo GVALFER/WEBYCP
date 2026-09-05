@@ -3,6 +3,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
     Archive,
+    ArchiveRestore,
     CalendarClock,
     ChevronDown,
     CircleUserRound,
@@ -153,11 +154,32 @@ const groups: Group[] = [
         icon: HardDrive,
         children: [
             {
-                href: "/backups",
-                label: "Backups",
-                title: "Backups",
-                description: "Plans, verified artifacts and restores.",
+                href: "/backups/plans",
+                label: "Plans",
+                title: "Backup Plans",
+                description: "Schedules, retention and account backup runs.",
+                icon: CalendarClock,
+            },
+            {
+                href: "/backups/archives",
+                label: "Archives",
+                title: "Backup Archives",
+                description: "Completed account backups and their contents.",
                 icon: Archive,
+            },
+            {
+                href: "/backups/restore",
+                label: "Restore",
+                title: "Restore",
+                description: "Verified, selective account restores.",
+                icon: ArchiveRestore,
+            },
+            {
+                href: "/backups/destinations",
+                label: "Destinations",
+                title: "Backup Destinations",
+                description: "Backup storage available on each server.",
+                icon: HardDrive,
             },
         ],
     },
