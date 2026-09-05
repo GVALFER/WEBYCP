@@ -44,7 +44,7 @@ func (h *handler) issueWebsiteCertificate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	value, job, err := h.options.Certificates.IssueWebsite(r.Context(), r.PathValue("websiteId"), string(request.Email), session.User.ID, session.User.Role == "admin")
-	h.recordMutation(r, session.User.ID, "certificate.issue", "certificate", value.ID, err)
+	h.recordJobMutation(r, session.User.ID, "certificate.issue", "certificate", value.ID, job.ID, err)
 	if err != nil {
 		h.writeCertificateError(w, r, err)
 		return
@@ -63,7 +63,7 @@ func (h *handler) issuePanelCertificate(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	value, job, err := h.options.Certificates.IssuePanel(r.Context(), request.Hostname, string(request.Email), session.User.ID)
-	h.recordMutation(r, session.User.ID, "certificate.panel_issue", "certificate", value.ID, err)
+	h.recordJobMutation(r, session.User.ID, "certificate.panel_issue", "certificate", value.ID, job.ID, err)
 	if err != nil {
 		h.writeCertificateError(w, r, err)
 		return
@@ -73,7 +73,7 @@ func (h *handler) issuePanelCertificate(w http.ResponseWriter, r *http.Request, 
 
 func (h *handler) renewCertificate(w http.ResponseWriter, r *http.Request, session auth.Session) {
 	value, job, err := h.options.Certificates.Renew(r.Context(), r.PathValue("certificateId"), session.User.ID, session.User.Role == "admin")
-	h.recordMutation(r, session.User.ID, "certificate.renew", "certificate", r.PathValue("certificateId"), err)
+	h.recordJobMutation(r, session.User.ID, "certificate.renew", "certificate", r.PathValue("certificateId"), job.ID, err)
 	if err != nil {
 		h.writeCertificateError(w, r, err)
 		return
@@ -88,7 +88,7 @@ func (h *handler) setCertificate(w http.ResponseWriter, r *http.Request, session
 		return
 	}
 	value, job, err := h.options.Certificates.SetRedirect(r.Context(), r.PathValue("certificateId"), session.User.ID, session.User.Role == "admin", request.RedirectHttps)
-	h.recordMutation(r, session.User.ID, "certificate.redirect", "certificate", r.PathValue("certificateId"), err)
+	h.recordJobMutation(r, session.User.ID, "certificate.redirect", "certificate", r.PathValue("certificateId"), job.ID, err)
 	if err != nil {
 		h.writeCertificateError(w, r, err)
 		return

@@ -16,7 +16,6 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/buildinfo"
 	"github.com/GVALFER/WEBYCP/internal/certificates"
 	"github.com/GVALFER/WEBYCP/internal/config"
-	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
 	"github.com/GVALFER/WEBYCP/internal/databases"
 	dnscontrol "github.com/GVALFER/WEBYCP/internal/dns"
 	"github.com/GVALFER/WEBYCP/internal/httpapi"
@@ -27,6 +26,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/signalx"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite"
+	"github.com/GVALFER/WEBYCP/internal/tasks"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 )
 
@@ -102,9 +102,9 @@ func main() {
 	}
 	websiteService := websites.NewService(store, accountService, store, agent, worker.Notify)
 	databaseService := databases.NewService(store, accountService, store, agent, worker.Notify)
-	cronService := cronjob.NewService(store, accountService, store, agent, worker.Notify)
+	taskService := tasks.NewService(store, accountService, store, agent, worker.Notify)
 	certificateService := certificates.NewService(store, websiteService, accountService, store, agent, worker.Notify)
-	backupService := backups.NewService(store, accountService, websiteService, databaseService, cronService, certificateService, store, agent, worker.Notify)
+	backupService := backups.NewService(store, accountService, websiteService, databaseService, taskService, certificateService, store, agent, worker.Notify)
 	worker.Handle(jobs.KindAccountCreate, accountService.Provision)
 	worker.Handle(jobs.KindAccountDelete, accountService.ProvisionAction)
 	worker.Handle(jobs.KindAccountDisable, accountService.ProvisionAction)
@@ -124,7 +124,7 @@ func main() {
 	worker.Handle(jobs.KindDatabaseUserDelete, databaseService.Provision)
 	worker.Handle(jobs.KindDatabaseGrantCreate, databaseService.Provision)
 	worker.Handle(jobs.KindDatabaseGrantDelete, databaseService.Provision)
-	worker.Handle(jobs.KindCronSync, cronService.Sync)
+	worker.Handle(jobs.KindTaskSync, taskService.Sync)
 	worker.Handle(jobs.KindCertificateIssue, certificateService.Provision)
 	worker.Handle(jobs.KindCertificateRenew, certificateService.Provision)
 	worker.Handle(jobs.KindBackupCreate, backupService.Create)
@@ -187,7 +187,7 @@ func main() {
 			Version:      buildinfo.Version,
 			SecureCookie: settings.SecureCookie, Auth: authService,
 			Accounts: accountService, Packages: packageService, Services: serviceService,
-			Websites: websiteService, Databases: databaseService, Cron: cronService,
+			Websites: websiteService, Databases: databaseService, Tasks: taskService,
 			Certificates: certificateService,
 			Backups:      backupService,
 			DNS:          dnsService,

@@ -1,9 +1,32 @@
 openapi: 3.0.3
 info:
     title: WEBYCP Public API
-    version: 0.9.0
+    version: 0.10.0
     description: Public REST API used by the WEBYCP web application.
 paths:
+    /api/v1/audit-events:
+        get:
+            operationId: listAuditEvents
+            summary: List administrator audit events without secret metadata
+            security:
+                - cookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
+                - name: jobId
+                  in: query
+                  schema: { type: string }
+            responses:
+                "200":
+                    description: Audit events, newest first.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/AuditEventListResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
     /api/v1/health:
         get:
             operationId: getHealth
@@ -879,63 +902,63 @@ paths:
                 "404": { $ref: "#/components/responses/NotFoundError" }
                 "409": { $ref: "#/components/responses/ConflictError" }
                 "500": { $ref: "#/components/responses/InternalError" }
-    /api/v1/cron-jobs:
+    /api/v1/scheduled-tasks:
         get:
-            operationId: listCronJobs
-            summary: List accessible cron jobs
+            operationId: listScheduledTasks
+            summary: List accessible scheduled tasks
             security: [{ cookieAuth: [] }]
             parameters:
                 - $ref: "#/components/parameters/Page"
                 - $ref: "#/components/parameters/PageSize"
             responses:
                 "200":
-                    description: Cron jobs.
+                    description: Scheduled tasks.
                     content:
                         application/json:
-                            schema: { $ref: "#/components/schemas/CronJobListResponse" }
+                            schema: { $ref: "#/components/schemas/ScheduledTaskListResponse" }
                 "400": { $ref: "#/components/responses/BadRequestError" }
                 "401": { $ref: "#/components/responses/UnauthorizedError" }
                 "500": { $ref: "#/components/responses/InternalError" }
         post:
-            operationId: createCronJob
-            summary: Create and synchronize a cron job
+            operationId: createScheduledTask
+            summary: Create and synchronize a scheduled task
             security: [{ cookieAuth: [] }]
             parameters: [{ $ref: "#/components/parameters/CSRFToken" }]
             requestBody:
                 required: true
                 content:
                     application/json:
-                        schema: { $ref: "#/components/schemas/WriteCronJobRequest" }
+                        schema: { $ref: "#/components/schemas/WriteScheduledTaskRequest" }
             responses:
                 "202":
                     description: Cron synchronization queued.
                     content:
                         application/json:
-                            schema: { $ref: "#/components/schemas/CronJobResponse" }
+                            schema: { $ref: "#/components/schemas/ScheduledTaskResponse" }
                 "400": { $ref: "#/components/responses/BadRequestError" }
                 "401": { $ref: "#/components/responses/UnauthorizedError" }
                 "403": { $ref: "#/components/responses/ForbiddenError" }
                 "422": { $ref: "#/components/responses/ValidationError" }
                 "500": { $ref: "#/components/responses/InternalError" }
-    /api/v1/cron-jobs/{cronJobId}:
+    /api/v1/scheduled-tasks/{scheduledTaskId}:
         patch:
-            operationId: setCronJob
-            summary: Update or enable/disable a cron job
+            operationId: setScheduledTask
+            summary: Update or enable/disable a scheduled task
             security: [{ cookieAuth: [] }]
             parameters:
-                - $ref: "#/components/parameters/CronJobID"
+                - $ref: "#/components/parameters/ScheduledTaskID"
                 - $ref: "#/components/parameters/CSRFToken"
             requestBody:
                 required: true
                 content:
                     application/json:
-                        schema: { $ref: "#/components/schemas/WriteCronJobRequest" }
+                        schema: { $ref: "#/components/schemas/WriteScheduledTaskRequest" }
             responses:
                 "202":
                     description: Cron synchronization queued.
                     content:
                         application/json:
-                            schema: { $ref: "#/components/schemas/CronJobResponse" }
+                            schema: { $ref: "#/components/schemas/ScheduledTaskResponse" }
                 "400": { $ref: "#/components/responses/BadRequestError" }
                 "401": { $ref: "#/components/responses/UnauthorizedError" }
                 "403": { $ref: "#/components/responses/ForbiddenError" }
@@ -943,11 +966,11 @@ paths:
                 "422": { $ref: "#/components/responses/ValidationError" }
                 "500": { $ref: "#/components/responses/InternalError" }
         delete:
-            operationId: deleteCronJob
-            summary: Delete and synchronize a cron job
+            operationId: deleteScheduledTask
+            summary: Delete and synchronize a scheduled task
             security: [{ cookieAuth: [] }]
             parameters:
-                - $ref: "#/components/parameters/CronJobID"
+                - $ref: "#/components/parameters/ScheduledTaskID"
                 - $ref: "#/components/parameters/CSRFToken"
             responses:
                 "202":
@@ -1435,7 +1458,7 @@ paths:
     /api/v1/jobs:
         get:
             operationId: listJobs
-            summary: List recent jobs
+            summary: List recent jobs (administrator only)
             security:
                 - cookieAuth: []
             parameters:
@@ -1452,12 +1475,14 @@ paths:
                     $ref: "#/components/responses/BadRequestError"
                 "401":
                     $ref: "#/components/responses/UnauthorizedError"
+                "403":
+                    $ref: "#/components/responses/ForbiddenError"
                 "500":
                     $ref: "#/components/responses/InternalError"
     /api/v1/jobs/{jobId}:
         get:
             operationId: getJob
-            summary: Get a job and its steps
+            summary: Get a job and its steps (administrator only)
             security:
                 - cookieAuth: []
             parameters:
@@ -1471,6 +1496,8 @@ paths:
                                 $ref: "#/components/schemas/JobDetail"
                 "401":
                     $ref: "#/components/responses/UnauthorizedError"
+                "403":
+                    $ref: "#/components/responses/ForbiddenError"
                 "404":
                     $ref: "#/components/responses/NotFoundError"
                 "500":
@@ -1552,8 +1579,8 @@ components:
             in: path
             required: true
             schema: { type: string }
-        CronJobID:
-            name: cronJobId
+        ScheduledTaskID:
+            name: scheduledTaskId
             in: path
             required: true
             schema: { type: string }
@@ -2537,7 +2564,10 @@ components:
             properties:
                 grant: { $ref: "#/components/schemas/DatabaseGrant" }
                 job: { $ref: "#/components/schemas/Job" }
-        CronJob:
+        TaskKind:
+            type: string
+            enum: [command]
+        ScheduledTask:
             type: object
             additionalProperties: false
             required:
@@ -2549,6 +2579,7 @@ components:
                     schedule,
                     command,
                     schedulerDriver,
+                    kind,
                     enabled,
                     status,
                     createdAt,
@@ -2562,36 +2593,58 @@ components:
                 schedule: { type: string }
                 command: { type: string }
                 schedulerDriver: { type: string, enum: [crontab] }
+                kind: { $ref: "#/components/schemas/TaskKind" }
                 enabled: { type: boolean }
                 status: { type: string, enum: [pending, active, disabled, error] }
                 createdAt: { type: string, format: date-time }
                 updatedAt: { type: string, format: date-time }
-        WriteCronJobRequest:
+        WriteScheduledTaskRequest:
             type: object
             additionalProperties: false
-            required: [accountId, name, schedule, command, schedulerDriver, enabled]
+            required: [accountId, name, schedule, command, schedulerDriver, kind, enabled]
             properties:
                 accountId: { type: string }
                 name: { type: string, minLength: 1, maxLength: 80 }
                 schedule: { type: string, maxLength: 100 }
                 command: { type: string, minLength: 1, maxLength: 1000 }
                 schedulerDriver: { type: string, enum: [crontab] }
+                kind: { $ref: "#/components/schemas/TaskKind" }
                 enabled: { type: boolean }
-        CronJobListResponse:
+        ScheduledTaskListResponse:
             type: object
             additionalProperties: false
             required: [items, pagination]
             properties:
-                items: { type: array, items: { $ref: "#/components/schemas/CronJob" } }
+                items: { type: array, items: { $ref: "#/components/schemas/ScheduledTask" } }
                 pagination:
                     $ref: "#/components/schemas/Pagination"
-        CronJobResponse:
+        ScheduledTaskResponse:
             type: object
             additionalProperties: false
-            required: [cronJob, job]
+            required: [scheduledTask, job]
             properties:
-                cronJob: { $ref: "#/components/schemas/CronJob" }
+                scheduledTask: { $ref: "#/components/schemas/ScheduledTask" }
                 job: { $ref: "#/components/schemas/Job" }
+        AuditEvent:
+            type: object
+            additionalProperties: false
+            required: [id, action, resourceType, result, createdAt]
+            properties:
+                id: { type: string }
+                userId: { type: string }
+                action: { type: string }
+                resourceType: { type: string }
+                resourceId: { type: string }
+                jobId: { type: string }
+                result: { type: string }
+                createdAt: { type: string, format: date-time }
+        AuditEventListResponse:
+            type: object
+            additionalProperties: false
+            required: [items, pagination]
+            properties:
+                items: { type: array, items: { $ref: "#/components/schemas/AuditEvent" } }
+                pagination: { $ref: "#/components/schemas/Pagination" }
         BackupPlan:
             type: object
             additionalProperties: false

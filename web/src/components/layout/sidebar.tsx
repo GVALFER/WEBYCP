@@ -188,7 +188,7 @@ const groups: Group[] = [
         icon: CalendarClock,
         children: [
             {
-                href: "/cron",
+                href: "/scheduled-tasks",
                 label: "Tasks",
                 title: "Scheduled Tasks",
                 description: "Scheduled commands for hosting accounts.",
@@ -219,6 +219,13 @@ const groups: Group[] = [
                 label: "Jobs",
                 title: "Jobs",
                 description: "Durable operations executed by the local agent.",
+                icon: ListTodo,
+            },
+            {
+                href: "/audit",
+                label: "Audit Log",
+                title: "Audit Log",
+                description: "Administrator requests and operation outcomes.",
                 icon: ListTodo,
             },
             {

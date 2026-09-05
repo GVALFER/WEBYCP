@@ -8,18 +8,19 @@ import { PAGE_SIZES, pageItems } from "@/utils/pagination";
 type Props = {
     pagination: Pagination;
     page: number;
+    pending: boolean;
     onPageChange: (page: number) => void;
     onSizeChange: (size: number) => void;
 };
 
-export const Paginate = ({ pagination, page, onPageChange, onSizeChange }: Props) => {
+export const Paginate = ({ pagination, page, pending, onPageChange, onSizeChange }: Props) => {
     const { page: currentPage, size, totalItems, totalPages } = pagination;
     const first = totalItems ? (currentPage - 1) * size + 1 : 0;
     const last = Math.min(currentPage * size, totalItems);
 
     useEffect(() => {
-        if (page !== currentPage) onPageChange(currentPage);
-    }, [currentPage, onPageChange, page]);
+        if (!pending && page !== currentPage) onPageChange(currentPage);
+    }, [currentPage, onPageChange, page, pending]);
 
     return (
         <HeroPagination size="sm">
@@ -33,6 +34,7 @@ export const Paginate = ({ pagination, page, onPageChange, onSizeChange }: Props
                         className="h-8 rounded-lg border border-border bg-surface px-2.5 text-foreground shadow-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
                         aria-label="Rows per page"
                         value={size}
+                        disabled={pending}
                         onChange={(event) => onSizeChange(Number(event.currentTarget.value))}
                     >
                         {PAGE_SIZES.map((value) => (
@@ -49,7 +51,7 @@ export const Paginate = ({ pagination, page, onPageChange, onSizeChange }: Props
                     <HeroPagination.Item>
                         <HeroPagination.Previous
                             aria-label="Previous page"
-                            isDisabled={currentPage <= 1}
+                            isDisabled={pending || currentPage <= 1}
                             onPress={() => onPageChange(currentPage - 1)}
                         >
                             <HeroPagination.PreviousIcon />
@@ -62,6 +64,7 @@ export const Paginate = ({ pagination, page, onPageChange, onSizeChange }: Props
                             <HeroPagination.Item key={item}>
                                 <HeroPagination.Link
                                     isActive={item === currentPage}
+                                    isDisabled={pending}
                                     aria-label={`Page ${item}`}
                                     onPress={() => onPageChange(item)}
                                 >
@@ -78,7 +81,7 @@ export const Paginate = ({ pagination, page, onPageChange, onSizeChange }: Props
                     <HeroPagination.Item>
                         <HeroPagination.Next
                             aria-label="Next page"
-                            isDisabled={currentPage >= totalPages}
+                            isDisabled={pending || currentPage >= totalPages}
                             onPress={() => onPageChange(currentPage + 1)}
                         >
                             <span className="hidden sm:inline">Next</span>

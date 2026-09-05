@@ -20,6 +20,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/packages"
 	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite"
+	"github.com/GVALFER/WEBYCP/internal/tasks"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 )
 
@@ -151,6 +152,7 @@ func TestTemporaryAdminSetupAndProbe(t *testing.T) {
 	if err := store.UpdateStatus(context.Background(), accountResult.Account.ID, "active"); err != nil {
 		t.Fatal(err)
 	}
+	checkTaskAPI(t, api, cookie, session.CSRFToken, accountResult.Account.ID)
 
 	settingsRequest := httptest.NewRequest(http.MethodPut, "/api/v1/dns/settings", strings.NewReader(`{
 		"primaryNameserver":"NS1.Example.COM.","secondaryNameserver":"ns2.example.com","defaultTtl":3600
@@ -220,7 +222,7 @@ func TestTemporaryAdminSetupAndProbe(t *testing.T) {
 	for _, path := range []string{
 		"/api/v1/accounts", "/api/v1/websites",
 		"/api/v1/certificates", "/api/v1/databases", "/api/v1/database-users",
-		"/api/v1/database-grants", "/api/v1/cron-jobs", "/api/v1/backup-plans",
+		"/api/v1/database-grants", "/api/v1/scheduled-tasks", "/api/v1/backup-plans",
 		"/api/v1/backup-runs", "/api/v1/backup-artifacts", "/api/v1/jobs",
 	} {
 		invalidPage := httptest.NewRequest(http.MethodGet, path+"?size=101", nil)
@@ -365,6 +367,7 @@ func testAPI(t *testing.T) (http.Handler, *sqlite.Store, auth.Credentials) {
 		Packages: packageService,
 		Services: services.NewService(store),
 		Websites: websites.NewService(store, accountService, store, agent, worker.Notify),
+		Tasks:    tasks.NewService(store, accountService, store, agent, worker.Notify),
 		DNS:      dnsService,
 		Nodes:    nodes.NewService(store, agent),
 		Jobs:     jobs.NewService(store, worker.Notify),

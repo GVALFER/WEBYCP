@@ -47,7 +47,7 @@ type Options struct {
 	AccountActions AccountLifecycle
 	Websites       WebsiteManager
 	Databases      agentdatabase.Driver
-	Cron           scheduler.Driver
+	Tasks          scheduler.Driver
 	Certificates   agentcertificate.Driver
 	Backups        agentbackup.Driver
 	DNS            agentdns.Driver
@@ -238,23 +238,28 @@ func New(options Options) http.Handler {
 	}
 	mux.HandleFunc("POST /agent/v1/database-grants", handleGrant(false))
 	mux.HandleFunc("DELETE /agent/v1/database-grants", handleGrant(true))
-	mux.HandleFunc("PUT /agent/v1/cron", func(w http.ResponseWriter, r *http.Request) {
-		var request agentapi.SyncCronRequest
+	mux.HandleFunc("PUT /agent/v1/scheduled-tasks", func(w http.ResponseWriter, r *http.Request) {
+		var request agentapi.SyncTasksRequest
 		if err := httpx.DecodeJSON(w, r, &request); err != nil {
 			httpx.WriteJSON(w, http.StatusBadRequest, agentapi.ErrorResponse{Code: "invalid_json", Message: "The request body is invalid"})
 			return
 		}
-		if options.Cron == nil || hostAccountInvalid(request.AccountId, request.SystemUser) {
-			httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{Code: "validation_error", Message: "The cron request is invalid"})
+		if options.Tasks == nil || hostAccountInvalid(request.AccountId, request.SystemUser) {
+			httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{Code: "validation_error", Message: "The scheduled task request is invalid"})
 			return
 		}
 		entries := make([]scheduler.Entry, 0, len(request.Entries))
 		for _, entry := range request.Entries {
-			entries = append(entries, scheduler.Entry{ID: entry.Id, Schedule: entry.Schedule, Command: entry.Command})
+			entries = append(entries, scheduler.Entry{Kind: string(entry.Kind), ID: entry.Id, Schedule: entry.Schedule, Command: entry.Command})
 		}
-		if err := options.Cron.Sync(r.Context(), request.AccountId, request.SystemUser, entries); err != nil {
-			logger.Error("cron synchronization failed", "error", err, "accountId", request.AccountId)
-			httpx.WriteJSON(w, http.StatusInternalServerError, agentapi.ErrorResponse{Code: "cron_sync_failed", Message: "The cron operation failed"})
+		if err := options.Tasks.Sync(r.Context(), request.AccountId, request.SystemUser, entries); err != nil {
+			var validation *validate.Error
+			if errors.As(err, &validation) {
+				httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{Code: "validation_error", Message: validation.Error()})
+				return
+			}
+			logger.Error("scheduled task synchronization failed", "error", err, "accountId", request.AccountId)
+			httpx.WriteJSON(w, http.StatusInternalServerError, agentapi.ErrorResponse{Code: "task_sync_failed", Message: "The scheduled task operation failed"})
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

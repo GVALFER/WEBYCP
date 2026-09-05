@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
 	"github.com/GVALFER/WEBYCP/internal/agent/configfile"
+	"github.com/GVALFER/WEBYCP/internal/agent/hostuser"
 	"github.com/GVALFER/WEBYCP/internal/agent/scheduler"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 )
@@ -16,16 +18,24 @@ import (
 const defaultDir = "/etc/cron.d"
 
 type Driver struct {
-	dir string
+	dir    string
+	lookup func(string) (*user.User, error)
 }
 
 func New() *Driver {
-	return &Driver{dir: defaultDir}
+	return &Driver{dir: defaultDir, lookup: user.Lookup}
 }
 
 func (d *Driver) Sync(_ context.Context, accountID, systemUser string, entries []scheduler.Entry) error {
-	if validate.ID("accountId", accountID) != nil || validate.SystemUser(systemUser) != nil {
+	if hostuser.ValidateNames(accountID, systemUser) != nil {
 		return &validate.Error{Field: "accountId", Message: "The account identity is invalid"}
+	}
+	found, err := d.lookup(systemUser)
+	if err != nil {
+		return fmt.Errorf("lookup scheduled task account: %w", err)
+	}
+	if _, err := hostuser.Validate(found, "/home", accountID, systemUser); err != nil {
+		return err
 	}
 	if len(entries) > 100 {
 		return &validate.Error{Field: "entries", Message: "Too many cron entries"}
@@ -47,7 +57,10 @@ func (d *Driver) Sync(_ context.Context, accountID, systemUser string, entries [
 	contents.WriteString("MAILTO=\"\"\n")
 	contents.WriteString("HOME=/home/" + systemUser + "\n\n")
 	for _, entry := range entries {
-		if validate.ID("cronJobId", entry.ID) != nil {
+		if entry.Kind != "command" {
+			return &validate.Error{Field: "kind", Message: "The selected task kind is not supported"}
+		}
+		if validate.ID("scheduledTaskId", entry.ID) != nil {
 			return &validate.Error{Field: "id", Message: "Cron entry ID is invalid"}
 		}
 		schedule, err := validate.CronSchedule(entry.Schedule, false)

@@ -13,11 +13,11 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/auth"
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/backups"
-	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
 	"github.com/GVALFER/WEBYCP/internal/databases"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/packages"
 	"github.com/GVALFER/WEBYCP/internal/services"
+	"github.com/GVALFER/WEBYCP/internal/tasks"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 )
 
@@ -85,7 +85,7 @@ func TestPackageCountLimits(t *testing.T) {
 		{
 			name: "scheduled tasks", resource: packages.ScheduledTasks,
 			create: func(ctx context.Context, store *Store, account accounts.Account, n int) error {
-				_, _, err := store.CreateCronJob(ctx, testCron(account, n), limitJob(n, account.NodeID, jobs.KindCronSync))
+				_, _, err := store.CreateScheduledTask(ctx, testCron(account, n), limitJob(n, account.NodeID, jobs.KindTaskSync))
 				return err
 			},
 		},
@@ -161,16 +161,16 @@ func TestConcurrentCreatesCannotExceedPackageLimit(t *testing.T) {
 func TestLowerPackageKeepsExistingResourcesUsable(t *testing.T) {
 	ctx, store, account := limitStore(t)
 	cron := testCron(account, 1)
-	if _, _, err := store.CreateCronJob(ctx, cron, limitJob(1, account.NodeID, jobs.KindCronSync)); err != nil {
+	if _, _, err := store.CreateScheduledTask(ctx, cron, limitJob(1, account.NodeID, jobs.KindTaskSync)); err != nil {
 		t.Fatal(err)
 	}
 	setLimit(t, ctx, store, account, func(value *packages.Limits) { value.ScheduledTasks = 0 })
 
 	cron.Name = "Updated task"
-	if _, _, err := store.UpdateCronJob(ctx, cron, limitJob(2, account.NodeID, jobs.KindCronSync)); err != nil {
+	if _, _, err := store.UpdateScheduledTask(ctx, cron, limitJob(2, account.NodeID, jobs.KindTaskSync)); err != nil {
 		t.Fatalf("update existing over-limit resource: %v", err)
 	}
-	if _, _, err := store.CreateCronJob(ctx, testCron(account, 2), limitJob(3, account.NodeID, jobs.KindCronSync)); err == nil {
+	if _, _, err := store.CreateScheduledTask(ctx, testCron(account, 2), limitJob(3, account.NodeID, jobs.KindTaskSync)); err == nil {
 		t.Fatal("new resource was created above the lowered limit")
 	}
 	overview, err := store.AccountOverview(ctx, account.ID)
@@ -328,12 +328,12 @@ func testDatabase(account accounts.Account, n int) databases.Database {
 	}
 }
 
-func testCron(account accounts.Account, n int) cronjob.CronJob {
+func testCron(account accounts.Account, n int) tasks.ScheduledTask {
 	now := time.Now().UTC()
-	return cronjob.CronJob{
+	return tasks.ScheduledTask{
 		ID: limitID(3000 + n), AccountID: account.ID, NodeID: account.NodeID,
 		Name: fmt.Sprintf("Task %d", n), Schedule: "0 * * * *", Command: "/usr/bin/true",
-		SchedulerDriver: services.Crontab, Enabled: true, Status: "pending",
+		SchedulerDriver: services.Crontab, Kind: "command", Enabled: true, Status: "pending",
 		CreatedAt: now, UpdatedAt: now,
 	}
 }

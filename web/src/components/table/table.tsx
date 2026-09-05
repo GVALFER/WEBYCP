@@ -18,6 +18,7 @@ export type TableColumn<T> = {
 type Props<T extends object> = {
     columns: TableColumn<T>[];
     data?: TableData<T>;
+    pending: boolean;
     getKey?: (item: T) => string;
     table: TableState;
 };
@@ -27,7 +28,7 @@ type TableData<T> = {
     pagination: Pagination;
 };
 
-export const Table = <T extends object,>({ columns, data, getKey, table }: Props<T>) => {
+export const Table = <T extends object,>({ columns, data, pending, getKey, table }: Props<T>) => {
     const itemKey = (item: T) => getKey?.(item) ?? String((item as { id: string }).id);
     const tableData =
         data ??
@@ -44,7 +45,7 @@ export const Table = <T extends object,>({ columns, data, getKey, table }: Props
     return (
         <HeroTable className="data-table" variant="secondary">
             <HeroTable.ScrollContainer>
-                <HeroTable.Content aria-label="Data table">
+                <HeroTable.Content aria-label="Data table" aria-busy={pending}>
                     <HeroTable.Header>
                         {columns.map((column) => (
                             <HeroTable.Column
@@ -86,6 +87,7 @@ export const Table = <T extends object,>({ columns, data, getKey, table }: Props
                 <Paginate
                     pagination={tableData.pagination}
                     page={table.page.page}
+                    pending={pending}
                     onPageChange={table.setPage}
                     onSizeChange={table.setSize}
                 />

@@ -19,7 +19,7 @@ const Packages = ({ packages }: Props) => {
     const { dt } = useTimezone();
     const table = useTable(packages.pagination);
 
-    const { data } = useSWR<PackageListResponse>(`packages${table.query}`, {
+    const { data, isLoading } = useSWR<PackageListResponse>(`packages${table.query}`, {
         fallbackData: table.isInitialQuery ? packages : undefined,
     });
 
@@ -109,7 +109,7 @@ const Packages = ({ packages }: Props) => {
                 </div>
                 <CreatePackage />
             </div>
-            <Table table={table} columns={columns} data={data} />
+            <Table table={table} columns={columns} data={data} pending={isLoading} />
         </section>
     );
 };

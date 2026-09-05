@@ -1,6 +1,7 @@
 "use client";
 
 import { Clock3 } from "lucide-react";
+import Link from "next/link";
 import useSWR from "swr";
 import { Table, type TableColumn } from "@/components/table/table";
 import { useTable } from "@/components/table/useTable";
@@ -19,7 +20,7 @@ const Jobs = ({ jobs }: JobsProps) => {
     const { dt } = useTimezone();
     const table = useTable(jobs.pagination);
 
-    const { data } = useSWR<JobListResponse>(`jobs${table.query}`, {
+    const { data, isLoading } = useSWR<JobListResponse>(`jobs${table.query}`, {
         fallbackData: table.isInitialQuery ? jobs : undefined,
     });
 
@@ -34,7 +35,12 @@ const Jobs = ({ jobs }: JobsProps) => {
                         <Clock3 className="size-4" aria-hidden="true" />
                     </div>
                     <div className="min-w-0">
-                        <div className="truncate font-medium">{job.kind}</div>
+                        <Link
+                            className="block truncate font-medium text-accent hover:underline"
+                            href={`/jobs/${encodeURIComponent(job.id)}`}
+                        >
+                            {job.kind}
+                        </Link>
                         <div className="truncate font-mono text-xs text-foreground-400">
                             {job.id}
                         </div>
@@ -72,7 +78,7 @@ const Jobs = ({ jobs }: JobsProps) => {
                     Durable operations executed by the local agent.
                 </div>
             </div>
-            <Table table={table} columns={columns} data={data} />
+            <Table table={table} columns={columns} data={data} pending={isLoading} />
         </section>
     );
 };

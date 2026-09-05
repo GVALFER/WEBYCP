@@ -2,7 +2,7 @@ package backupfmt
 
 import "time"
 
-const Version = 3
+const Version = 4
 
 type Entry struct {
 	Path     string `json:"path"`
@@ -22,11 +22,11 @@ type Manifest struct {
 }
 
 type Metadata struct {
-	Version   int        `json:"version"`
-	AccountID string     `json:"accountId"`
-	Websites  []Website  `json:"websites"`
-	Databases []Database `json:"databases"`
-	CronJobs  []CronJob  `json:"cronJobs"`
+	Version        int             `json:"version"`
+	AccountID      string          `json:"accountId"`
+	Websites       []Website       `json:"websites"`
+	Databases      []Database      `json:"databases"`
+	ScheduledTasks []ScheduledTask `json:"scheduledTasks"`
 }
 
 type Website struct {
@@ -57,7 +57,8 @@ type Database struct {
 	Driver     string `json:"driver"`
 }
 
-type CronJob struct {
+type ScheduledTask struct {
+	Kind            string `json:"kind"`
 	ID              string `json:"id"`
 	NodeID          string `json:"nodeId"`
 	Name            string `json:"name"`

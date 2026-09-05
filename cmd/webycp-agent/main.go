@@ -54,7 +54,7 @@ func main() {
 		Handler: agentserver.New(agentserver.Options{
 			Version: buildinfo.Version, Capabilities: capability.New(dnsDriver),
 			Accounts: accountManager, AccountActions: accountManager,
-			Websites: websiteManager, Databases: mysql.New(), Cron: crontab.New(),
+			Websites: websiteManager, Databases: mysql.New(), Tasks: crontab.New(),
 			Certificates: certbot.New(nginxDriver), Logger: logger,
 			Backups: backuplocal.New(),
 			DNS:     dnsDriver,

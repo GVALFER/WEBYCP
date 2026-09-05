@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List administrator audit events without secret metadata */
+        get: operations["listAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -457,25 +474,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/cron-jobs": {
+    "/api/v1/scheduled-tasks": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List accessible cron jobs */
-        get: operations["listCronJobs"];
+        /** List accessible scheduled tasks */
+        get: operations["listScheduledTasks"];
         put?: never;
-        /** Create and synchronize a cron job */
-        post: operations["createCronJob"];
+        /** Create and synchronize a scheduled task */
+        post: operations["createScheduledTask"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/cron-jobs/{cronJobId}": {
+    "/api/v1/scheduled-tasks/{scheduledTaskId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -485,12 +502,12 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Delete and synchronize a cron job */
-        delete: operations["deleteCronJob"];
+        /** Delete and synchronize a scheduled task */
+        delete: operations["deleteScheduledTask"];
         options?: never;
         head?: never;
-        /** Update or enable/disable a cron job */
-        patch: operations["setCronJob"];
+        /** Update or enable/disable a scheduled task */
+        patch: operations["setScheduledTask"];
         trace?: never;
     };
     "/api/v1/backup-plans": {
@@ -1344,7 +1361,9 @@ export interface components {
             grant: components["schemas"]["DatabaseGrant"];
             job: components["schemas"]["Job"];
         };
-        CronJob: {
+        /** @enum {string} */
+        TaskKind: "command";
+        ScheduledTask: {
             id: string;
             accountId: string;
             nodeId: string;
@@ -1353,6 +1372,7 @@ export interface components {
             command: string;
             /** @enum {string} */
             schedulerDriver: "crontab";
+            kind: components["schemas"]["TaskKind"];
             enabled: boolean;
             /** @enum {string} */
             status: "pending" | "active" | "disabled" | "error";
@@ -1361,22 +1381,38 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        WriteCronJobRequest: {
+        WriteScheduledTaskRequest: {
             accountId: string;
             name: string;
             schedule: string;
             command: string;
             /** @enum {string} */
             schedulerDriver: "crontab";
+            kind: components["schemas"]["TaskKind"];
             enabled: boolean;
         };
-        CronJobListResponse: {
-            items: components["schemas"]["CronJob"][];
+        ScheduledTaskListResponse: {
+            items: components["schemas"]["ScheduledTask"][];
             pagination: components["schemas"]["Pagination"];
         };
-        CronJobResponse: {
-            cronJob: components["schemas"]["CronJob"];
+        ScheduledTaskResponse: {
+            scheduledTask: components["schemas"]["ScheduledTask"];
             job: components["schemas"]["Job"];
+        };
+        AuditEvent: {
+            id: string;
+            userId?: string;
+            action: string;
+            resourceType: string;
+            resourceId?: string;
+            jobId?: string;
+            result: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AuditEventListResponse: {
+            items: components["schemas"]["AuditEvent"][];
+            pagination: components["schemas"]["Pagination"];
         };
         BackupPlan: {
             id: string;
@@ -1565,7 +1601,7 @@ export interface components {
         CertificateID: string;
         DatabaseID: string;
         DatabaseUserID: string;
-        CronJobID: string;
+        ScheduledTaskID: string;
         BackupPlanID: string;
         BackupArtifactID: string;
         DNSZoneID: string;
@@ -1577,6 +1613,34 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listAuditEvents: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+                jobId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit events, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventListResponse"];
+                };
+            };
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
     getHealth: {
         parameters: {
             query?: never;
@@ -2673,7 +2737,7 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    listCronJobs: {
+    listScheduledTasks: {
         parameters: {
             query?: {
                 page?: components["parameters"]["Page"];
@@ -2685,13 +2749,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Cron jobs. */
+            /** @description Scheduled tasks. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CronJobListResponse"];
+                    "application/json": components["schemas"]["ScheduledTaskListResponse"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -2699,7 +2763,7 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    createCronJob: {
+    createScheduledTask: {
         parameters: {
             query?: never;
             header: {
@@ -2710,7 +2774,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["WriteCronJobRequest"];
+                "application/json": components["schemas"]["WriteScheduledTaskRequest"];
             };
         };
         responses: {
@@ -2720,7 +2784,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CronJobResponse"];
+                    "application/json": components["schemas"]["ScheduledTaskResponse"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -2730,14 +2794,14 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    deleteCronJob: {
+    deleteScheduledTask: {
         parameters: {
             query?: never;
             header: {
                 "X-CSRF-Token": components["parameters"]["CSRFToken"];
             };
             path: {
-                cronJobId: components["parameters"]["CronJobID"];
+                scheduledTaskId: components["parameters"]["ScheduledTaskID"];
             };
             cookie?: never;
         };
@@ -2758,20 +2822,20 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    setCronJob: {
+    setScheduledTask: {
         parameters: {
             query?: never;
             header: {
                 "X-CSRF-Token": components["parameters"]["CSRFToken"];
             };
             path: {
-                cronJobId: components["parameters"]["CronJobID"];
+                scheduledTaskId: components["parameters"]["ScheduledTaskID"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["WriteCronJobRequest"];
+                "application/json": components["schemas"]["WriteScheduledTaskRequest"];
             };
         };
         responses: {
@@ -2781,7 +2845,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CronJobResponse"];
+                    "application/json": components["schemas"]["ScheduledTaskResponse"];
                 };
             };
             400: components["responses"]["BadRequestError"];

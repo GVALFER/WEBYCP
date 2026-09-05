@@ -147,10 +147,10 @@ VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, system_name = excluded.system_name,
     driver = excluded.driver, status = 'active', updated_at = excluded.updated_at;
 
--- name: UpsertRestoredCronJob :exec
-INSERT INTO cron_jobs (id, account_id, node_id, name, schedule, command, scheduler_driver, enabled, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?)
+-- name: UpsertRestoredScheduledTask :exec
+INSERT INTO scheduled_tasks (id, account_id, node_id, name, schedule, command, scheduler_driver, kind, enabled, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?)
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, schedule = excluded.schedule,
-    command = excluded.command, scheduler_driver = excluded.scheduler_driver, enabled = excluded.enabled,
+    command = excluded.command, scheduler_driver = excluded.scheduler_driver, kind = excluded.kind, enabled = excluded.enabled,
     status = CASE WHEN excluded.enabled = 1 THEN 'active' ELSE 'disabled' END,
     updated_at = excluded.updated_at;

@@ -12,7 +12,7 @@ type Props = {
 
 const Restore = ({ archives }: Props) => {
     const table = useTable(archives.pagination);
-    const { data } = useSWR<BackupArtifactListResponse>(`backup-artifacts${table.query}`, {
+    const { data, isLoading } = useSWR<BackupArtifactListResponse>(`backup-artifacts${table.query}`, {
         fallbackData: table.isInitialQuery ? archives : undefined,
     });
 
@@ -24,7 +24,7 @@ const Restore = ({ archives }: Props) => {
                     Verify an archive, review its contents and choose what to restore.
                 </div>
             </div>
-            <ArchiveTable data={data} table={table} actions={(archive) => <RestoreBackup archive={archive} />} />
+            <ArchiveTable data={data} pending={isLoading} table={table} actions={(archive) => <RestoreBackup archive={archive} />} />
         </section>
     );
 };

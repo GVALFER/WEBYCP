@@ -1,4 +1,4 @@
-package cronjob
+package tasks
 
 import (
 	"context"
@@ -32,31 +32,31 @@ func NewService(repository Repository, accounts *accounts.Service, nodes nodes.R
 }
 
 func (s *Service) Create(
-	ctx context.Context, accountID, name, schedule, command, driver, userID string,
+	ctx context.Context, accountID, name, schedule, command, driver, userID string, kind Kind,
 	admin, enabled bool,
-) (CronJob, jobs.Job, error) {
+) (ScheduledTask, jobs.Job, error) {
 	account, err := s.account(ctx, accountID, userID, admin)
 	if err != nil {
-		return CronJob{}, jobs.Job{}, err
+		return ScheduledTask{}, jobs.Job{}, err
 	}
 	value, err := build(
-		CronJob{AccountID: account.ID, NodeID: account.NodeID},
+		ScheduledTask{AccountID: account.ID, NodeID: account.NodeID, Kind: kind},
 		name, schedule, command, driver, enabled,
 	)
 	if err != nil {
-		return CronJob{}, jobs.Job{}, err
+		return ScheduledTask{}, jobs.Job{}, err
 	}
 	value.ID, err = idgen.ID()
 	if err != nil {
-		return CronJob{}, jobs.Job{}, err
+		return ScheduledTask{}, jobs.Job{}, err
 	}
 	value.CreatedAt = time.Now().UTC()
 	value.UpdatedAt = value.CreatedAt
 	job, err := s.job(account.NodeID, userID, account.ID)
 	if err != nil {
-		return CronJob{}, jobs.Job{}, err
+		return ScheduledTask{}, jobs.Job{}, err
 	}
-	value, job, err = s.repository.CreateCronJob(ctx, value, job)
+	value, job, err = s.repository.CreateScheduledTask(ctx, value, job)
 	if err == nil {
 		s.notify()
 	}
@@ -64,26 +64,30 @@ func (s *Service) Create(
 }
 
 func (s *Service) Update(
-	ctx context.Context, id, accountID, name, schedule, command, driver, userID string,
+	ctx context.Context, id, accountID, name, schedule, command, driver, userID string, kind Kind,
 	admin, enabled bool,
-) (CronJob, jobs.Job, error) {
+) (ScheduledTask, jobs.Job, error) {
 	current, err := s.get(ctx, id, userID, admin)
 	if err != nil {
-		return CronJob{}, jobs.Job{}, err
+		return ScheduledTask{}, jobs.Job{}, err
 	}
 	if current.AccountID != accountID {
-		return CronJob{}, jobs.Job{}, accounts.ErrForbidden
+		return ScheduledTask{}, jobs.Job{}, accounts.ErrForbidden
 	}
+	if _, err := s.account(ctx, accountID, userID, admin); err != nil {
+		return ScheduledTask{}, jobs.Job{}, err
+	}
+	current.Kind = kind
 	value, err := build(current, name, schedule, command, driver, enabled)
 	if err != nil {
-		return CronJob{}, jobs.Job{}, err
+		return ScheduledTask{}, jobs.Job{}, err
 	}
 	value.UpdatedAt = time.Now().UTC()
 	job, err := s.job(value.NodeID, userID, value.AccountID)
 	if err != nil {
-		return CronJob{}, jobs.Job{}, err
+		return ScheduledTask{}, jobs.Job{}, err
 	}
-	value, job, err = s.repository.UpdateCronJob(ctx, value, job)
+	value, job, err = s.repository.UpdateScheduledTask(ctx, value, job)
 	if err == nil {
 		s.notify()
 	}
@@ -99,27 +103,27 @@ func (s *Service) Delete(ctx context.Context, id, userID string, admin bool) (jo
 	if err != nil {
 		return jobs.Job{}, err
 	}
-	job, err = s.repository.DeleteCronJob(ctx, value.ID, job)
+	job, err = s.repository.DeleteScheduledTask(ctx, value.ID, job)
 	if err == nil {
 		s.notify()
 	}
 	return job, err
 }
 
-func (s *Service) CronJobs(ctx context.Context, userID string, admin bool) ([]CronJob, error) {
-	return s.repository.CronJobs(ctx, userID, admin)
+func (s *Service) ScheduledTasks(ctx context.Context, userID string, admin bool) ([]ScheduledTask, error) {
+	return s.repository.ScheduledTasks(ctx, userID, admin)
 }
 
-func (s *Service) CronJobPage(
+func (s *Service) ScheduledTaskPage(
 	ctx context.Context, userID string, admin bool, query pagination.Query,
-) (pagination.Result[CronJob], error) {
-	return s.repository.CronJobPage(ctx, userID, admin, query)
+) (pagination.Result[ScheduledTask], error) {
+	return s.repository.ScheduledTaskPage(ctx, userID, admin, query)
 }
 
 func (s *Service) Sync(ctx context.Context, job jobs.Job) error {
 	var payload syncPayload
 	if err := json.Unmarshal([]byte(job.Payload), &payload); err != nil || payload.AccountID == "" {
-		return fmt.Errorf("decode cron sync payload")
+		return fmt.Errorf("decode task sync payload")
 	}
 	return s.Reconcile(ctx, payload.AccountID)
 }
@@ -133,7 +137,7 @@ func (s *Service) Reconcile(ctx context.Context, accountID string) error {
 	if err != nil {
 		return err
 	}
-	values, err := s.repository.AccountCronJobs(ctx, account.ID)
+	values, err := s.repository.AccountScheduledTasks(ctx, account.ID)
 	if err != nil {
 		return err
 	}
@@ -143,26 +147,26 @@ func (s *Service) Reconcile(ctx context.Context, accountID string) error {
 			return fmt.Errorf("unsupported scheduler driver %q", value.SchedulerDriver)
 		}
 		if value.Enabled && account.Enabled && account.Status == "active" {
-			entries = append(entries, Entry{ID: value.ID, Schedule: value.Schedule, Command: value.Command})
+			entries = append(entries, Entry{ID: value.ID, Schedule: value.Schedule, Command: value.Command, Kind: value.Kind})
 		}
 	}
-	if err := s.agent.SyncCron(ctx, node.Endpoint, account.ID, account.SystemUser, entries); err != nil {
-		_ = s.repository.SetCronStatuses(ctx, account.ID, "error", "error")
+	if err := s.agent.SyncTasks(ctx, node.Endpoint, account.ID, account.SystemUser, entries); err != nil {
+		_ = s.repository.SetTaskStatuses(ctx, account.ID, "error", "error")
 		return err
 	}
-	return s.repository.SetCronStatuses(ctx, account.ID, "active", "disabled")
+	return s.repository.SetTaskStatuses(ctx, account.ID, "active", "disabled")
 }
 
-func (s *Service) get(ctx context.Context, id, userID string, admin bool) (CronJob, error) {
-	if err := validate.ID("cronJobId", id); err != nil {
-		return CronJob{}, err
+func (s *Service) get(ctx context.Context, id, userID string, admin bool) (ScheduledTask, error) {
+	if err := validate.ID("scheduledTaskId", id); err != nil {
+		return ScheduledTask{}, err
 	}
-	value, err := s.repository.CronJob(ctx, id)
+	value, err := s.repository.ScheduledTask(ctx, id)
 	if err != nil {
-		return CronJob{}, err
+		return ScheduledTask{}, err
 	}
 	if _, err := s.accounts.Account(ctx, value.AccountID, userID, admin); err != nil {
-		return CronJob{}, err
+		return ScheduledTask{}, err
 	}
 	return value, nil
 }
@@ -187,27 +191,30 @@ func (s *Service) job(nodeID, userID, accountID string) (jobs.Job, error) {
 	if err != nil {
 		return jobs.Job{}, err
 	}
-	return jobs.Job{ID: id, NodeID: nodeID, UserID: userID, Kind: jobs.KindCronSync, Status: "queued", Payload: string(payload), MaxAttempts: 2, CreatedAt: time.Now().UTC()}, nil
+	return jobs.Job{ID: id, NodeID: nodeID, UserID: userID, Kind: jobs.KindTaskSync, Status: "queued", Payload: string(payload), MaxAttempts: 2, CreatedAt: time.Now().UTC()}, nil
 }
 
 func build(
-	value CronJob, name, schedule, command, driver string, enabled bool,
-) (CronJob, error) {
+	value ScheduledTask, name, schedule, command, driver string, enabled bool,
+) (ScheduledTask, error) {
 	var err error
+	if value.Kind != Command {
+		return ScheduledTask{}, &validate.Error{Field: "kind", Message: "The selected task kind is not supported"}
+	}
 	value.Name, err = validate.ResourceName(name)
 	if err != nil {
-		return CronJob{}, err
+		return ScheduledTask{}, err
 	}
 	value.Schedule, err = validate.CronSchedule(schedule, false)
 	if err != nil {
-		return CronJob{}, err
+		return ScheduledTask{}, err
 	}
 	value.Command, err = validate.CronCommand(command)
 	if err != nil {
-		return CronJob{}, err
+		return ScheduledTask{}, err
 	}
 	if driver != services.Crontab {
-		return CronJob{}, &validate.Error{
+		return ScheduledTask{}, &validate.Error{
 			Field: "schedulerDriver", Message: "The selected scheduler driver is not supported",
 		}
 	}

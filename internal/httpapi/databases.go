@@ -42,7 +42,7 @@ func (h *handler) createDatabase(w http.ResponseWriter, r *http.Request, session
 		return
 	}
 	value, job, err := h.options.Databases.CreateDatabase(r.Context(), request.AccountId, request.Name, string(request.Driver), session.User.ID, session.User.Role == "admin")
-	h.recordMutation(r, session.User.ID, "database.create", "database", value.ID, err)
+	h.recordJobMutation(r, session.User.ID, "database.create", "database", value.ID, job.ID, err)
 	if err != nil {
 		h.writeDatabaseError(w, r, err)
 		return
@@ -52,7 +52,7 @@ func (h *handler) createDatabase(w http.ResponseWriter, r *http.Request, session
 
 func (h *handler) deleteDatabase(w http.ResponseWriter, r *http.Request, session auth.Session) {
 	value, job, err := h.options.Databases.DeleteDatabase(r.Context(), r.PathValue("databaseId"), session.User.ID, session.User.Role == "admin")
-	h.recordMutation(r, session.User.ID, "database.delete", "database", r.PathValue("databaseId"), err)
+	h.recordJobMutation(r, session.User.ID, "database.delete", "database", r.PathValue("databaseId"), job.ID, err)
 	if err != nil {
 		h.writeDatabaseError(w, r, err)
 		return
@@ -89,7 +89,7 @@ func (h *handler) createDatabaseUser(w http.ResponseWriter, r *http.Request, ses
 		return
 	}
 	value, job, password, err := h.options.Databases.CreateUser(r.Context(), request.AccountId, request.Name, string(request.Driver), session.User.ID, session.User.Role == "admin")
-	h.recordMutation(r, session.User.ID, "database_user.create", "database_user", value.ID, err)
+	h.recordJobMutation(r, session.User.ID, "database_user.create", "database_user", value.ID, job.ID, err)
 	if err != nil {
 		h.writeDatabaseError(w, r, err)
 		return
@@ -99,7 +99,7 @@ func (h *handler) createDatabaseUser(w http.ResponseWriter, r *http.Request, ses
 
 func (h *handler) deleteDatabaseUser(w http.ResponseWriter, r *http.Request, session auth.Session) {
 	value, job, err := h.options.Databases.DeleteUser(r.Context(), r.PathValue("databaseUserId"), session.User.ID, session.User.Role == "admin")
-	h.recordMutation(r, session.User.ID, "database_user.delete", "database_user", r.PathValue("databaseUserId"), err)
+	h.recordJobMutation(r, session.User.ID, "database_user.delete", "database_user", r.PathValue("databaseUserId"), job.ID, err)
 	if err != nil {
 		h.writeDatabaseError(w, r, err)
 		return
@@ -143,7 +143,7 @@ func (h *handler) setDatabaseGrant(w http.ResponseWriter, r *http.Request, sessi
 	if enabled {
 		action = "database_grant.create"
 	}
-	h.recordMutation(r, session.User.ID, action, "database_grant", r.PathValue("databaseId")+":"+r.PathValue("databaseUserId"), err)
+	h.recordJobMutation(r, session.User.ID, action, "database_grant", r.PathValue("databaseId")+":"+r.PathValue("databaseUserId"), job.ID, err)
 	if err != nil {
 		h.writeDatabaseError(w, r, err)
 		return

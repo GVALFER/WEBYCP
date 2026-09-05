@@ -121,7 +121,7 @@ the control plane reconciles selected metadata after the Agent succeeds.
 | --------- | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | Files     | The managed account home directory                             | Symlinks; their presence fails the backup                                   |
 | Databases | Dumps of active databases, including routines and events       | MySQL users, passwords, and grants                                          |
-| Metadata  | Websites, domain bindings, database definitions, and cron jobs | Accounts, DNS zones, sessions, backup plans, certificates, and private keys |
+| Metadata  | Websites, domain bindings, database definitions, and scheduled tasks | Accounts, DNS zones, sessions, backup plans, certificates, and private keys |
 
 Local artifacts share the managed server's failure domain. Copy
 `/var/backups/webycp` to protected off-host storage or include it in a verified
@@ -149,7 +149,7 @@ Files, databases, and metadata are not restored inside one global transaction,
 so a failed restore must be investigated before it is retried. The fresh backup
 from step 1 is the recovery point.
 
-When metadata is restored, enabled domains and cron jobs are reconciled with the
+When metadata is restored, enabled domains and scheduled tasks are reconciled with the
 host. Existing active certificate records are reapplied, but certificate files
 and certificate records are not created from the account artifact.
 

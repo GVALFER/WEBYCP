@@ -22,7 +22,7 @@ const Certificates = ({ certificates, websites }: CertificatesProps) => {
     const { dt } = useTimezone();
     const table = useTable(certificates.pagination);
 
-    const { data } = useSWR<CertificateListResponse>(
+    const { data, isLoading } = useSWR<CertificateListResponse>(
         `certificates?kind=website&${table.query.slice(1)}`,
         { fallbackData: table.isInitialQuery ? certificates : undefined },
     );
@@ -98,7 +98,7 @@ const Certificates = ({ certificates, websites }: CertificatesProps) => {
                     <CreateCertificate websites={websites} />
                 </div>
             </div>
-            <Table table={table} columns={columns} data={data} />
+            <Table table={table} columns={columns} data={data} pending={isLoading} />
         </section>
     );
 };

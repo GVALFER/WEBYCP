@@ -12,7 +12,7 @@ type Props = {
 
 const Archives = ({ archives }: Props) => {
     const table = useTable(archives.pagination);
-    const { data } = useSWR<BackupArtifactListResponse>(`backup-artifacts${table.query}`, {
+    const { data, isLoading } = useSWR<BackupArtifactListResponse>(`backup-artifacts${table.query}`, {
         fallbackData: table.isInitialQuery ? archives : undefined,
     });
 
@@ -24,7 +24,7 @@ const Archives = ({ archives }: Props) => {
                     Completed account backups. Integrity is verified again before each restore.
                 </div>
             </div>
-            <ArchiveTable data={data} table={table} actions={(archive) => <DeleteArchive archive={archive} />} />
+            <ArchiveTable data={data} pending={isLoading} table={table} actions={(archive) => <DeleteArchive archive={archive} />} />
         </section>
     );
 };

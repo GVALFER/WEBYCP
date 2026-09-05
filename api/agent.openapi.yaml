@@ -291,16 +291,16 @@ paths:
                 "400": { description: The request body is malformed. }
                 "422": { description: The grant request is invalid. }
                 "500": { description: The grant operation failed. }
-    /agent/v1/cron:
+    /agent/v1/scheduled-tasks:
         put:
-            operationId: syncCron
+            operationId: syncTasks
             summary: Atomically replace an account's WEBYCP cron entries
             requestBody:
                 required: true
                 content:
                     application/json:
                         schema:
-                            $ref: "#/components/schemas/SyncCronRequest"
+                            $ref: "#/components/schemas/SyncTasksRequest"
             responses:
                 "204": { description: The crontab is synchronized. }
                 "400": { description: The request body is malformed. }
@@ -578,15 +578,16 @@ components:
             properties:
                 database: { type: string }
                 user: { type: string }
-        CronEntry:
+        TaskEntry:
             type: object
             additionalProperties: false
-            required: [id, schedule, command]
+            required: [id, schedule, command, kind]
             properties:
                 id: { type: string }
                 schedule: { type: string }
                 command: { type: string }
-        SyncCronRequest:
+                kind: { type: string, enum: [command] }
+        SyncTasksRequest:
             type: object
             additionalProperties: false
             required: [accountId, systemUser, entries]
@@ -597,7 +598,7 @@ components:
                     type: array
                     maxItems: 100
                     items:
-                        $ref: "#/components/schemas/CronEntry"
+                        $ref: "#/components/schemas/TaskEntry"
         DNSZoneRequest:
             type: object
             additionalProperties: false

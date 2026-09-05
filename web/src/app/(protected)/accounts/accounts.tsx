@@ -23,7 +23,7 @@ const Accounts = ({ accounts, nodes, packages }: AccountsProps) => {
     const { dt } = useTimezone();
     const table = useTable(accounts.pagination);
 
-    const { data } = useSWR<AccountListResponse>(`accounts${table.query}`, {
+    const { data, isLoading } = useSWR<AccountListResponse>(`accounts${table.query}`, {
         fallbackData: table.isInitialQuery ? accounts : undefined,
     });
     const { data: nodesData } = useSWR<NodeListResponse>("nodes", {
@@ -145,7 +145,7 @@ const Accounts = ({ accounts, nodes, packages }: AccountsProps) => {
                 </div>
                 <CreateAccount nodeId={nodeId} packages={packageItems} />
             </div>
-            <Table table={table} columns={columns} data={data} />
+            <Table table={table} columns={columns} data={data} pending={isLoading} />
         </section>
     );
 };

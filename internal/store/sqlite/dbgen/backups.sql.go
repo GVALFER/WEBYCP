@@ -818,46 +818,6 @@ func (q *Queries) UpdateBackupRun(ctx context.Context, arg UpdateBackupRunParams
 	return err
 }
 
-const upsertRestoredCronJob = `-- name: UpsertRestoredCronJob :exec
-INSERT INTO cron_jobs (id, account_id, node_id, name, schedule, command, scheduler_driver, enabled, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?)
-ON CONFLICT(id) DO UPDATE SET name = excluded.name, schedule = excluded.schedule,
-    command = excluded.command, scheduler_driver = excluded.scheduler_driver, enabled = excluded.enabled,
-    status = CASE WHEN excluded.enabled = 1 THEN 'active' ELSE 'disabled' END,
-    updated_at = excluded.updated_at
-`
-
-type UpsertRestoredCronJobParams struct {
-	ID              string      `json:"id"`
-	AccountID       string      `json:"account_id"`
-	NodeID          string      `json:"node_id"`
-	Name            string      `json:"name"`
-	Schedule        string      `json:"schedule"`
-	Command         string      `json:"command"`
-	SchedulerDriver string      `json:"scheduler_driver"`
-	Enabled         int64       `json:"enabled"`
-	Column9         interface{} `json:"column_9"`
-	CreatedAt       int64       `json:"created_at"`
-	UpdatedAt       int64       `json:"updated_at"`
-}
-
-func (q *Queries) UpsertRestoredCronJob(ctx context.Context, arg UpsertRestoredCronJobParams) error {
-	_, err := q.db.ExecContext(ctx, upsertRestoredCronJob,
-		arg.ID,
-		arg.AccountID,
-		arg.NodeID,
-		arg.Name,
-		arg.Schedule,
-		arg.Command,
-		arg.SchedulerDriver,
-		arg.Enabled,
-		arg.Column9,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
-}
-
 const upsertRestoredDatabase = `-- name: UpsertRestoredDatabase :exec
 INSERT INTO databases (id, account_id, node_id, name, system_name, driver, status, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
@@ -884,6 +844,48 @@ func (q *Queries) UpsertRestoredDatabase(ctx context.Context, arg UpsertRestored
 		arg.Name,
 		arg.SystemName,
 		arg.Driver,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
+const upsertRestoredScheduledTask = `-- name: UpsertRestoredScheduledTask :exec
+INSERT INTO scheduled_tasks (id, account_id, node_id, name, schedule, command, scheduler_driver, kind, enabled, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN 'active' ELSE 'disabled' END, ?, ?)
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, schedule = excluded.schedule,
+    command = excluded.command, scheduler_driver = excluded.scheduler_driver, kind = excluded.kind, enabled = excluded.enabled,
+    status = CASE WHEN excluded.enabled = 1 THEN 'active' ELSE 'disabled' END,
+    updated_at = excluded.updated_at
+`
+
+type UpsertRestoredScheduledTaskParams struct {
+	ID              string      `json:"id"`
+	AccountID       string      `json:"account_id"`
+	NodeID          string      `json:"node_id"`
+	Name            string      `json:"name"`
+	Schedule        string      `json:"schedule"`
+	Command         string      `json:"command"`
+	SchedulerDriver string      `json:"scheduler_driver"`
+	Kind            string      `json:"kind"`
+	Enabled         int64       `json:"enabled"`
+	Column10        interface{} `json:"column_10"`
+	CreatedAt       int64       `json:"created_at"`
+	UpdatedAt       int64       `json:"updated_at"`
+}
+
+func (q *Queries) UpsertRestoredScheduledTask(ctx context.Context, arg UpsertRestoredScheduledTaskParams) error {
+	_, err := q.db.ExecContext(ctx, upsertRestoredScheduledTask,
+		arg.ID,
+		arg.AccountID,
+		arg.NodeID,
+		arg.Name,
+		arg.Schedule,
+		arg.Command,
+		arg.SchedulerDriver,
+		arg.Kind,
+		arg.Enabled,
+		arg.Column10,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)

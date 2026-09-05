@@ -23,7 +23,7 @@ const Aliases = ({ aliases: initial, websites }: Props) => {
     const { dt } = useTimezone();
     const table = useTable(initial.pagination);
 
-    const { data } = useSWR<WebsiteDomainListResponse>(
+    const { data, isLoading } = useSWR<WebsiteDomainListResponse>(
         `website-domains?kind=alias&${table.query.slice(1)}`,
         { fallbackData: table.isInitialQuery ? initial : undefined },
     );
@@ -93,7 +93,7 @@ const Aliases = ({ aliases: initial, websites }: Props) => {
                 </div>
                 <CreateAlias websites={websiteData ?? websites} />
             </div>
-            <Table table={table} columns={columns} data={data} />
+            <Table table={table} columns={columns} data={data} pending={isLoading} />
         </section>
     );
 };

@@ -11,11 +11,11 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/auth"
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/backups"
-	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
 	"github.com/GVALFER/WEBYCP/internal/databases"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/packages"
 	"github.com/GVALFER/WEBYCP/internal/services"
+	"github.com/GVALFER/WEBYCP/internal/tasks"
 	migrationfiles "github.com/GVALFER/WEBYCP/migrations"
 )
 
@@ -149,6 +149,7 @@ func TestAdminCredentialMigrationPreservesExistingLogin(t *testing.T) {
 		"0001_control_plane.sql", "0002_domains.sql", "0003_domain_lifecycle.sql",
 		"0004_domain_names.sql", "0005_v1_resources.sql",
 		"0008_websites.sql", "0009_packages.sql", "0010_service_capabilities.sql",
+		"0012_scheduled_tasks.sql",
 	} {
 		if _, err := db.ExecContext(ctx, "INSERT INTO schema_migrations VALUES (?, unixepoch())", name); err != nil {
 			t.Fatal(err)
@@ -387,7 +388,7 @@ func TestV1ResourceStoresCreateAtomically(t *testing.T) {
 	if err != nil || database.Name != "app" || job.Status != "queued" {
 		t.Fatalf("database = %+v, job = %+v, error = %v", database, job, err)
 	}
-	cron, _, err := store.CreateCronJob(ctx, cronjob.CronJob{ID: "fedcba9876543210fedcba9876543210", AccountID: account.ID, NodeID: node.ID, Name: "Hourly", Schedule: "0 * * * *", Command: "php task.php", SchedulerDriver: services.Crontab, Enabled: true, Status: "pending", CreatedAt: now, UpdatedAt: now}, testJob("job-cron", node.ID, "user-1", jobs.KindCronSync, now))
+	cron, _, err := store.CreateScheduledTask(ctx, tasks.ScheduledTask{ID: "fedcba9876543210fedcba9876543210", AccountID: account.ID, NodeID: node.ID, Name: "Hourly", Schedule: "0 * * * *", Command: "php task.php", SchedulerDriver: services.Crontab, Kind: "command", Enabled: true, Status: "pending", CreatedAt: now, UpdatedAt: now}, testJob("job-cron", node.ID, "user-1", jobs.KindTaskSync, now))
 	if err != nil || !cron.Enabled {
 		t.Fatalf("cron = %+v, error = %v", cron, err)
 	}
@@ -410,10 +411,10 @@ func TestV1ResourceStoresCreateAtomically(t *testing.T) {
 			ID: "44444444444444444444444444444444", NodeID: node.ID,
 			Name: "restored", SystemName: "wcp_01234567_restored", Driver: services.MySQL,
 		}},
-		CronJobs: []backupfmt.CronJob{{
+		ScheduledTasks: []backupfmt.ScheduledTask{{
 			ID: "55555555555555555555555555555555", NodeID: node.ID,
 			Name: "Restored", Schedule: "15 * * * *", Command: "php task.php",
-			SchedulerDriver: services.Crontab, Enabled: true,
+			SchedulerDriver: services.Crontab, Kind: "command", Enabled: true,
 		}},
 	}
 	if err := store.RestoreMetadata(ctx, metadata); err != nil {
@@ -428,8 +429,8 @@ func TestV1ResourceStoresCreateAtomically(t *testing.T) {
 	if database, err := store.Database(ctx, metadata.Databases[0].ID); err != nil || database.Status != "active" {
 		t.Fatalf("restored database = %+v, error = %v", database, err)
 	}
-	if cron, err := store.CronJob(ctx, metadata.CronJobs[0].ID); err != nil || cron.Status != "active" {
-		t.Fatalf("restored cron job = %+v, error = %v", cron, err)
+	if cron, err := store.ScheduledTask(ctx, metadata.ScheduledTasks[0].ID); err != nil || cron.Status != "active" {
+		t.Fatalf("restored scheduled task = %+v, error = %v", cron, err)
 	}
 	metadata.Websites[0].NodeID = "ffffffffffffffffffffffffffffffff"
 	if err := store.RestoreMetadata(ctx, metadata); err == nil {

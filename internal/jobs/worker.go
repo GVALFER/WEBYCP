@@ -154,7 +154,7 @@ func (w *Worker) record(ctx context.Context, job Job, result string) {
 	}
 	if err := w.audit.Record(ctx, audit.Event{
 		ID: id, UserID: job.UserID, Action: "job.execute", ResourceType: "job",
-		ResourceID: job.ID, Result: result, Metadata: "{}", CreatedAt: time.Now().UTC(),
+		ResourceID: job.ID, JobID: job.ID, Result: result, Metadata: "{}", CreatedAt: time.Now().UTC(),
 	}); err != nil {
 		w.logger.Error("failed to record job audit event", "error", err, "jobId", job.ID)
 	}

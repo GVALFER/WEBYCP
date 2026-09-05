@@ -11,7 +11,6 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/auth"
 	"github.com/GVALFER/WEBYCP/internal/backups"
 	"github.com/GVALFER/WEBYCP/internal/certificates"
-	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
 	"github.com/GVALFER/WEBYCP/internal/databases"
 	dnscontrol "github.com/GVALFER/WEBYCP/internal/dns"
 	"github.com/GVALFER/WEBYCP/internal/httpapi/spec"
@@ -20,6 +19,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/nodes"
 	"github.com/GVALFER/WEBYCP/internal/packages"
 	"github.com/GVALFER/WEBYCP/internal/services"
+	"github.com/GVALFER/WEBYCP/internal/tasks"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 )
 
@@ -34,13 +34,13 @@ type Options struct {
 	Services     *services.Service
 	Websites     *websites.Service
 	Databases    *databases.Service
-	Cron         *cronjob.Service
+	Tasks        *tasks.Service
 	Certificates *certificates.Service
 	Backups      *backups.Service
 	DNS          *dnscontrol.Service
 	Nodes        *nodes.Service
 	Jobs         *jobs.Service
-	Audit        audit.Recorder
+	Audit        audit.Repository
 	Logger       *slog.Logger
 }
 
@@ -91,10 +91,10 @@ func New(options Options) http.Handler {
 	mux.HandleFunc("GET /api/v1/database-grants", h.withAuth(false, h.listDatabaseGrants))
 	mux.HandleFunc("PUT /api/v1/databases/{databaseId}/users/{databaseUserId}", h.withAuth(true, h.createDatabaseGrant))
 	mux.HandleFunc("DELETE /api/v1/databases/{databaseId}/users/{databaseUserId}", h.withAuth(true, h.deleteDatabaseGrant))
-	mux.HandleFunc("GET /api/v1/cron-jobs", h.withAuth(false, h.listCronJobs))
-	mux.HandleFunc("POST /api/v1/cron-jobs", h.withAuth(true, h.createCronJob))
-	mux.HandleFunc("PATCH /api/v1/cron-jobs/{cronJobId}", h.withAuth(true, h.setCronJob))
-	mux.HandleFunc("DELETE /api/v1/cron-jobs/{cronJobId}", h.withAuth(true, h.deleteCronJob))
+	mux.HandleFunc("GET /api/v1/scheduled-tasks", h.withAuth(false, h.listScheduledTasks))
+	mux.HandleFunc("POST /api/v1/scheduled-tasks", h.withAuth(true, h.createScheduledTask))
+	mux.HandleFunc("PATCH /api/v1/scheduled-tasks/{scheduledTaskId}", h.withAuth(true, h.setScheduledTask))
+	mux.HandleFunc("DELETE /api/v1/scheduled-tasks/{scheduledTaskId}", h.withAuth(true, h.deleteScheduledTask))
 	mux.HandleFunc("GET /api/v1/certificates", h.withAuth(false, h.listCertificates))
 	mux.HandleFunc("POST /api/v1/websites/{websiteId}/certificate", h.withAuth(true, h.issueWebsiteCertificate))
 	mux.HandleFunc("POST /api/v1/certificates/panel", h.withAuth(true, h.issuePanelCertificate))
@@ -127,6 +127,7 @@ func New(options Options) http.Handler {
 	mux.HandleFunc("POST /api/v1/nodes/{nodeId}/probe", h.withAuth(true, h.probeNode))
 	mux.HandleFunc("GET /api/v1/jobs", h.withAuth(false, h.listJobs))
 	mux.HandleFunc("GET /api/v1/jobs/{jobId}", h.withAuth(false, h.getJob))
+	mux.HandleFunc("GET /api/v1/audit-events", h.withAuth(false, h.listAuditEvents))
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusNotFound, "not_found", "API route not found")
 	})

@@ -10,6 +10,7 @@ import (
 
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/store/sqlite"
 )
@@ -80,5 +81,9 @@ func TestWorkerRunsNodeProbe(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("worker did not stop")
+	}
+	events, err := store.AuditPage(context.Background(), pagination.Query{Page: 1, Size: 10}, job.ID)
+	if err != nil || len(events.Items) != 1 || events.Items[0].Action != "job.execute" || events.Items[0].JobID != job.ID || events.Items[0].Result != "success" {
+		t.Fatalf("job audit = %+v, error = %v", events, err)
 	}
 }

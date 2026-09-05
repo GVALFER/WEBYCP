@@ -84,7 +84,7 @@ func (h *handler) deleteBackupPlan(w http.ResponseWriter, r *http.Request, sessi
 
 func (h *handler) runBackupPlan(w http.ResponseWriter, r *http.Request, session auth.Session) {
 	run, job, err := h.options.Backups.Run(r.Context(), r.PathValue("backupPlanId"), session.User.ID, session.User.Role == "admin")
-	h.recordMutation(r, session.User.ID, "backup.run", "backup_plan", r.PathValue("backupPlanId"), err)
+	h.recordJobMutation(r, session.User.ID, "backup.run", "backup_plan", r.PathValue("backupPlanId"), job.ID, err)
 	if err != nil {
 		h.writeBackupError(w, r, err)
 		return
@@ -165,7 +165,7 @@ func (h *handler) restoreBackup(w http.ResponseWriter, r *http.Request, session 
 		return
 	}
 	job, err := h.options.Backups.Restore(r.Context(), r.PathValue("backupArtifactId"), session.User.ID, session.User.Role == "admin", backups.RestoreScope{Files: request.Files, Databases: request.Databases, Metadata: request.Metadata})
-	h.recordMutation(r, session.User.ID, "backup.restore", "backup_artifact", r.PathValue("backupArtifactId"), err)
+	h.recordJobMutation(r, session.User.ID, "backup.restore", "backup_artifact", r.PathValue("backupArtifactId"), job.ID, err)
 	if err != nil {
 		h.writeBackupError(w, r, err)
 		return

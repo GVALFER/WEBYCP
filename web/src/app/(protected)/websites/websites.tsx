@@ -30,7 +30,7 @@ const Websites = ({ accounts, websites: initial, domains, settings: initialSetti
     const { dt } = useTimezone();
     const table = useTable(initial.pagination);
 
-    const { data } = useSWR<WebsiteListResponse>(`websites${table.query}`, {
+    const { data, isLoading } = useSWR<WebsiteListResponse>(`websites${table.query}`, {
         fallbackData: table.isInitialQuery ? initial : undefined,
     });
     const { data: accountData } = useSWR<AccountListResponse>(
@@ -120,7 +120,7 @@ const Websites = ({ accounts, websites: initial, domains, settings: initialSetti
                 </div>
                 <CreateWebsite accounts={accountData ?? accounts} defaults={settings.defaults} />
             </div>
-            <Table table={table} columns={columns} data={data} />
+            <Table table={table} columns={columns} data={data} pending={isLoading} />
         </section>
     );
 };

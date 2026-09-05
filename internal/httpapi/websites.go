@@ -44,7 +44,7 @@ func (h *handler) createWebsite(w http.ResponseWriter, r *http.Request, session 
 		h.writeWebsiteError(w, r, err)
 		return
 	}
-	h.record(r, audit.Event{UserID: session.User.ID, Action: "website.create", ResourceType: "website", ResourceID: website.ID, Result: "success"})
+	h.record(r, audit.Event{UserID: session.User.ID, Action: "website.create", ResourceType: "website", ResourceID: website.ID, JobID: job.ID, Result: "success"})
 	writeWebsiteJob(w, website, job)
 }
 
@@ -64,7 +64,7 @@ func (h *handler) setWebsite(w http.ResponseWriter, r *http.Request, session aut
 		h.writeWebsiteError(w, r, err)
 		return
 	}
-	h.record(r, audit.Event{UserID: session.User.ID, Action: action, ResourceType: "website", ResourceID: website.ID, Result: "success"})
+	h.record(r, audit.Event{UserID: session.User.ID, Action: action, ResourceType: "website", ResourceID: website.ID, JobID: job.ID, Result: "success"})
 	writeWebsiteJob(w, website, job)
 }
 
@@ -75,7 +75,7 @@ func (h *handler) deleteWebsite(w http.ResponseWriter, r *http.Request, session 
 		h.writeWebsiteError(w, r, err)
 		return
 	}
-	h.record(r, audit.Event{UserID: session.User.ID, Action: "website.delete", ResourceType: "website", ResourceID: website.ID, Result: "success"})
+	h.record(r, audit.Event{UserID: session.User.ID, Action: "website.delete", ResourceType: "website", ResourceID: website.ID, JobID: job.ID, Result: "success"})
 	writeWebsiteJob(w, website, job)
 }
 
@@ -121,7 +121,7 @@ func (h *handler) createWebsiteDomain(w http.ResponseWriter, r *http.Request, se
 		h.writeWebsiteError(w, r, err)
 		return
 	}
-	h.record(r, audit.Event{UserID: session.User.ID, Action: "website_domain.create", ResourceType: "website_domain", ResourceID: domain.ID, Result: "success"})
+	h.record(r, audit.Event{UserID: session.User.ID, Action: "website_domain.create", ResourceType: "website_domain", ResourceID: domain.ID, JobID: job.ID, Result: "success"})
 	writeWebsiteDomainJob(w, domain, job)
 }
 
@@ -153,7 +153,7 @@ func (h *handler) setWebsiteDomain(w http.ResponseWriter, r *http.Request, sessi
 		h.writeWebsiteError(w, r, err)
 		return
 	}
-	h.record(r, audit.Event{UserID: session.User.ID, Action: action, ResourceType: "website_domain", ResourceID: domain.ID, Result: "success"})
+	h.record(r, audit.Event{UserID: session.User.ID, Action: action, ResourceType: "website_domain", ResourceID: domain.ID, JobID: job.ID, Result: "success"})
 	writeWebsiteDomainJob(w, domain, job)
 }
 
@@ -164,7 +164,7 @@ func (h *handler) deleteWebsiteDomain(w http.ResponseWriter, r *http.Request, se
 		h.writeWebsiteError(w, r, err)
 		return
 	}
-	h.record(r, audit.Event{UserID: session.User.ID, Action: "website_domain.delete", ResourceType: "website_domain", ResourceID: domain.ID, Result: "success"})
+	h.record(r, audit.Event{UserID: session.User.ID, Action: "website_domain.delete", ResourceType: "website_domain", ResourceID: domain.ID, JobID: job.ID, Result: "success"})
 	writeWebsiteDomainJob(w, domain, job)
 }
 

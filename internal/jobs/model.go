@@ -31,7 +31,7 @@ const (
 	KindDatabaseUserDelete   = "database_user.delete"
 	KindDatabaseGrantCreate  = "database_grant.create"
 	KindDatabaseGrantDelete  = "database_grant.delete"
-	KindCronSync             = "cron.sync"
+	KindTaskSync             = "task.sync"
 	KindBackupCreate         = "backup.create"
 	KindBackupRestore        = "backup.restore"
 	KindDNSZoneCreate        = "dns_zone.create"

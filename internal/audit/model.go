@@ -3,6 +3,8 @@ package audit
 import (
 	"context"
 	"time"
+
+	"github.com/GVALFER/WEBYCP/internal/pagination"
 )
 
 type Event struct {
@@ -11,6 +13,7 @@ type Event struct {
 	Action       string
 	ResourceType string
 	ResourceID   string
+	JobID        string
 	Result       string
 	Metadata     string
 	CreatedAt    time.Time
@@ -18,4 +21,9 @@ type Event struct {
 
 type Recorder interface {
 	Record(context.Context, Event) error
+}
+
+type Repository interface {
+	Recorder
+	AuditPage(context.Context, pagination.Query, string) (pagination.Result[Event], error)
 }

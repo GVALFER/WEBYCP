@@ -73,6 +73,7 @@ type AuditEvent struct {
 	Result       string         `json:"result"`
 	Metadata     string         `json:"metadata"`
 	CreatedAt    int64          `json:"created_at"`
+	JobID        sql.NullString `json:"job_id"`
 }
 
 type BackupArtifact struct {
@@ -137,20 +138,6 @@ type Certificate struct {
 type CertificateName struct {
 	CertificateID string `json:"certificate_id"`
 	Name          string `json:"name"`
-}
-
-type CronJob struct {
-	ID              string `json:"id"`
-	AccountID       string `json:"account_id"`
-	NodeID          string `json:"node_id"`
-	Name            string `json:"name"`
-	Schedule        string `json:"schedule"`
-	Command         string `json:"command"`
-	Enabled         int64  `json:"enabled"`
-	Status          string `json:"status"`
-	CreatedAt       int64  `json:"created_at"`
-	UpdatedAt       int64  `json:"updated_at"`
-	SchedulerDriver string `json:"scheduler_driver"`
 }
 
 type Database struct {
@@ -297,6 +284,21 @@ type PackageOverview struct {
 	CreatedAt          int64  `json:"created_at"`
 	UpdatedAt          int64  `json:"updated_at"`
 	AccountCount       int64  `json:"account_count"`
+}
+
+type ScheduledTask struct {
+	ID              string `json:"id"`
+	AccountID       string `json:"account_id"`
+	NodeID          string `json:"node_id"`
+	Name            string `json:"name"`
+	Schedule        string `json:"schedule"`
+	Command         string `json:"command"`
+	Enabled         int64  `json:"enabled"`
+	Status          string `json:"status"`
+	CreatedAt       int64  `json:"created_at"`
+	UpdatedAt       int64  `json:"updated_at"`
+	SchedulerDriver string `json:"scheduler_driver"`
+	Kind            string `json:"kind"`
 }
 
 type ServiceSetting struct {

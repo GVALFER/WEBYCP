@@ -4,20 +4,20 @@ import { Button, Spinner, toast } from "@heroui/react";
 import { Power, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
-import type { CronJobListResponse, CronJobResponse, Job } from "@/contracts/types";
+import type { ScheduledTaskListResponse, ScheduledTaskResponse, Job } from "@/contracts/types";
 import { Confirm } from "@/components/actions/confirm";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/utils/errors";
 import { isPageKey } from "@/utils/pagination";
 
-type CronActionsProps = {
-    item: CronJobListResponse["items"][number];
+type TaskActionsProps = {
+    item: ScheduledTaskListResponse["items"][number];
 };
 
-const CronActions = ({ item }: CronActionsProps) => {
+const TaskActions = ({ item }: TaskActionsProps) => {
     const [pending, setPending] = useState(false);
     const { mutate } = useSWRConfig();
-    const path = `cron-jobs/${encodeURIComponent(item.id)}`;
+    const path = `scheduled-tasks/${encodeURIComponent(item.id)}`;
 
     const run = async (action: () => Promise<unknown>, success: string, usage = false) => {
         setPending(true);
@@ -25,7 +25,13 @@ const CronActions = ({ item }: CronActionsProps) => {
         try {
             await action();
             await mutate((key) =>
-                isPageKey(key, "cron-jobs", ...(usage ? ["accounts"] : []), "jobs"),
+                isPageKey(
+                    key,
+                    "scheduled-tasks",
+                    ...(usage ? ["accounts"] : []),
+                    "jobs",
+                    "audit-events",
+                ),
             );
             toast.success(success);
         } catch (error) {
@@ -48,15 +54,16 @@ const CronActions = ({ item }: CronActionsProps) => {
                             schedule: item.schedule,
                             command: item.command,
                             schedulerDriver: item.schedulerDriver,
+                            kind: item.kind,
                             enabled: !item.enabled,
                         },
                     })
-                    .json<CronJobResponse>(),
-            item.enabled ? "Cron job disabled" : "Cron job enabled",
+                    .json<ScheduledTaskResponse>(),
+            item.enabled ? "Scheduled task disabled" : "Scheduled task enabled",
         );
 
     const remove = () =>
-        run(() => api.delete(path).json<Job>(), "Cron job queued for deletion", true);
+        run(() => api.delete(path).json<Job>(), "Scheduled task queued for deletion", true);
 
     return (
         <div className="flex items-center gap-2">
@@ -91,4 +98,4 @@ const CronActions = ({ item }: CronActionsProps) => {
     );
 };
 
-export default CronActions;
+export default TaskActions;

@@ -14,9 +14,9 @@ import (
 	agentapi "github.com/GVALFER/WEBYCP/internal/agent/protocol"
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/certificates"
-	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
 	dnscontrol "github.com/GVALFER/WEBYCP/internal/dns"
 	"github.com/GVALFER/WEBYCP/internal/services"
+	"github.com/GVALFER/WEBYCP/internal/tasks"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -177,14 +177,14 @@ func (c *Client) DeleteDatabaseGrant(ctx context.Context, socket, database, user
 	return c.sendJSON(ctx, socket, http.MethodDelete, "/agent/v1/database-grants", agentapi.DatabaseGrantRequest{Database: database, User: user}, "database grant delete")
 }
 
-func (c *Client) SyncCron(ctx context.Context, socket, accountID, systemUser string, entries []cronjob.Entry) error {
-	values := make([]agentapi.CronEntry, 0, len(entries))
+func (c *Client) SyncTasks(ctx context.Context, socket, accountID, systemUser string, entries []tasks.Entry) error {
+	values := make([]agentapi.TaskEntry, 0, len(entries))
 	for _, entry := range entries {
-		values = append(values, agentapi.CronEntry{Id: entry.ID, Schedule: entry.Schedule, Command: entry.Command})
+		values = append(values, agentapi.TaskEntry{Kind: agentapi.TaskEntryKind(entry.Kind), Id: entry.ID, Schedule: entry.Schedule, Command: entry.Command})
 	}
-	return c.sendJSON(ctx, socket, http.MethodPut, "/agent/v1/cron", agentapi.SyncCronRequest{
+	return c.sendJSON(ctx, socket, http.MethodPut, "/agent/v1/scheduled-tasks", agentapi.SyncTasksRequest{
 		AccountId: accountID, SystemUser: systemUser, Entries: values,
-	}, "cron sync")
+	}, "scheduled task sync")
 }
 
 func (c *Client) EnsureDNSZone(ctx context.Context, socket string, value dnscontrol.ZoneSpec) error {

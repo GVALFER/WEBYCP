@@ -30,7 +30,7 @@ const Zones = ({ accounts, providers, settings, zones }: Props) => {
     const { dt } = useTimezone();
     const table = useTable(zones.pagination);
 
-    const { data } = useSWR<DNSZoneListResponse>(`dns/zones${table.query}`, {
+    const { data, isLoading } = useSWR<DNSZoneListResponse>(`dns/zones${table.query}`, {
         fallbackData: table.isInitialQuery ? zones : undefined,
     });
 
@@ -126,7 +126,7 @@ const Zones = ({ accounts, providers, settings, zones }: Props) => {
                         configured={configured}
                     />
                 </div>
-                <Table table={table} columns={columns} data={data} />
+                <Table table={table} columns={columns} data={data} pending={isLoading} />
             </section>
         </div>
     );

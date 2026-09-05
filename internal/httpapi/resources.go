@@ -72,7 +72,7 @@ func (h *handler) createAccount(w http.ResponseWriter, r *http.Request, session 
 	}
 	h.record(r, audit.Event{
 		UserID: session.User.ID, Action: "account.create", ResourceType: "account",
-		ResourceID: account.ID, Result: "success",
+		ResourceID: account.ID, JobID: job.ID, Result: "success",
 	})
 	httpx.WriteJSON(w, http.StatusAccepted, publicapi.AccountJobResponse{
 		Account: accountResponse(account), Job: jobResponse(job),
@@ -103,7 +103,7 @@ func (h *handler) setAccount(w http.ResponseWriter, r *http.Request, session aut
 	}
 	h.record(r, audit.Event{
 		UserID: session.User.ID, Action: job.Kind, ResourceType: "account",
-		ResourceID: account.ID, Result: "success",
+		ResourceID: account.ID, JobID: job.ID, Result: "success",
 	})
 	writeAccountJob(w, account, job)
 }
@@ -123,7 +123,7 @@ func (h *handler) deleteAccount(w http.ResponseWriter, r *http.Request, session 
 	}
 	h.record(r, audit.Event{
 		UserID: session.User.ID, Action: "account.delete", ResourceType: "account",
-		ResourceID: account.ID, Result: "success",
+		ResourceID: account.ID, JobID: job.ID, Result: "success",
 	})
 	writeAccountJob(w, account, job)
 }
@@ -166,12 +166,16 @@ func (h *handler) probeNode(w http.ResponseWriter, r *http.Request, session auth
 	}
 	h.record(r, audit.Event{
 		UserID: session.User.ID, Action: "node.probe", ResourceType: "node",
-		ResourceID: nodeID, Result: "success",
+		ResourceID: nodeID, JobID: job.ID, Result: "success",
 	})
 	httpx.WriteJSON(w, http.StatusAccepted, jobResponse(job))
 }
 
-func (h *handler) listJobs(w http.ResponseWriter, r *http.Request, _ auth.Session) {
+func (h *handler) listJobs(w http.ResponseWriter, r *http.Request, session auth.Session) {
+	if session.User.Role != "admin" {
+		writeError(w, http.StatusForbidden, "forbidden", "Administrator access is required")
+		return
+	}
 	query, ok := requestPage(w, r)
 	if !ok {
 		return
@@ -191,7 +195,11 @@ func (h *handler) listJobs(w http.ResponseWriter, r *http.Request, _ auth.Sessio
 	httpx.WriteJSON(w, http.StatusOK, response)
 }
 
-func (h *handler) getJob(w http.ResponseWriter, r *http.Request, _ auth.Session) {
+func (h *handler) getJob(w http.ResponseWriter, r *http.Request, session auth.Session) {
+	if session.User.Role != "admin" {
+		writeError(w, http.StatusForbidden, "forbidden", "Administrator access is required")
+		return
+	}
 	job, steps, err := h.options.Jobs.Job(r.Context(), r.PathValue("jobId"))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

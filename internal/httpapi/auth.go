@@ -143,14 +143,7 @@ func (h *handler) record(r *http.Request, event audit.Event) {
 func (h *handler) recordMutation(
 	r *http.Request, userID, action, resourceType, resourceID string, err error,
 ) {
-	result := "success"
-	if err != nil {
-		result = "failure"
-	}
-	h.record(r, audit.Event{
-		UserID: userID, Action: action, ResourceType: resourceType,
-		ResourceID: resourceID, Result: result,
-	})
+	h.recordJobMutation(r, userID, action, resourceType, resourceID, "", err)
 }
 
 func writeValidationError(w http.ResponseWriter, err error) bool {

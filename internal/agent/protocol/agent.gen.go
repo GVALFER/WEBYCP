@@ -102,6 +102,21 @@ func (e ServiceCapabilityStatus) Valid() bool {
 	}
 }
 
+// Defines values for TaskEntryKind.
+const (
+	Command TaskEntryKind = "command"
+)
+
+// Valid indicates whether the value is a known member of the TaskEntryKind enum.
+func (e TaskEntryKind) Valid() bool {
+	switch e {
+	case Command:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebsiteRequestKind.
 const (
 	Php WebsiteRequestKind = "php"
@@ -216,13 +231,6 @@ type CreateBackupRequest struct {
 	Metadata     string   `json:"metadata"`
 	RunId        string   `json:"runId"`
 	SystemUser   string   `json:"systemUser"`
-}
-
-// CronEntry defines model for CronEntry.
-type CronEntry struct {
-	Command  string `json:"command"`
-	Id       string `json:"id"`
-	Schedule string `json:"schedule"`
 }
 
 // DNSRecordSet defines model for DNSRecordSet.
@@ -347,18 +355,29 @@ type ServiceCapability struct {
 // ServiceCapabilityStatus defines model for ServiceCapability.Status.
 type ServiceCapabilityStatus string
 
-// SyncCronRequest defines model for SyncCronRequest.
-type SyncCronRequest struct {
-	AccountId  string      `json:"accountId"`
-	Entries    []CronEntry `json:"entries"`
-	SystemUser string      `json:"systemUser"`
-}
-
 // SyncDNSRecordSetsRequest defines model for SyncDNSRecordSetsRequest.
 type SyncDNSRecordSetsRequest struct {
 	Rrsets []DNSRecordSet `json:"rrsets"`
 	Zone   DNSZoneRequest `json:"zone"`
 }
+
+// SyncTasksRequest defines model for SyncTasksRequest.
+type SyncTasksRequest struct {
+	AccountId  string      `json:"accountId"`
+	Entries    []TaskEntry `json:"entries"`
+	SystemUser string      `json:"systemUser"`
+}
+
+// TaskEntry defines model for TaskEntry.
+type TaskEntry struct {
+	Command  string        `json:"command"`
+	Id       string        `json:"id"`
+	Kind     TaskEntryKind `json:"kind"`
+	Schedule string        `json:"schedule"`
+}
+
+// TaskEntryKind defines model for TaskEntry.Kind.
+type TaskEntryKind string
 
 // WebsiteRequest defines model for WebsiteRequest.
 type WebsiteRequest struct {
@@ -413,9 +432,6 @@ type RestoreBackupJSONRequestBody = RestoreBackupRequest
 // IssueCertificateJSONRequestBody defines body for IssueCertificate for application/json ContentType.
 type IssueCertificateJSONRequestBody = IssueCertificateRequest
 
-// SyncCronJSONRequestBody defines body for SyncCron for application/json ContentType.
-type SyncCronJSONRequestBody = SyncCronRequest
-
 // DeleteDatabaseGrantJSONRequestBody defines body for DeleteDatabaseGrant for application/json ContentType.
 type DeleteDatabaseGrantJSONRequestBody = DatabaseGrantRequest
 
@@ -442,6 +458,9 @@ type DeleteDNSZoneJSONRequestBody = DNSZoneRequest
 
 // EnsureDNSZoneJSONRequestBody defines body for EnsureDNSZone for application/json ContentType.
 type EnsureDNSZoneJSONRequestBody = DNSZoneRequest
+
+// SyncTasksJSONRequestBody defines body for SyncTasks for application/json ContentType.
+type SyncTasksJSONRequestBody = SyncTasksRequest
 
 // EnsureWebsiteJSONRequestBody defines body for EnsureWebsite for application/json ContentType.
 type EnsureWebsiteJSONRequestBody = WebsiteRequest

@@ -11,13 +11,13 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/accounts"
 	agentbackup "github.com/GVALFER/WEBYCP/internal/agent/backup"
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
-	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
 	"github.com/GVALFER/WEBYCP/internal/databases"
 	"github.com/GVALFER/WEBYCP/internal/idgen"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
 	"github.com/GVALFER/WEBYCP/internal/pagination"
 	"github.com/GVALFER/WEBYCP/internal/services"
+	"github.com/GVALFER/WEBYCP/internal/tasks"
 	"github.com/GVALFER/WEBYCP/internal/validate"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 	robfigcron "github.com/robfig/cron/v3"
@@ -28,7 +28,7 @@ type Service struct {
 	accounts   *accounts.Service
 	websites   *websites.Service
 	databases  *databases.Service
-	cron       *cronjob.Service
+	tasks      *tasks.Service
 	certs      CertificateReconciler
 	nodes      nodes.Repository
 	agent      Agent
@@ -44,8 +44,8 @@ type restorePayload struct {
 	Scope      RestoreScope `json:"scope"`
 }
 
-func NewService(repository Repository, accounts *accounts.Service, websites *websites.Service, databases *databases.Service, cron *cronjob.Service, certs CertificateReconciler, nodes nodes.Repository, agent Agent, notify func()) *Service {
-	return &Service{repository: repository, accounts: accounts, websites: websites, databases: databases, cron: cron, certs: certs, nodes: nodes, agent: agent, notify: notify}
+func NewService(repository Repository, accounts *accounts.Service, websites *websites.Service, databases *databases.Service, tasks *tasks.Service, certs CertificateReconciler, nodes nodes.Repository, agent Agent, notify func()) *Service {
+	return &Service{repository: repository, accounts: accounts, websites: websites, databases: databases, tasks: tasks, certs: certs, nodes: nodes, agent: agent, notify: notify}
 }
 
 func (s *Service) Plans(ctx context.Context, userID string, admin bool) ([]Plan, error) {
@@ -286,8 +286,8 @@ func (s *Service) RestoreJob(ctx context.Context, job jobs.Job) error {
 		if err := s.repository.RestoreMetadata(ctx, value); err != nil {
 			return err
 		}
-		if err := s.cron.Reconcile(ctx, account.ID); err != nil {
-			return fmt.Errorf("reconcile restored cron: %w", err)
+		if err := s.tasks.Reconcile(ctx, account.ID); err != nil {
+			return fmt.Errorf("reconcile restored scheduled tasks: %w", err)
 		}
 		for _, website := range value.Websites {
 			if !website.Enabled {
@@ -344,7 +344,7 @@ func (s *Service) queue(ctx context.Context, plan Plan, userID string) (Run, job
 }
 
 func (s *Service) metadata(ctx context.Context, accountID string, includeDatabases bool) (string, []string, error) {
-	value := backupfmt.Metadata{Version: backupfmt.Version, AccountID: accountID, Websites: []backupfmt.Website{}, Databases: []backupfmt.Database{}, CronJobs: []backupfmt.CronJob{}}
+	value := backupfmt.Metadata{Version: backupfmt.Version, AccountID: accountID, Websites: []backupfmt.Website{}, Databases: []backupfmt.Database{}, ScheduledTasks: []backupfmt.ScheduledTask{}}
 	websiteValues, err := s.websites.Websites(ctx, "", true)
 	if err != nil {
 		return "", nil, err
@@ -376,13 +376,13 @@ func (s *Service) metadata(ctx context.Context, accountID string, includeDatabas
 			}
 		}
 	}
-	cronValues, err := s.cron.CronJobs(ctx, "", true)
+	taskValues, err := s.tasks.ScheduledTasks(ctx, "", true)
 	if err != nil {
 		return "", nil, err
 	}
-	for _, item := range cronValues {
+	for _, item := range taskValues {
 		if item.AccountID == accountID {
-			value.CronJobs = append(value.CronJobs, backupfmt.CronJob{ID: item.ID, NodeID: item.NodeID, Name: item.Name, Schedule: item.Schedule, Command: item.Command, SchedulerDriver: item.SchedulerDriver, Enabled: item.Enabled})
+			value.ScheduledTasks = append(value.ScheduledTasks, backupfmt.ScheduledTask{Kind: string(item.Kind), ID: item.ID, NodeID: item.NodeID, Name: item.Name, Schedule: item.Schedule, Command: item.Command, SchedulerDriver: item.SchedulerDriver, Enabled: item.Enabled})
 		}
 	}
 	data, err := json.Marshal(value)

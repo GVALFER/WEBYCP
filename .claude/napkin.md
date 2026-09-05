@@ -9,6 +9,8 @@
 
 ## Shell & Tool Reliability
 
+1. **[2026-09-05] Playwright MCP code runs in a restricted JavaScript context**
+   Do instead: record `request.url()` directly in network listeners; do not use unavailable globals such as `URL`, since exceptions in event callbacks can terminate the MCP transport.
 1. **[2026-09-05] Removed Next.js routes can leave stale dev type validators**
    Do instead: move only the generated `.next/dev` cache aside when it still imports deleted pages; regenerate build types instead of restoring obsolete routes.
 1. **[2026-09-04] Release builds require Node.js 24 and Docker Buildx**
@@ -119,6 +121,6 @@
 8. **[2026-09-04] Keep pre-release changes free of compatibility hacks**
    Do instead: replace obsolete development models cleanly, avoid dual reads/writes, deprecated routes, fabricated fallbacks, and temporary adapters, then stop after each reviewed step.
 9. **[2026-09-04] Load each route's initial data in its Server Component**
-   Do instead: make every route `page.tsx` fetch its initial data on the server, pass typed props to an adjacent Client Component, and seed its explicit SWR hook through `fallbackData`; use `useTable` only for URL query state and keep rows, loading state, and `Paginate` rendering inside `Table`; namespace multiple table states with dotted parameters such as `plans.page` while keeping API keys as `?page=&size=`; keep the shared shell in the four `components/layout` files and do not use a `features` directory.
+   Do instead: make every route `page.tsx` fetch its initial data on the server and pass typed props to an adjacent Client Component with explicit SWR `fallbackData`. Do not seed the cache with mount-time `mutate`; suppress initial revalidation and let changed keys fetch normally, including a return to the SSR page. Keep `useTable` for URL state only and rendering/loading/`Paginate` inside `Table`; namespace multiple tables with dotted parameters such as `plans.page`, keeping API keys as `?page=&size=`. Keep the shell in the four `components/layout` files, without a `features` directory.
 10. **[2026-09-04] Keep all mutation logic in action components**
    Do instead: keep page clients focused on SWR fallback and presentation; move every POST, PATCH, PUT, DELETE, pending state, validation, toast, mutate, and mutation button/form into focused components under the adjacent `actions` directory; build submitted forms with React Hook Form, `valibotResolver`, the shared `Form`/field components, and `useTransition`, without manual `safeParse` calls in submit handlers; open resource creation forms in the shared HeroUI modal instead of permanent page sidebars.

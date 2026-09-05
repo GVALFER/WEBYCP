@@ -5,7 +5,8 @@ export const swrConfig: SWRConfiguration = {
     fetcher,
     revalidateOnFocus: true,
     revalidateOnReconnect: false,
-    revalidateIfStale: false,
+    revalidateOnMount: false,
+    revalidateIfStale: true,
     shouldRetryOnError: false,
     keepPreviousData: true,
 };

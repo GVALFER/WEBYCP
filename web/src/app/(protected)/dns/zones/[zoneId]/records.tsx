@@ -24,7 +24,7 @@ const Records = ({ defaultTtl, records, zone }: Props) => {
     const { dt } = useTimezone();
     const table = useTable(records.pagination);
     const path = `dns/zones/${encodeURIComponent(zone.id)}/records`;
-    const { data } = useSWR<DNSRecordListResponse>(`${path}${table.query}`, {
+    const { data, isLoading } = useSWR<DNSRecordListResponse>(`${path}${table.query}`, {
         fallbackData: table.isInitialQuery ? records : undefined,
     });
 
@@ -111,7 +111,7 @@ const Records = ({ defaultTtl, records, zone }: Props) => {
                     </div>
                     <CreateRecord zone={zone} defaultTtl={defaultTtl} />
                 </div>
-                <Table table={table} columns={columns} data={data} />
+                <Table table={table} columns={columns} data={data} pending={isLoading} />
             </section>
         </div>
     );

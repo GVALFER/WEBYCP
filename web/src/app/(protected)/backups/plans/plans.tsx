@@ -32,10 +32,10 @@ const Plans = ({ accounts, plans, runs, settings: initialSettings }: Props) => {
     const plansTable = useTable(plans.pagination, "plans");
     const runsTable = useTable(runs.pagination, "runs");
 
-    const { data: planData } = useSWR<BackupPlanListResponse>(`backup-plans${plansTable.query}`, {
+    const { data: planData, isLoading: plansLoading } = useSWR<BackupPlanListResponse>(`backup-plans${plansTable.query}`, {
         fallbackData: plansTable.isInitialQuery ? plans : undefined,
     });
-    const { data: runData } = useSWR<BackupRunListResponse>(`backup-runs${runsTable.query}`, {
+    const { data: runData, isLoading: runsLoading } = useSWR<BackupRunListResponse>(`backup-runs${runsTable.query}`, {
         fallbackData: runsTable.isInitialQuery ? runs : undefined,
     });
     const { data: settings = initialSettings } = useSWR<ServiceSettings>("service-settings", {
@@ -149,14 +149,14 @@ const Plans = ({ accounts, plans, runs, settings: initialSettings }: Props) => {
                     </div>
                     <PlanForm accounts={accounts} driver={settings.defaults.backupDriver} />
                 </div>
-                <Table table={plansTable} columns={planColumns} data={planData} />
+                <Table table={plansTable} columns={planColumns} data={planData} pending={plansLoading} />
             </section>
 
             <section className="panel-card overflow-hidden">
                 <div className="px-6 py-5">
                     <h2 className="text-base font-semibold">Recent runs</h2>
                 </div>
-                <Table table={runsTable} columns={runColumns} data={runData} />
+                <Table table={runsTable} columns={runColumns} data={runData} pending={runsLoading} />
             </section>
         </div>
     );

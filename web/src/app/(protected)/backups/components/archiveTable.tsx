@@ -8,11 +8,12 @@ import { useTimezone } from "@/hooks/useDate";
 
 type Props = {
     data?: BackupArtifactListResponse;
+    pending: boolean;
     table: TableState;
     actions: (archive: BackupArtifact) => ReactNode;
 };
 
-const ArchiveTable = ({ data, table, actions }: Props) => {
+const ArchiveTable = ({ data, pending, table, actions }: Props) => {
     const { dt } = useTimezone();
 
     const columns: TableColumn<BackupArtifact>[] = [
@@ -64,7 +65,7 @@ const ArchiveTable = ({ data, table, actions }: Props) => {
         },
     ];
 
-    return <Table data={data} table={table} columns={columns} />;
+    return <Table data={data} pending={pending} table={table} columns={columns} />;
 };
 
 export default ArchiveTable;

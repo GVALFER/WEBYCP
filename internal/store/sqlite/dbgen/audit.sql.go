@@ -10,6 +10,18 @@ import (
 	"database/sql"
 )
 
+const countAuditEvents = `-- name: CountAuditEvents :one
+SELECT COUNT(*) FROM audit_events
+WHERE ?1 = '' OR job_id = ?1
+`
+
+func (q *Queries) CountAuditEvents(ctx context.Context, jobID interface{}) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countAuditEvents, jobID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAuditEvent = `-- name: CreateAuditEvent :exec
 INSERT INTO audit_events (
     id,
@@ -19,8 +31,9 @@ INSERT INTO audit_events (
     resource_id,
     result,
     metadata,
-    created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    created_at,
+    job_id
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateAuditEventParams struct {
@@ -32,6 +45,7 @@ type CreateAuditEventParams struct {
 	Result       string         `json:"result"`
 	Metadata     string         `json:"metadata"`
 	CreatedAt    int64          `json:"created_at"`
+	JobID        sql.NullString `json:"job_id"`
 }
 
 func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) error {
@@ -44,6 +58,53 @@ func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventPara
 		arg.Result,
 		arg.Metadata,
 		arg.CreatedAt,
+		arg.JobID,
 	)
 	return err
+}
+
+const listAuditEventsPage = `-- name: ListAuditEventsPage :many
+SELECT id, user_id, "action", resource_type, resource_id, result, metadata, created_at, job_id FROM audit_events
+WHERE ?1 = '' OR job_id = ?1
+ORDER BY created_at DESC, id DESC
+LIMIT ?3 OFFSET ?2
+`
+
+type ListAuditEventsPageParams struct {
+	JobID      interface{} `json:"job_id"`
+	PageOffset int64       `json:"page_offset"`
+	PageSize   int64       `json:"page_size"`
+}
+
+func (q *Queries) ListAuditEventsPage(ctx context.Context, arg ListAuditEventsPageParams) ([]AuditEvent, error) {
+	rows, err := q.db.QueryContext(ctx, listAuditEventsPage, arg.JobID, arg.PageOffset, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AuditEvent{}
+	for rows.Next() {
+		var i AuditEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Action,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Result,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.JobID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

@@ -22,7 +22,7 @@ const Domains = ({ domains: initial, websites }: Props) => {
     const { dt } = useTimezone();
     const table = useTable(initial.pagination);
 
-    const { data } = useSWR<WebsiteDomainListResponse>(
+    const { data, isLoading } = useSWR<WebsiteDomainListResponse>(
         `website-domains?kind=primary&${table.query.slice(1)}`,
         { fallbackData: table.isInitialQuery ? initial : undefined },
     );
@@ -90,7 +90,7 @@ const Domains = ({ domains: initial, websites }: Props) => {
                     The canonical hostname assigned to each website.
                 </div>
             </div>
-            <Table table={table} columns={columns} data={data} />
+            <Table table={table} columns={columns} data={data} pending={isLoading} />
         </section>
     );
 };

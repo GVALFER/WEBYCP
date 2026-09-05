@@ -47,13 +47,13 @@ const Databases = ({
     const usersTable = useTable(initialUsers.pagination, "users");
     const grantsTable = useTable(initialGrants.pagination, "grants");
 
-    const { data: databases } = useSWR<DatabaseListResponse>(`databases${databasesTable.query}`, {
+    const { data: databases, isLoading: databasesLoading } = useSWR<DatabaseListResponse>(`databases${databasesTable.query}`, {
         fallbackData: databasesTable.isInitialQuery ? initialDatabases : undefined,
     });
-    const { data: users } = useSWR<DatabaseUserListResponse>(`database-users${usersTable.query}`, {
+    const { data: users, isLoading: usersLoading } = useSWR<DatabaseUserListResponse>(`database-users${usersTable.query}`, {
         fallbackData: usersTable.isInitialQuery ? initialUsers : undefined,
     });
-    const { data: grants } = useSWR<DatabaseGrantListResponse>(
+    const { data: grants, isLoading: grantsLoading } = useSWR<DatabaseGrantListResponse>(
         `database-grants${grantsTable.query}`,
         { fallbackData: grantsTable.isInitialQuery ? initialGrants : undefined },
     );
@@ -127,6 +127,7 @@ const Databases = ({
             <ResourceList
                 title="MySQL databases"
                 data={databases}
+                pending={databasesLoading}
                 table={databasesTable}
                 icon={DatabaseIcon}
                 kind="database"
@@ -140,6 +141,7 @@ const Databases = ({
             <ResourceList
                 title="MySQL users"
                 data={users}
+                pending={usersLoading}
                 table={usersTable}
                 icon={UserRound}
                 kind="user"
@@ -163,6 +165,7 @@ const Databases = ({
                     table={grantsTable}
                     columns={grantColumns}
                     data={grants}
+                    pending={grantsLoading}
                     getKey={(grant) => `${grant.databaseId}:${grant.databaseUserId}`}
                 />
             </section>
@@ -176,12 +179,13 @@ type ResourceListProps = {
     action: ReactNode;
     title: string;
     data?: DatabaseListResponse | DatabaseUserListResponse;
+    pending: boolean;
     table: TableState;
     icon: typeof DatabaseIcon;
     kind: "database" | "user";
 };
 
-const ResourceList = ({ action, title, data, table, icon: Icon, kind }: ResourceListProps) => {
+const ResourceList = ({ action, title, data, pending, table, icon: Icon, kind }: ResourceListProps) => {
     const columns: TableColumn<Resource>[] = [
         {
             id: "resource",
@@ -228,7 +232,7 @@ const ResourceList = ({ action, title, data, table, icon: Icon, kind }: Resource
                 <h2 className="text-base font-semibold">{title}</h2>
                 {action}
             </div>
-            <Table table={table} columns={columns} data={data} />
+            <Table table={table} columns={columns} data={data} pending={pending} />
         </section>
     );
 };

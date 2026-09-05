@@ -6,46 +6,46 @@ import { Table, type TableColumn } from "@/components/table/table";
 import { useTable } from "@/components/table/useTable";
 import type {
     AccountListResponse,
-    CronJobListResponse,
+    ScheduledTaskListResponse,
     ServiceSettings,
 } from "@/contracts/types";
 import { cn } from "@/utils/classnames";
 import { statusClass } from "@/utils/status";
-import CreateCron from "./actions/createCron";
-import CronActions from "./actions/cronActions";
+import TaskForm from "./actions/taskForm";
+import TaskActions from "./actions/taskActions";
 
-type CronProps = {
+type Props = {
     accounts: AccountListResponse;
-    jobs: CronJobListResponse;
+    tasks: ScheduledTaskListResponse;
     settings: ServiceSettings;
 };
 
-type CronJob = CronJobListResponse["items"][number];
+type ScheduledTask = ScheduledTaskListResponse["items"][number];
 
-const Cron = ({ accounts, jobs, settings: initialSettings }: CronProps) => {
-    const table = useTable(jobs.pagination);
+const Tasks = ({ accounts, tasks, settings: initialSettings }: Props) => {
+    const table = useTable(tasks.pagination);
 
-    const { data } = useSWR<CronJobListResponse>(`cron-jobs${table.query}`, {
-        fallbackData: table.isInitialQuery ? jobs : undefined,
+    const { data, isLoading } = useSWR<ScheduledTaskListResponse>(`scheduled-tasks${table.query}`, {
+        fallbackData: table.isInitialQuery ? tasks : undefined,
     });
     const { data: settings = initialSettings } = useSWR<ServiceSettings>("service-settings", {
         fallbackData: initialSettings,
     });
 
-    const columns: TableColumn<CronJob>[] = [
+    const columns: TableColumn<ScheduledTask>[] = [
         {
-            id: "job",
+            id: "task",
             label: "Task",
             isRowHeader: true,
-            render: (job) => (
+            render: (task) => (
                 <div className="flex min-w-0 items-center gap-4">
                     <div className="icon-box">
                         <Clock3 className="size-5" aria-hidden="true" />
                     </div>
                     <div className="min-w-0">
-                        <div className="font-medium">{job.name}</div>
+                        <div className="font-medium">{task.name}</div>
                         <div className="mt-1 max-w-xl truncate font-mono text-xs text-foreground-400">
-                            {job.command} · {job.schedulerDriver}
+                            {task.command} · {task.schedulerDriver}
                         </div>
                     </div>
                 </div>
@@ -55,19 +55,19 @@ const Cron = ({ accounts, jobs, settings: initialSettings }: CronProps) => {
             id: "schedule",
             label: "Schedule",
             cellClassName: "whitespace-nowrap font-mono text-xs text-foreground-500",
-            render: (job) => job.schedule,
+            render: (task) => task.schedule,
         },
         {
             id: "status",
             label: "Status",
-            render: (job) => (
+            render: (task) => (
                 <span
                     className={cn(
                         "rounded-full px-2.5 py-1 text-xs capitalize",
-                        statusClass(job.status),
+                        statusClass(task.status),
                     )}
                 >
-                    {job.status}
+                    {task.status}
                 </span>
             ),
         },
@@ -76,7 +76,12 @@ const Cron = ({ accounts, jobs, settings: initialSettings }: CronProps) => {
             label: "Actions",
             headerClassName: "text-end",
             cellClassName: "w-px whitespace-nowrap",
-            render: (job) => <CronActions item={job} />,
+            render: (task) => (
+                <div className="flex items-center gap-2">
+                    <TaskForm accounts={accounts} driver={task.schedulerDriver} task={task} />
+                    <TaskActions item={task} />
+                </div>
+            ),
         },
     ];
 
@@ -89,11 +94,11 @@ const Cron = ({ accounts, jobs, settings: initialSettings }: CronProps) => {
                         Commands run as the hosting account from its home directory.
                     </div>
                 </div>
-                <CreateCron accounts={accounts} driver={settings.defaults.schedulerDriver} />
+                <TaskForm accounts={accounts} driver={settings.defaults.schedulerDriver} />
             </div>
-            <Table table={table} columns={columns} data={data} />
+            <Table table={table} columns={columns} data={data} pending={isLoading} />
         </section>
     );
 };
 
-export default Cron;
+export default Tasks;

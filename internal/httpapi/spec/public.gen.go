@@ -255,45 +255,6 @@ func (e CreateWebsiteRequestWebDriver) Valid() bool {
 	}
 }
 
-// Defines values for CronJobSchedulerDriver.
-const (
-	CronJobSchedulerDriverCrontab CronJobSchedulerDriver = "crontab"
-)
-
-// Valid indicates whether the value is a known member of the CronJobSchedulerDriver enum.
-func (e CronJobSchedulerDriver) Valid() bool {
-	switch e {
-	case CronJobSchedulerDriverCrontab:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CronJobStatus.
-const (
-	CronJobStatusActive   CronJobStatus = "active"
-	CronJobStatusDisabled CronJobStatus = "disabled"
-	CronJobStatusError    CronJobStatus = "error"
-	CronJobStatusPending  CronJobStatus = "pending"
-)
-
-// Valid indicates whether the value is a known member of the CronJobStatus enum.
-func (e CronJobStatus) Valid() bool {
-	switch e {
-	case CronJobStatusActive:
-		return true
-	case CronJobStatusDisabled:
-		return true
-	case CronJobStatusError:
-		return true
-	case CronJobStatusPending:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for DNSProviderDriver.
 const (
 	Powerdns DNSProviderDriver = "powerdns"
@@ -597,6 +558,45 @@ func (e NodeStatus) Valid() bool {
 	}
 }
 
+// Defines values for ScheduledTaskSchedulerDriver.
+const (
+	ScheduledTaskSchedulerDriverCrontab ScheduledTaskSchedulerDriver = "crontab"
+)
+
+// Valid indicates whether the value is a known member of the ScheduledTaskSchedulerDriver enum.
+func (e ScheduledTaskSchedulerDriver) Valid() bool {
+	switch e {
+	case ScheduledTaskSchedulerDriverCrontab:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ScheduledTaskStatus.
+const (
+	ScheduledTaskStatusActive   ScheduledTaskStatus = "active"
+	ScheduledTaskStatusDisabled ScheduledTaskStatus = "disabled"
+	ScheduledTaskStatusError    ScheduledTaskStatus = "error"
+	ScheduledTaskStatusPending  ScheduledTaskStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the ScheduledTaskStatus enum.
+func (e ScheduledTaskStatus) Valid() bool {
+	switch e {
+	case ScheduledTaskStatusActive:
+		return true
+	case ScheduledTaskStatusDisabled:
+		return true
+	case ScheduledTaskStatusError:
+		return true
+	case ScheduledTaskStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ServiceCapabilityStatus.
 const (
 	ServiceCapabilityStatusHealthy     ServiceCapabilityStatus = "healthy"
@@ -699,6 +699,21 @@ const (
 func (e ServiceDefaultsWebDriver) Valid() bool {
 	switch e {
 	case ServiceDefaultsWebDriverNginx:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TaskKind.
+const (
+	Command TaskKind = "command"
+)
+
+// Valid indicates whether the value is a known member of the TaskKind enum.
+func (e TaskKind) Valid() bool {
+	switch e {
+	case Command:
 		return true
 	default:
 		return false
@@ -864,21 +879,6 @@ func (e WriteBackupPlanRequestStorageDriver) Valid() bool {
 	}
 }
 
-// Defines values for WriteCronJobRequestSchedulerDriver.
-const (
-	WriteCronJobRequestSchedulerDriverCrontab WriteCronJobRequestSchedulerDriver = "crontab"
-)
-
-// Valid indicates whether the value is a known member of the WriteCronJobRequestSchedulerDriver enum.
-func (e WriteCronJobRequestSchedulerDriver) Valid() bool {
-	switch e {
-	case WriteCronJobRequestSchedulerDriverCrontab:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for WriteDNSRecordRequestType.
 const (
 	WriteDNSRecordRequestTypeA     WriteDNSRecordRequestType = "A"
@@ -900,6 +900,21 @@ func (e WriteDNSRecordRequestType) Valid() bool {
 	case WriteDNSRecordRequestTypeMX:
 		return true
 	case WriteDNSRecordRequestTypeTXT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WriteScheduledTaskRequestSchedulerDriver.
+const (
+	WriteScheduledTaskRequestSchedulerDriverCrontab WriteScheduledTaskRequestSchedulerDriver = "crontab"
+)
+
+// Valid indicates whether the value is a known member of the WriteScheduledTaskRequestSchedulerDriver enum.
+func (e WriteScheduledTaskRequestSchedulerDriver) Valid() bool {
+	switch e {
+	case WriteScheduledTaskRequestSchedulerDriverCrontab:
 		return true
 	default:
 		return false
@@ -989,6 +1004,24 @@ type AccountOverviewStatus string
 // AssignAccountPackageRequest defines model for AssignAccountPackageRequest.
 type AssignAccountPackageRequest struct {
 	PackageId string `json:"packageId"`
+}
+
+// AuditEvent defines model for AuditEvent.
+type AuditEvent struct {
+	Action       string    `json:"action"`
+	CreatedAt    time.Time `json:"createdAt"`
+	Id           string    `json:"id"`
+	JobId        *string   `json:"jobId,omitempty"`
+	ResourceId   *string   `json:"resourceId,omitempty"`
+	ResourceType string    `json:"resourceType"`
+	Result       string    `json:"result"`
+	UserId       *string   `json:"userId,omitempty"`
+}
+
+// AuditEventListResponse defines model for AuditEventListResponse.
+type AuditEventListResponse struct {
+	Items      []AuditEvent `json:"items"`
+	Pagination Pagination   `json:"pagination"`
 }
 
 // AuthResponse defines model for AuthResponse.
@@ -1195,39 +1228,6 @@ type CreateWebsiteRequestRuntimeVersion string
 
 // CreateWebsiteRequestWebDriver defines model for CreateWebsiteRequest.WebDriver.
 type CreateWebsiteRequestWebDriver string
-
-// CronJob defines model for CronJob.
-type CronJob struct {
-	AccountId       string                 `json:"accountId"`
-	Command         string                 `json:"command"`
-	CreatedAt       time.Time              `json:"createdAt"`
-	Enabled         bool                   `json:"enabled"`
-	Id              string                 `json:"id"`
-	Name            string                 `json:"name"`
-	NodeId          string                 `json:"nodeId"`
-	Schedule        string                 `json:"schedule"`
-	SchedulerDriver CronJobSchedulerDriver `json:"schedulerDriver"`
-	Status          CronJobStatus          `json:"status"`
-	UpdatedAt       time.Time              `json:"updatedAt"`
-}
-
-// CronJobSchedulerDriver defines model for CronJob.SchedulerDriver.
-type CronJobSchedulerDriver string
-
-// CronJobStatus defines model for CronJob.Status.
-type CronJobStatus string
-
-// CronJobListResponse defines model for CronJobListResponse.
-type CronJobListResponse struct {
-	Items      []CronJob  `json:"items"`
-	Pagination Pagination `json:"pagination"`
-}
-
-// CronJobResponse defines model for CronJobResponse.
-type CronJobResponse struct {
-	CronJob CronJob `json:"cronJob"`
-	Job     Job     `json:"job"`
-}
 
 // DNSProvider defines model for DNSProvider.
 type DNSProvider struct {
@@ -1568,6 +1568,40 @@ type RestoreBackupRequest struct {
 	Metadata  bool `json:"metadata"`
 }
 
+// ScheduledTask defines model for ScheduledTask.
+type ScheduledTask struct {
+	AccountId       string                       `json:"accountId"`
+	Command         string                       `json:"command"`
+	CreatedAt       time.Time                    `json:"createdAt"`
+	Enabled         bool                         `json:"enabled"`
+	Id              string                       `json:"id"`
+	Kind            TaskKind                     `json:"kind"`
+	Name            string                       `json:"name"`
+	NodeId          string                       `json:"nodeId"`
+	Schedule        string                       `json:"schedule"`
+	SchedulerDriver ScheduledTaskSchedulerDriver `json:"schedulerDriver"`
+	Status          ScheduledTaskStatus          `json:"status"`
+	UpdatedAt       time.Time                    `json:"updatedAt"`
+}
+
+// ScheduledTaskSchedulerDriver defines model for ScheduledTask.SchedulerDriver.
+type ScheduledTaskSchedulerDriver string
+
+// ScheduledTaskStatus defines model for ScheduledTask.Status.
+type ScheduledTaskStatus string
+
+// ScheduledTaskListResponse defines model for ScheduledTaskListResponse.
+type ScheduledTaskListResponse struct {
+	Items      []ScheduledTask `json:"items"`
+	Pagination Pagination      `json:"pagination"`
+}
+
+// ScheduledTaskResponse defines model for ScheduledTaskResponse.
+type ScheduledTaskResponse struct {
+	Job           Job           `json:"job"`
+	ScheduledTask ScheduledTask `json:"scheduledTask"`
+}
+
 // ServiceCapabilities defines model for ServiceCapabilities.
 type ServiceCapabilities struct {
 	Backups    []ServiceCapability `json:"backups"`
@@ -1621,6 +1655,9 @@ type ServiceSettings struct {
 	Defaults  ServiceDefaults `json:"defaults"`
 	UpdatedAt time.Time       `json:"updatedAt"`
 }
+
+// TaskKind defines model for TaskKind.
+type TaskKind string
 
 // UpdateCertificateRequest defines model for UpdateCertificateRequest.
 type UpdateCertificateRequest struct {
@@ -1768,19 +1805,6 @@ type WriteBackupPlanRequest struct {
 // WriteBackupPlanRequestStorageDriver defines model for WriteBackupPlanRequest.StorageDriver.
 type WriteBackupPlanRequestStorageDriver string
 
-// WriteCronJobRequest defines model for WriteCronJobRequest.
-type WriteCronJobRequest struct {
-	AccountId       string                             `json:"accountId"`
-	Command         string                             `json:"command"`
-	Enabled         bool                               `json:"enabled"`
-	Name            string                             `json:"name"`
-	Schedule        string                             `json:"schedule"`
-	SchedulerDriver WriteCronJobRequestSchedulerDriver `json:"schedulerDriver"`
-}
-
-// WriteCronJobRequestSchedulerDriver defines model for WriteCronJobRequest.SchedulerDriver.
-type WriteCronJobRequestSchedulerDriver string
-
 // WriteDNSRecordRequest defines model for WriteDNSRecordRequest.
 type WriteDNSRecordRequest struct {
 	Content  string                    `json:"content"`
@@ -1799,6 +1823,20 @@ type WritePackageRequest struct {
 	Name   string        `json:"name"`
 }
 
+// WriteScheduledTaskRequest defines model for WriteScheduledTaskRequest.
+type WriteScheduledTaskRequest struct {
+	AccountId       string                                   `json:"accountId"`
+	Command         string                                   `json:"command"`
+	Enabled         bool                                     `json:"enabled"`
+	Kind            TaskKind                                 `json:"kind"`
+	Name            string                                   `json:"name"`
+	Schedule        string                                   `json:"schedule"`
+	SchedulerDriver WriteScheduledTaskRequestSchedulerDriver `json:"schedulerDriver"`
+}
+
+// WriteScheduledTaskRequestSchedulerDriver defines model for WriteScheduledTaskRequest.SchedulerDriver.
+type WriteScheduledTaskRequestSchedulerDriver string
+
 // AccountID defines model for AccountID.
 type AccountID = string
 
@@ -1813,9 +1851,6 @@ type CSRFToken = string
 
 // CertificateID defines model for CertificateID.
 type CertificateID = string
-
-// CronJobID defines model for CronJobID.
-type CronJobID = string
 
 // DNSRecordID defines model for DNSRecordID.
 type DNSRecordID = string
@@ -1843,6 +1878,9 @@ type Page = int
 
 // PageSize defines model for PageSize.
 type PageSize = int
+
+// ScheduledTaskID defines model for ScheduledTaskID.
+type ScheduledTaskID = string
 
 // WebsiteDomainID defines model for WebsiteDomainID.
 type WebsiteDomainID = string
@@ -1895,6 +1933,13 @@ type SetAccountParams struct {
 // AssignAccountPackageParams defines parameters for AssignAccountPackage.
 type AssignAccountPackageParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// ListAuditEventsParams defines parameters for ListAuditEvents.
+type ListAuditEventsParams struct {
+	Page  *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size  *PageSize `form:"size,omitempty" json:"size,omitempty"`
+	JobId *string   `form:"jobId,omitempty" json:"jobId,omitempty"`
 }
 
 // LogoutParams defines parameters for Logout.
@@ -1977,27 +2022,6 @@ type SetCertificateParams struct {
 
 // RenewCertificateParams defines parameters for RenewCertificate.
 type RenewCertificateParams struct {
-	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
-}
-
-// ListCronJobsParams defines parameters for ListCronJobs.
-type ListCronJobsParams struct {
-	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
-	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
-}
-
-// CreateCronJobParams defines parameters for CreateCronJob.
-type CreateCronJobParams struct {
-	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
-}
-
-// DeleteCronJobParams defines parameters for DeleteCronJob.
-type DeleteCronJobParams struct {
-	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
-}
-
-// SetCronJobParams defines parameters for SetCronJob.
-type SetCronJobParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
@@ -2123,6 +2147,27 @@ type UpdatePackageParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
+// ListScheduledTasksParams defines parameters for ListScheduledTasks.
+type ListScheduledTasksParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
+
+// CreateScheduledTaskParams defines parameters for CreateScheduledTask.
+type CreateScheduledTaskParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// DeleteScheduledTaskParams defines parameters for DeleteScheduledTask.
+type DeleteScheduledTaskParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// SetScheduledTaskParams defines parameters for SetScheduledTask.
+type SetScheduledTaskParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
 // UpdateServiceSettingsParams defines parameters for UpdateServiceSettings.
 type UpdateServiceSettingsParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
@@ -2209,12 +2254,6 @@ type IssuePanelCertificateJSONRequestBody = IssuePanelCertificateRequest
 // SetCertificateJSONRequestBody defines body for SetCertificate for application/json ContentType.
 type SetCertificateJSONRequestBody = UpdateCertificateRequest
 
-// CreateCronJobJSONRequestBody defines body for CreateCronJob for application/json ContentType.
-type CreateCronJobJSONRequestBody = WriteCronJobRequest
-
-// SetCronJobJSONRequestBody defines body for SetCronJob for application/json ContentType.
-type SetCronJobJSONRequestBody = WriteCronJobRequest
-
 // CreateDatabaseUserJSONRequestBody defines body for CreateDatabaseUser for application/json ContentType.
 type CreateDatabaseUserJSONRequestBody = CreateDatabaseUserRequest
 
@@ -2238,6 +2277,12 @@ type CreatePackageJSONRequestBody = WritePackageRequest
 
 // UpdatePackageJSONRequestBody defines body for UpdatePackage for application/json ContentType.
 type UpdatePackageJSONRequestBody = WritePackageRequest
+
+// CreateScheduledTaskJSONRequestBody defines body for CreateScheduledTask for application/json ContentType.
+type CreateScheduledTaskJSONRequestBody = WriteScheduledTaskRequest
+
+// SetScheduledTaskJSONRequestBody defines body for SetScheduledTask for application/json ContentType.
+type SetScheduledTaskJSONRequestBody = WriteScheduledTaskRequest
 
 // UpdateServiceSettingsJSONRequestBody defines body for UpdateServiceSettings for application/json ContentType.
 type UpdateServiceSettingsJSONRequestBody = ServiceDefaults

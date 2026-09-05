@@ -46,7 +46,7 @@ SELECT
     (SELECT COUNT(*) FROM websites WHERE websites.account_id = ?1) +
     (SELECT COUNT(*) FROM databases WHERE databases.account_id = ?1) +
     (SELECT COUNT(*) FROM database_users WHERE database_users.account_id = ?1) +
-    (SELECT COUNT(*) FROM cron_jobs WHERE cron_jobs.account_id = ?1) +
+    (SELECT COUNT(*) FROM scheduled_tasks WHERE scheduled_tasks.account_id = ?1) +
     (SELECT COUNT(*) FROM backup_plans WHERE backup_plans.account_id = ?1) +
     (SELECT COUNT(*) FROM backup_artifacts WHERE backup_artifacts.account_id = ?1) +
     (SELECT COUNT(*) FROM dns_zones WHERE dns_zones.account_id = ?1)

@@ -619,9 +619,16 @@ Acceptance evidence:
   archive preview, empty-scope rejection, full and files-only restore submission,
   destination display and explicit Agent checks. Light and dark pages were
   inspected, with no browser console errors in the inspected flows.
-- The Playwright connection closed during the final independent-pagination
-  interaction check. That browser check, the edit-plan interaction and the
-  mobile visual pass remain pending; do not claim them as completed.
+- The resumed global Playwright pass verified independent `plans.size=25` and
+  `runs.size=50` changes: each requested only its own API list, without document
+  reloads. Opening that URL directly preserved both sizes with SSR data and no
+  duplicate initial client API requests.
+- A temporary, unscheduled plan passed create, edit, reopen and delete through
+  the UI. Name, numeric retention and files-only selection persisted; retention
+  zero was blocked before an API request. The existing plan remained unchanged.
+- At 390 x 844, Plans, Archives, Restore, Destinations, the edit/restore modals
+  and sidebar navigation were inspected in light/dark views. The restore preview
+  was cancelled without a restore submission. Console errors and warnings: zero.
 - An isolated VPS account passed manual and scheduled backups, files-only,
   databases-only, metadata-only and full restores. File contents, MySQL rows,
   Unix ownership/modes and Website reactivation were checked independently.
@@ -706,6 +713,5 @@ A step is complete only when:
 
 ## 12. Immediate Next Step
 
-Review **Step 6 — Backups and destinations** on the test VPS. Complete the
-outstanding browser checks when global Playwright reconnects. Do not begin
-Step 7 until this step has been reviewed.
+Review **Step 6 — Backups and destinations** on the test VPS. Its outstanding
+browser checks are complete. Do not begin Step 7 until this step has been reviewed.

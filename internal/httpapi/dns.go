@@ -99,7 +99,7 @@ func (h *handler) createDNSZone(w http.ResponseWriter, r *http.Request, session 
 		r.Context(), request.AccountId, request.ProviderId, request.Name,
 		session.User.ID, session.User.Role == "admin",
 	)
-	h.recordMutation(r, session.User.ID, "dns_zone.create", "dns_zone", value.ID, err)
+	h.recordJobMutation(r, session.User.ID, "dns_zone.create", "dns_zone", value.ID, job.ID, err)
 	if err != nil {
 		h.writeDNSError(w, r, err)
 		return
@@ -110,7 +110,7 @@ func (h *handler) createDNSZone(w http.ResponseWriter, r *http.Request, session 
 func (h *handler) deleteDNSZone(w http.ResponseWriter, r *http.Request, session auth.Session) {
 	id := r.PathValue("dnsZoneId")
 	value, job, err := h.options.DNS.DeleteZone(r.Context(), id, session.User.ID, session.User.Role == "admin")
-	h.recordMutation(r, session.User.ID, "dns_zone.delete", "dns_zone", id, err)
+	h.recordJobMutation(r, session.User.ID, "dns_zone.delete", "dns_zone", id, job.ID, err)
 	if err != nil {
 		h.writeDNSError(w, r, err)
 		return
@@ -151,7 +151,7 @@ func (h *handler) createDNSRecord(w http.ResponseWriter, r *http.Request, sessio
 		r.Context(), r.PathValue("dnsZoneId"), request.Name, string(request.Type),
 		request.Content, request.Ttl, request.Priority, session.User.ID, session.User.Role == "admin",
 	)
-	h.recordMutation(r, session.User.ID, "dns_record.create", "dns_record", value.ID, err)
+	h.recordJobMutation(r, session.User.ID, "dns_record.create", "dns_record", value.ID, job.ID, err)
 	if err != nil {
 		h.writeDNSError(w, r, err)
 		return
@@ -170,7 +170,7 @@ func (h *handler) updateDNSRecord(w http.ResponseWriter, r *http.Request, sessio
 		r.Context(), id, request.Name, string(request.Type), request.Content,
 		request.Ttl, request.Priority, session.User.ID, session.User.Role == "admin",
 	)
-	h.recordMutation(r, session.User.ID, "dns_record.update", "dns_record", id, err)
+	h.recordJobMutation(r, session.User.ID, "dns_record.update", "dns_record", id, job.ID, err)
 	if err != nil {
 		h.writeDNSError(w, r, err)
 		return
@@ -181,7 +181,7 @@ func (h *handler) updateDNSRecord(w http.ResponseWriter, r *http.Request, sessio
 func (h *handler) deleteDNSRecord(w http.ResponseWriter, r *http.Request, session auth.Session) {
 	id := r.PathValue("dnsRecordId")
 	value, job, err := h.options.DNS.DeleteRecord(r.Context(), id, session.User.ID, session.User.Role == "admin")
-	h.recordMutation(r, session.User.ID, "dns_record.delete", "dns_record", id, err)
+	h.recordJobMutation(r, session.User.ID, "dns_record.delete", "dns_record", id, job.ID, err)
 	if err != nil {
 		h.writeDNSError(w, r, err)
 		return
