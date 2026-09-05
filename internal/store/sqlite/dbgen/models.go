@@ -185,6 +185,51 @@ type DatabaseUser struct {
 	Driver     string `json:"driver"`
 }
 
+type DnsProvider struct {
+	ID        string `json:"id"`
+	NodeID    string `json:"node_id"`
+	Name      string `json:"name"`
+	Driver    string `json:"driver"`
+	CreatedAt int64  `json:"created_at"`
+	UpdatedAt int64  `json:"updated_at"`
+}
+
+type DnsRecord struct {
+	ID         string `json:"id"`
+	ZoneID     string `json:"zone_id"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	Content    string `json:"content"`
+	Ttl        int64  `json:"ttl"`
+	Priority   int64  `json:"priority"`
+	SyncedName string `json:"synced_name"`
+	SyncedType string `json:"synced_type"`
+	Status     string `json:"status"`
+	CreatedAt  int64  `json:"created_at"`
+	UpdatedAt  int64  `json:"updated_at"`
+}
+
+type DnsSetting struct {
+	ID                  int64  `json:"id"`
+	PrimaryNameserver   string `json:"primary_nameserver"`
+	SecondaryNameserver string `json:"secondary_nameserver"`
+	DefaultTtl          int64  `json:"default_ttl"`
+	UpdatedAt           int64  `json:"updated_at"`
+}
+
+type DnsZone struct {
+	ID                  string `json:"id"`
+	AccountID           string `json:"account_id"`
+	NodeID              string `json:"node_id"`
+	ProviderID          string `json:"provider_id"`
+	Name                string `json:"name"`
+	PrimaryNameserver   string `json:"primary_nameserver"`
+	SecondaryNameserver string `json:"secondary_nameserver"`
+	Status              string `json:"status"`
+	CreatedAt           int64  `json:"created_at"`
+	UpdatedAt           int64  `json:"updated_at"`
+}
+
 type Job struct {
 	ID          string         `json:"id"`
 	NodeID      sql.NullString `json:"node_id"`

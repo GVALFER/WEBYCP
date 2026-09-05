@@ -598,6 +598,113 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dns/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List configured DNS providers and observed health */
+        get: operations["listDNSProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dns/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get authoritative DNS defaults */
+        get: operations["getDNSSettings"];
+        /** Update authoritative nameservers and default TTL */
+        put: operations["updateDNSSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dns/zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List accessible authoritative DNS zones */
+        get: operations["listDNSZones"];
+        put?: never;
+        /** Create and queue provisioning for an authoritative DNS zone */
+        post: operations["createDNSZone"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dns/zones/{dnsZoneId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an accessible authoritative DNS zone */
+        get: operations["getDNSZone"];
+        put?: never;
+        post?: never;
+        /** Delete an authoritative DNS zone */
+        delete: operations["deleteDNSZone"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dns/zones/{dnsZoneId}/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List records in an accessible DNS zone */
+        get: operations["listDNSRecords"];
+        put?: never;
+        /** Create and queue synchronization for a DNS record */
+        post: operations["createDNSRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dns/records/{dnsRecordId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete and queue synchronization for a DNS record */
+        delete: operations["deleteDNSRecord"];
+        options?: never;
+        head?: never;
+        /** Update and queue synchronization for a DNS record */
+        patch: operations["updateDNSRecord"];
+        trace?: never;
+    };
     "/api/v1/backup-artifacts/{backupArtifactId}": {
         parameters: {
             query?: never;
@@ -775,6 +882,7 @@ export interface components {
             databases: components["schemas"]["ServiceCapability"][];
             schedulers: components["schemas"]["ServiceCapability"][];
             backups: components["schemas"]["ServiceCapability"][];
+            dns: components["schemas"]["ServiceCapability"][];
         };
         ServiceDefaults: {
             /** @enum {string} */
@@ -897,6 +1005,99 @@ export interface components {
         };
         AccountJobResponse: {
             account: components["schemas"]["Account"];
+            job: components["schemas"]["Job"];
+        };
+        DNSProvider: {
+            id: string;
+            nodeId: string;
+            name: string;
+            /** @enum {string} */
+            driver: "powerdns";
+            /** @enum {string} */
+            status: "healthy" | "unavailable" | "unknown";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        DNSProviderListResponse: {
+            items: components["schemas"]["DNSProvider"][];
+        };
+        DNSSettings: {
+            primaryNameserver: string;
+            secondaryNameserver: string;
+            /** Format: int64 */
+            defaultTtl: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateDNSSettingsRequest: {
+            primaryNameserver: string;
+            secondaryNameserver: string;
+            /** Format: int64 */
+            defaultTtl: number;
+        };
+        DNSZone: {
+            id: string;
+            accountId: string;
+            nodeId: string;
+            providerId: string;
+            name: string;
+            nameservers: string[];
+            /** @enum {string} */
+            status: "pending" | "active" | "deleting" | "error";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateDNSZoneRequest: {
+            accountId: string;
+            providerId: string;
+            name: string;
+        };
+        DNSZoneListResponse: {
+            items: components["schemas"]["DNSZone"][];
+            pagination: components["schemas"]["Pagination"];
+        };
+        DNSZoneJobResponse: {
+            zone: components["schemas"]["DNSZone"];
+            job: components["schemas"]["Job"];
+        };
+        DNSRecord: {
+            id: string;
+            zoneId: string;
+            name: string;
+            /** @enum {string} */
+            type: "A" | "AAAA" | "CNAME" | "MX" | "TXT";
+            content: string;
+            /** Format: int64 */
+            ttl: number;
+            /** Format: int64 */
+            priority: number;
+            /** @enum {string} */
+            status: "pending" | "active" | "deleting" | "error";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        WriteDNSRecordRequest: {
+            name: string;
+            /** @enum {string} */
+            type: "A" | "AAAA" | "CNAME" | "MX" | "TXT";
+            content: string;
+            /** Format: int64 */
+            ttl: number;
+            /** Format: int64 */
+            priority: number;
+        };
+        DNSRecordListResponse: {
+            items: components["schemas"]["DNSRecord"][];
+            pagination: components["schemas"]["Pagination"];
+        };
+        DNSRecordJobResponse: {
+            record: components["schemas"]["DNSRecord"];
             job: components["schemas"]["Job"];
         };
         UpdateEnabledRequest: {
@@ -1367,6 +1568,8 @@ export interface components {
         CronJobID: string;
         BackupPlanID: string;
         BackupArtifactID: string;
+        DNSZoneID: string;
+        DNSRecordID: string;
     };
     requestBodies: never;
     headers: never;
@@ -2843,6 +3046,324 @@ export interface operations {
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["ForbiddenError"];
             404: components["responses"]["NotFoundError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listDNSProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DNS providers. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSProviderListResponse"];
+                };
+            };
+            401: components["responses"]["UnauthorizedError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getDNSSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DNS settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSSettings"];
+                };
+            };
+            401: components["responses"]["UnauthorizedError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    updateDNSSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDNSSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated DNS settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSSettings"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listDNSZones: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DNS zones. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSZoneListResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    createDNSZone: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDNSZoneRequest"];
+            };
+        };
+        responses: {
+            /** @description DNS zone provisioning queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSZoneJobResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getDNSZone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dnsZoneId: components["parameters"]["DNSZoneID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DNS zone. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSZone"];
+                };
+            };
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    deleteDNSZone: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path: {
+                dnsZoneId: components["parameters"]["DNSZoneID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DNS zone deletion queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSZoneJobResponse"];
+                };
+            };
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listDNSRecords: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
+            header?: never;
+            path: {
+                dnsZoneId: components["parameters"]["DNSZoneID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DNS records. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSRecordListResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    createDNSRecord: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path: {
+                dnsZoneId: components["parameters"]["DNSZoneID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WriteDNSRecordRequest"];
+            };
+        };
+        responses: {
+            /** @description DNS record synchronization queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSRecordJobResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    deleteDNSRecord: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path: {
+                dnsRecordId: components["parameters"]["DNSRecordID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DNS record synchronization queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSRecordJobResponse"];
+                };
+            };
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    updateDNSRecord: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path: {
+                dnsRecordId: components["parameters"]["DNSRecordID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WriteDNSRecordRequest"];
+            };
+        };
+        responses: {
+            /** @description DNS record synchronization queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSRecordJobResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };

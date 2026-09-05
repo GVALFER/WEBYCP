@@ -45,8 +45,9 @@ issue its Let's Encrypt certificate in the UI; the Agent then replaces the
 bootstrap listener with the final HTTPS listener on port 443.
 
 The installer is idempotent and preserves existing environment files and
-WEBYCP-managed Nginx panel configuration. It stops on conflicting identities,
-symlinks, or configuration owned by another application.
+WEBYCP-managed Nginx and PowerDNS configuration. It stops on conflicting identities,
+symlinks, or configuration owned by another application. An existing PowerDNS
+installation is not adopted automatically.
 
 ## Upgrade and recovery
 
@@ -60,7 +61,8 @@ sudo ./packaging/ubuntu/upgrade.sh
 
 The upgrade requires a healthy existing installation. It stops only the WEBYCP
 Web, Server, and Agent services, then snapshots the current binaries, frontend,
-systemd units, web environment, panel Nginx configuration, and SQLite state.
+systemd units, web environment, panel Nginx configuration, control-plane SQLite
+state, and WEBYCP's PowerDNS configuration, key, and SQLite state.
 Database migrations run as the unprivileged `webycp` user before the services
 start. Nginx is validated, the Agent socket, Server API, and Next.js frontend
 must become ready, and the running version must match the release marker.
@@ -95,6 +97,8 @@ and the full-host recovery boundary, follow the
 - The Agent keeps permission to create set-group-ID customer directories; that
   permission is required by the hosted-site ownership model.
 - All three services write logs to stdout for collection by journald.
+- PowerDNS serves authoritative DNS on the server's global addresses. Its HTTP
+  API listens only on `127.0.0.1:8081`; only the root Agent reads its API key.
 
 ## Filesystem layout
 
@@ -104,6 +108,8 @@ and the full-host recovery boundary, follow the
 | `/usr/share/webycp/web` | `root:root` | `0755` | Next.js standalone production build |
 | `/etc/webycp` | `root:webycp` | `0750` | Service environment files |
 | `/etc/webycp/bootstrap` | `root:root` | `0700` | Temporary bootstrap TLS material |
+| `/etc/webycp/powerdns.key` | `root:root` | `0600` | Local PowerDNS API key read by the Agent |
+| `/var/lib/powerdns/webycp.sqlite3` | `pdns:pdns` | `0640` | Authoritative zones and records |
 | `/var/lib/webycp/server` | `webycp:webycp` | `0700` | SQLite database and WAL files |
 | `/var/lib/webycp/upgrades` | `root:root` | `0700` | Upgrade and recovery snapshots |
 | `/home/.webycp-trash` | `root:root` | `0700` | Recoverable deleted accounts on the hosting filesystem |

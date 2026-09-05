@@ -19,8 +19,9 @@ func TestProductionDefaults(t *testing.T) {
 		!server.SecureCookie {
 		t.Fatalf("ServerFromEnv() = %+v, want production defaults", server)
 	}
-	if agent := AgentFromEnv(); agent.Socket != defaultAgentSocket {
-		t.Fatalf("AgentFromEnv().Socket = %q, want %q", agent.Socket, defaultAgentSocket)
+	if agent := AgentFromEnv(); agent.Socket != defaultAgentSocket ||
+		agent.PowerDNSURL != defaultPowerDNSURL || agent.PowerDNSKeyPath != defaultPowerDNSKey {
+		t.Fatalf("AgentFromEnv() = %+v", agent)
 	}
 }
 

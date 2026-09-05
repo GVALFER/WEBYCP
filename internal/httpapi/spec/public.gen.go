@@ -294,6 +294,117 @@ func (e CronJobStatus) Valid() bool {
 	}
 }
 
+// Defines values for DNSProviderDriver.
+const (
+	Powerdns DNSProviderDriver = "powerdns"
+)
+
+// Valid indicates whether the value is a known member of the DNSProviderDriver enum.
+func (e DNSProviderDriver) Valid() bool {
+	switch e {
+	case Powerdns:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DNSProviderStatus.
+const (
+	DNSProviderStatusHealthy     DNSProviderStatus = "healthy"
+	DNSProviderStatusUnavailable DNSProviderStatus = "unavailable"
+	DNSProviderStatusUnknown     DNSProviderStatus = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the DNSProviderStatus enum.
+func (e DNSProviderStatus) Valid() bool {
+	switch e {
+	case DNSProviderStatusHealthy:
+		return true
+	case DNSProviderStatusUnavailable:
+		return true
+	case DNSProviderStatusUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DNSRecordStatus.
+const (
+	DNSRecordStatusActive   DNSRecordStatus = "active"
+	DNSRecordStatusDeleting DNSRecordStatus = "deleting"
+	DNSRecordStatusError    DNSRecordStatus = "error"
+	DNSRecordStatusPending  DNSRecordStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the DNSRecordStatus enum.
+func (e DNSRecordStatus) Valid() bool {
+	switch e {
+	case DNSRecordStatusActive:
+		return true
+	case DNSRecordStatusDeleting:
+		return true
+	case DNSRecordStatusError:
+		return true
+	case DNSRecordStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DNSRecordType.
+const (
+	DNSRecordTypeA     DNSRecordType = "A"
+	DNSRecordTypeAAAA  DNSRecordType = "AAAA"
+	DNSRecordTypeCNAME DNSRecordType = "CNAME"
+	DNSRecordTypeMX    DNSRecordType = "MX"
+	DNSRecordTypeTXT   DNSRecordType = "TXT"
+)
+
+// Valid indicates whether the value is a known member of the DNSRecordType enum.
+func (e DNSRecordType) Valid() bool {
+	switch e {
+	case DNSRecordTypeA:
+		return true
+	case DNSRecordTypeAAAA:
+		return true
+	case DNSRecordTypeCNAME:
+		return true
+	case DNSRecordTypeMX:
+		return true
+	case DNSRecordTypeTXT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DNSZoneStatus.
+const (
+	DNSZoneStatusActive   DNSZoneStatus = "active"
+	DNSZoneStatusDeleting DNSZoneStatus = "deleting"
+	DNSZoneStatusError    DNSZoneStatus = "error"
+	DNSZoneStatusPending  DNSZoneStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the DNSZoneStatus enum.
+func (e DNSZoneStatus) Valid() bool {
+	switch e {
+	case DNSZoneStatusActive:
+		return true
+	case DNSZoneStatusDeleting:
+		return true
+	case DNSZoneStatusError:
+		return true
+	case DNSZoneStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DatabaseDriver.
 const (
 	DatabaseDriverMysql DatabaseDriver = "mysql"
@@ -467,19 +578,19 @@ func (e NodeKind) Valid() bool {
 
 // Defines values for NodeStatus.
 const (
-	Offline NodeStatus = "offline"
-	Online  NodeStatus = "online"
-	Unknown NodeStatus = "unknown"
+	NodeStatusOffline NodeStatus = "offline"
+	NodeStatusOnline  NodeStatus = "online"
+	NodeStatusUnknown NodeStatus = "unknown"
 )
 
 // Valid indicates whether the value is a known member of the NodeStatus enum.
 func (e NodeStatus) Valid() bool {
 	switch e {
-	case Offline:
+	case NodeStatusOffline:
 		return true
-	case Online:
+	case NodeStatusOnline:
 		return true
-	case Unknown:
+	case NodeStatusUnknown:
 		return true
 	default:
 		return false
@@ -488,16 +599,16 @@ func (e NodeStatus) Valid() bool {
 
 // Defines values for ServiceCapabilityStatus.
 const (
-	Healthy     ServiceCapabilityStatus = "healthy"
-	Unavailable ServiceCapabilityStatus = "unavailable"
+	ServiceCapabilityStatusHealthy     ServiceCapabilityStatus = "healthy"
+	ServiceCapabilityStatusUnavailable ServiceCapabilityStatus = "unavailable"
 )
 
 // Valid indicates whether the value is a known member of the ServiceCapabilityStatus enum.
 func (e ServiceCapabilityStatus) Valid() bool {
 	switch e {
-	case Healthy:
+	case ServiceCapabilityStatusHealthy:
 		return true
-	case Unavailable:
+	case ServiceCapabilityStatusUnavailable:
 		return true
 	default:
 		return false
@@ -768,6 +879,33 @@ func (e WriteCronJobRequestSchedulerDriver) Valid() bool {
 	}
 }
 
+// Defines values for WriteDNSRecordRequestType.
+const (
+	WriteDNSRecordRequestTypeA     WriteDNSRecordRequestType = "A"
+	WriteDNSRecordRequestTypeAAAA  WriteDNSRecordRequestType = "AAAA"
+	WriteDNSRecordRequestTypeCNAME WriteDNSRecordRequestType = "CNAME"
+	WriteDNSRecordRequestTypeMX    WriteDNSRecordRequestType = "MX"
+	WriteDNSRecordRequestTypeTXT   WriteDNSRecordRequestType = "TXT"
+)
+
+// Valid indicates whether the value is a known member of the WriteDNSRecordRequestType enum.
+func (e WriteDNSRecordRequestType) Valid() bool {
+	switch e {
+	case WriteDNSRecordRequestTypeA:
+		return true
+	case WriteDNSRecordRequestTypeAAAA:
+		return true
+	case WriteDNSRecordRequestTypeCNAME:
+		return true
+	case WriteDNSRecordRequestTypeMX:
+		return true
+	case WriteDNSRecordRequestTypeTXT:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListCertificatesParamsKind.
 const (
 	ListCertificatesParamsKindPanel   ListCertificatesParamsKind = "panel"
@@ -1003,6 +1141,13 @@ type CreateAccountRequest struct {
 	PackageId string `json:"packageId"`
 }
 
+// CreateDNSZoneRequest defines model for CreateDNSZoneRequest.
+type CreateDNSZoneRequest struct {
+	AccountId  string `json:"accountId"`
+	Name       string `json:"name"`
+	ProviderId string `json:"providerId"`
+}
+
 // CreateDatabaseRequest defines model for CreateDatabaseRequest.
 type CreateDatabaseRequest struct {
 	AccountId string                      `json:"accountId"`
@@ -1082,6 +1227,96 @@ type CronJobListResponse struct {
 type CronJobResponse struct {
 	CronJob CronJob `json:"cronJob"`
 	Job     Job     `json:"job"`
+}
+
+// DNSProvider defines model for DNSProvider.
+type DNSProvider struct {
+	CreatedAt time.Time         `json:"createdAt"`
+	Driver    DNSProviderDriver `json:"driver"`
+	Id        string            `json:"id"`
+	Name      string            `json:"name"`
+	NodeId    string            `json:"nodeId"`
+	Status    DNSProviderStatus `json:"status"`
+	UpdatedAt time.Time         `json:"updatedAt"`
+}
+
+// DNSProviderDriver defines model for DNSProvider.Driver.
+type DNSProviderDriver string
+
+// DNSProviderStatus defines model for DNSProvider.Status.
+type DNSProviderStatus string
+
+// DNSProviderListResponse defines model for DNSProviderListResponse.
+type DNSProviderListResponse struct {
+	Items []DNSProvider `json:"items"`
+}
+
+// DNSRecord defines model for DNSRecord.
+type DNSRecord struct {
+	Content   string          `json:"content"`
+	CreatedAt time.Time       `json:"createdAt"`
+	Id        string          `json:"id"`
+	Name      string          `json:"name"`
+	Priority  int64           `json:"priority"`
+	Status    DNSRecordStatus `json:"status"`
+	Ttl       int64           `json:"ttl"`
+	Type      DNSRecordType   `json:"type"`
+	UpdatedAt time.Time       `json:"updatedAt"`
+	ZoneId    string          `json:"zoneId"`
+}
+
+// DNSRecordStatus defines model for DNSRecord.Status.
+type DNSRecordStatus string
+
+// DNSRecordType defines model for DNSRecord.Type.
+type DNSRecordType string
+
+// DNSRecordJobResponse defines model for DNSRecordJobResponse.
+type DNSRecordJobResponse struct {
+	Job    Job       `json:"job"`
+	Record DNSRecord `json:"record"`
+}
+
+// DNSRecordListResponse defines model for DNSRecordListResponse.
+type DNSRecordListResponse struct {
+	Items      []DNSRecord `json:"items"`
+	Pagination Pagination  `json:"pagination"`
+}
+
+// DNSSettings defines model for DNSSettings.
+type DNSSettings struct {
+	DefaultTtl          int64     `json:"defaultTtl"`
+	PrimaryNameserver   string    `json:"primaryNameserver"`
+	SecondaryNameserver string    `json:"secondaryNameserver"`
+	UpdatedAt           time.Time `json:"updatedAt"`
+}
+
+// DNSZone defines model for DNSZone.
+type DNSZone struct {
+	AccountId   string        `json:"accountId"`
+	CreatedAt   time.Time     `json:"createdAt"`
+	Id          string        `json:"id"`
+	Name        string        `json:"name"`
+	Nameservers []string      `json:"nameservers"`
+	NodeId      string        `json:"nodeId"`
+	ProviderId  string        `json:"providerId"`
+	Status      DNSZoneStatus `json:"status"`
+	UpdatedAt   time.Time     `json:"updatedAt"`
+}
+
+// DNSZoneStatus defines model for DNSZone.Status.
+type DNSZoneStatus string
+
+// DNSZoneJobResponse defines model for DNSZoneJobResponse.
+type DNSZoneJobResponse struct {
+	Job  Job     `json:"job"`
+	Zone DNSZone `json:"zone"`
+}
+
+// DNSZoneListResponse defines model for DNSZoneListResponse.
+type DNSZoneListResponse struct {
+	Items      []DNSZone  `json:"items"`
+	Pagination Pagination `json:"pagination"`
 }
 
 // Database defines model for Database.
@@ -1337,6 +1572,7 @@ type RestoreBackupRequest struct {
 type ServiceCapabilities struct {
 	Backups    []ServiceCapability `json:"backups"`
 	Databases  []ServiceCapability `json:"databases"`
+	Dns        []ServiceCapability `json:"dns"`
 	Runtimes   []ServiceCapability `json:"runtimes"`
 	Schedulers []ServiceCapability `json:"schedulers"`
 	Webservers []ServiceCapability `json:"webservers"`
@@ -1389,6 +1625,13 @@ type ServiceSettings struct {
 // UpdateCertificateRequest defines model for UpdateCertificateRequest.
 type UpdateCertificateRequest struct {
 	RedirectHttps bool `json:"redirectHttps"`
+}
+
+// UpdateDNSSettingsRequest defines model for UpdateDNSSettingsRequest.
+type UpdateDNSSettingsRequest struct {
+	DefaultTtl          int64  `json:"defaultTtl"`
+	PrimaryNameserver   string `json:"primaryNameserver"`
+	SecondaryNameserver string `json:"secondaryNameserver"`
 }
 
 // UpdateEnabledRequest defines model for UpdateEnabledRequest.
@@ -1538,6 +1781,18 @@ type WriteCronJobRequest struct {
 // WriteCronJobRequestSchedulerDriver defines model for WriteCronJobRequest.SchedulerDriver.
 type WriteCronJobRequestSchedulerDriver string
 
+// WriteDNSRecordRequest defines model for WriteDNSRecordRequest.
+type WriteDNSRecordRequest struct {
+	Content  string                    `json:"content"`
+	Name     string                    `json:"name"`
+	Priority int64                     `json:"priority"`
+	Ttl      int64                     `json:"ttl"`
+	Type     WriteDNSRecordRequestType `json:"type"`
+}
+
+// WriteDNSRecordRequestType defines model for WriteDNSRecordRequest.Type.
+type WriteDNSRecordRequestType string
+
 // WritePackageRequest defines model for WritePackageRequest.
 type WritePackageRequest struct {
 	Limits PackageLimits `json:"limits"`
@@ -1561,6 +1816,12 @@ type CertificateID = string
 
 // CronJobID defines model for CronJobID.
 type CronJobID = string
+
+// DNSRecordID defines model for DNSRecordID.
+type DNSRecordID = string
+
+// DNSZoneID defines model for DNSZoneID.
+type DNSZoneID = string
 
 // DatabaseID defines model for DatabaseID.
 type DatabaseID = string
@@ -1788,6 +2049,48 @@ type CreateDatabaseGrantParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
+// DeleteDNSRecordParams defines parameters for DeleteDNSRecord.
+type DeleteDNSRecordParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// UpdateDNSRecordParams defines parameters for UpdateDNSRecord.
+type UpdateDNSRecordParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// UpdateDNSSettingsParams defines parameters for UpdateDNSSettings.
+type UpdateDNSSettingsParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// ListDNSZonesParams defines parameters for ListDNSZones.
+type ListDNSZonesParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
+
+// CreateDNSZoneParams defines parameters for CreateDNSZone.
+type CreateDNSZoneParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// DeleteDNSZoneParams defines parameters for DeleteDNSZone.
+type DeleteDNSZoneParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// ListDNSRecordsParams defines parameters for ListDNSRecords.
+type ListDNSRecordsParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
+
+// CreateDNSRecordParams defines parameters for CreateDNSRecord.
+type CreateDNSRecordParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
 // ListJobsParams defines parameters for ListJobs.
 type ListJobsParams struct {
 	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
@@ -1917,6 +2220,18 @@ type CreateDatabaseUserJSONRequestBody = CreateDatabaseUserRequest
 
 // CreateDatabaseJSONRequestBody defines body for CreateDatabase for application/json ContentType.
 type CreateDatabaseJSONRequestBody = CreateDatabaseRequest
+
+// UpdateDNSRecordJSONRequestBody defines body for UpdateDNSRecord for application/json ContentType.
+type UpdateDNSRecordJSONRequestBody = WriteDNSRecordRequest
+
+// UpdateDNSSettingsJSONRequestBody defines body for UpdateDNSSettings for application/json ContentType.
+type UpdateDNSSettingsJSONRequestBody = UpdateDNSSettingsRequest
+
+// CreateDNSZoneJSONRequestBody defines body for CreateDNSZone for application/json ContentType.
+type CreateDNSZoneJSONRequestBody = CreateDNSZoneRequest
+
+// CreateDNSRecordJSONRequestBody defines body for CreateDNSRecord for application/json ContentType.
+type CreateDNSRecordJSONRequestBody = WriteDNSRecordRequest
 
 // CreatePackageJSONRequestBody defines body for CreatePackage for application/json ContentType.
 type CreatePackageJSONRequestBody = WritePackageRequest

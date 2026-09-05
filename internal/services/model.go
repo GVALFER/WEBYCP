@@ -6,12 +6,13 @@ import (
 )
 
 const (
-	Nginx   = "nginx"
-	PHPFPM  = "phpfpm"
-	PHP83   = "8.3"
-	MySQL   = "mysql"
-	Crontab = "crontab"
-	Local   = "local"
+	Nginx    = "nginx"
+	PHPFPM   = "phpfpm"
+	PHP83    = "8.3"
+	MySQL    = "mysql"
+	Crontab  = "crontab"
+	Local    = "local"
+	PowerDNS = "powerdns"
 
 	Healthy     = "healthy"
 	Unavailable = "unavailable"
@@ -29,6 +30,7 @@ type Capabilities struct {
 	Databases  []Capability
 	Schedulers []Capability
 	Backups    []Capability
+	DNS        []Capability
 }
 
 type Defaults struct {

@@ -23,6 +23,9 @@ fail() {
     exit 1
 }
 
+# shellcheck source=packaging/ubuntu/powerdns.sh
+. "$SCRIPT_DIR/powerdns.sh"
+
 usage() {
     printf '%s\n' "Usage: $0 [--source DIR] [--check]"
     printf '%s\n' "       $0 --recover BACKUP_DIR"
@@ -119,6 +122,7 @@ check_release() {
         packaging/systemd/webycp-agent.service \
         packaging/systemd/webycp-server.service \
         packaging/systemd/webycp-web.service \
+        packaging/ubuntu/powerdns.sh \
         packaging/ubuntu/web.env.example \
         VERSION
     do
@@ -201,6 +205,9 @@ check_live_install() {
     if [ -f /usr/lib/systemd/system/webycp-web.service ]; then
         wait_for_web || fail "Web frontend is not ready"
     fi
+    if [ -f "$POWERDNS_CONFIG" ]; then
+        webycp_wait_powerdns || fail "PowerDNS is not ready"
+    fi
     /usr/sbin/nginx -t || fail "Nginx configuration is invalid"
 }
 
@@ -224,6 +231,14 @@ check_backup() {
         fail "backup web build has no Next.js server or legacy index"
     fi
     check_dir "$RECOVERY_DIR/server" "backup Server state"
+    check_dir "$RECOVERY_DIR/powerdns" "backup PowerDNS state"
+    if [ -f "$RECOVERY_DIR/powerdns/PRESENT" ]; then
+        check_file "$RECOVERY_DIR/powerdns/webycp.conf" "backup PowerDNS configuration"
+        check_file "$RECOVERY_DIR/powerdns/powerdns.key" "backup PowerDNS key"
+        check_file "$RECOVERY_DIR/powerdns/webycp.sqlite3" "backup PowerDNS database"
+    elif [ ! -f "$RECOVERY_DIR/powerdns/ABSENT" ]; then
+        fail "backup PowerDNS state marker is missing"
+    fi
     RECOVERY_VERSION=$(read_version "$RECOVERY_DIR/VERSION")
 }
 
@@ -265,11 +280,17 @@ stop_services() {
     fi
     systemctl stop webycp-server
     systemctl stop webycp-agent
+    if [ -f "$POWERDNS_CONFIG" ]; then
+        systemctl stop pdns
+    fi
 }
 
 start_services() {
     expected=$1
     systemctl daemon-reload || return 1
+    if [ -f "$POWERDNS_CONFIG" ]; then
+        webycp_start_powerdns || return 1
+    fi
     systemctl start webycp-agent || return 1
     wait_for_socket || return 1
     systemctl start webycp-server || return 1
@@ -293,7 +314,7 @@ create_backup() {
     chmod 0700 "$BACKUP_DIR"
     install -d -o root -g root -m 0700 \
         "$BACKUP_DIR/bin" "$BACKUP_DIR/config" "$BACKUP_DIR/nginx" \
-        "$BACKUP_DIR/systemd"
+        "$BACKUP_DIR/powerdns" "$BACKUP_DIR/systemd"
     cp -a /usr/lib/webycp/webycp-agent "$BACKUP_DIR/bin/"
     cp -a /usr/lib/webycp/webycp-server "$BACKUP_DIR/bin/"
     cp -a /usr/lib/systemd/system/webycp-agent.service "$BACKUP_DIR/systemd/"
@@ -310,6 +331,14 @@ create_backup() {
     cp -a /etc/nginx/webycp/sites-available/panel.conf "$BACKUP_DIR/nginx/"
     cp -a /usr/share/webycp/web "$BACKUP_DIR/web"
     cp -a /var/lib/webycp/server "$BACKUP_DIR/server"
+    if [ -f "$POWERDNS_CONFIG" ]; then
+        cp -a "$POWERDNS_CONFIG" "$BACKUP_DIR/powerdns/webycp.conf"
+        cp -a "$POWERDNS_KEY" "$BACKUP_DIR/powerdns/powerdns.key"
+        cp -a "$POWERDNS_DATABASE" "$BACKUP_DIR/powerdns/webycp.sqlite3"
+        : >"$BACKUP_DIR/powerdns/PRESENT"
+    else
+        : >"$BACKUP_DIR/powerdns/ABSENT"
+    fi
     printf '%s\n' "$version" >"$BACKUP_DIR/VERSION"
     chmod 0600 "$BACKUP_DIR/VERSION"
 }
@@ -399,6 +428,40 @@ restore_state() {
     rm -rf -- "$failed"
 }
 
+restore_powerdns() {
+    snapshot=$1
+    systemctl stop pdns >/dev/null 2>&1 || true
+    if [ -f "$snapshot/powerdns/PRESENT" ]; then
+        install -d -o root -g root -m 0755 /etc/powerdns/pdns.d || return 1
+        install -d -o root -g webycp -m 0750 /etc/webycp || return 1
+        install -d -o pdns -g pdns -m 0750 /var/lib/powerdns || return 1
+        install_atomic \
+            "$snapshot/powerdns/webycp.conf" \
+            "$POWERDNS_CONFIG" 0640 root pdns || return 1
+        install_atomic \
+            "$snapshot/powerdns/powerdns.key" \
+            "$POWERDNS_KEY" 0600 root root || return 1
+        install_atomic \
+            "$snapshot/powerdns/webycp.sqlite3" \
+            "$POWERDNS_DATABASE" 0640 pdns pdns || return 1
+        return
+    fi
+    if [ -f "$snapshot/powerdns/ABSENT" ]; then
+        if [ -f "$POWERDNS_CONFIG" ] &&
+            [ "$(sed -n '1p' "$POWERDNS_CONFIG")" = "# Managed by WEBYCP." ]; then
+            rm -f -- "$POWERDNS_CONFIG" "$POWERDNS_KEY" "$POWERDNS_DATABASE"
+        fi
+        systemctl disable pdns >/dev/null 2>&1 || true
+        if dpkg-query -W -f='${Status}' pdns-server 2>/dev/null |
+            grep -q '^install ok installed$'; then
+            DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq \
+                pdns-backend-sqlite3 pdns-server || return 1
+        fi
+        return
+    fi
+    return 1
+}
+
 restore_snapshot() {
     snapshot=$1
     systemctl stop webycp-web webycp-server webycp-agent >/dev/null 2>&1 || true
@@ -464,6 +527,7 @@ restore_snapshot() {
         switch_panel_port 8080 || return 1
     fi
     restore_state "$snapshot" || return 1
+    restore_powerdns "$snapshot" || return 1
 }
 
 cleanup() {
@@ -518,6 +582,7 @@ main() {
     fi
 
     check_release
+    webycp_check_powerdns
     check_live_install
     log "Preflight passed for $RELEASE_VERSION"
     if [ "$CHECK_ONLY" = true ]; then
@@ -528,6 +593,11 @@ main() {
     prepare_web "$SOURCE_DIR/web"
     stop_services
     create_backup "before-$RELEASE_VERSION"
+    CHANGED=true
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    webycp_install_powerdns
+    webycp_configure_powerdns
     install_files \
         "$SOURCE_DIR/bin" \
         "$SOURCE_DIR/packaging/systemd" \

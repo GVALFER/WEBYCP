@@ -6,6 +6,8 @@ const (
 	defaultServerAddr   = "127.0.0.1:8080"
 	defaultDatabasePath = "/var/lib/webycp/server/webycp.db"
 	defaultAgentSocket  = "/run/webycp/agent.sock"
+	defaultPowerDNSURL  = "http://127.0.0.1:8081"
+	defaultPowerDNSKey  = "/etc/webycp/powerdns.key"
 )
 
 type Server struct {
@@ -25,9 +27,15 @@ func ServerFromEnv() Server {
 }
 
 type Agent struct {
-	Socket string
+	Socket          string
+	PowerDNSURL     string
+	PowerDNSKeyPath string
 }
 
 func AgentFromEnv() Agent {
-	return Agent{Socket: envx.String("WEBYCP_AGENT_SOCKET", defaultAgentSocket)}
+	return Agent{
+		Socket:          envx.String("WEBYCP_AGENT_SOCKET", defaultAgentSocket),
+		PowerDNSURL:     envx.String("WEBYCP_POWERDNS_URL", defaultPowerDNSURL),
+		PowerDNSKeyPath: envx.String("WEBYCP_POWERDNS_KEY_PATH", defaultPowerDNSKey),
+	}
 }

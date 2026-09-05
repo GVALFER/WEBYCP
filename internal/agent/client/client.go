@@ -15,6 +15,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/certificates"
 	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
+	dnscontrol "github.com/GVALFER/WEBYCP/internal/dns"
 	"github.com/GVALFER/WEBYCP/internal/services"
 	"github.com/GVALFER/WEBYCP/internal/websites"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -66,6 +67,7 @@ func capabilitiesValue(value agentapi.ServiceCapabilities) services.Capabilities
 		Databases:  capabilityValues(value.Databases),
 		Schedulers: capabilityValues(value.Schedulers),
 		Backups:    capabilityValues(value.Backups),
+		DNS:        capabilityValues(value.Dns),
 	}
 }
 
@@ -183,6 +185,33 @@ func (c *Client) SyncCron(ctx context.Context, socket, accountID, systemUser str
 	return c.sendJSON(ctx, socket, http.MethodPut, "/agent/v1/cron", agentapi.SyncCronRequest{
 		AccountId: accountID, SystemUser: systemUser, Entries: values,
 	}, "cron sync")
+}
+
+func (c *Client) EnsureDNSZone(ctx context.Context, socket string, value dnscontrol.ZoneSpec) error {
+	return c.postJSON(ctx, socket, "/agent/v1/dns/zones", dnsZoneRequest(value), "DNS zone create")
+}
+
+func (c *Client) DeleteDNSZone(ctx context.Context, socket string, value dnscontrol.ZoneSpec) error {
+	return c.sendJSON(ctx, socket, http.MethodDelete, "/agent/v1/dns/zones", dnsZoneRequest(value), "DNS zone delete")
+}
+
+func (c *Client) SyncDNSRecordSets(
+	ctx context.Context, socket string, zone dnscontrol.ZoneSpec, values []dnscontrol.RecordSet,
+) error {
+	sets := make([]agentapi.DNSRecordSet, 0, len(values))
+	for _, value := range values {
+		sets = append(sets, agentapi.DNSRecordSet{
+			Name: value.Name, Type: agentapi.DNSRecordSetType(value.Type),
+			Ttl: value.TTL, Records: value.Records,
+		})
+	}
+	return c.sendJSON(ctx, socket, http.MethodPut, "/agent/v1/dns/records", agentapi.SyncDNSRecordSetsRequest{
+		Zone: dnsZoneRequest(zone), Rrsets: sets,
+	}, "DNS record sync")
+}
+
+func dnsZoneRequest(value dnscontrol.ZoneSpec) agentapi.DNSZoneRequest {
+	return agentapi.DNSZoneRequest{Id: value.ID, Name: value.Name, Nameservers: value.Nameservers}
 }
 
 func (c *Client) IssueCertificate(ctx context.Context, socket string, request certificates.Request) (certificates.Result, error) {

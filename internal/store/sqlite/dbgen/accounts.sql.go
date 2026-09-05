@@ -48,7 +48,8 @@ SELECT
     (SELECT COUNT(*) FROM database_users WHERE database_users.account_id = ?1) +
     (SELECT COUNT(*) FROM cron_jobs WHERE cron_jobs.account_id = ?1) +
     (SELECT COUNT(*) FROM backup_plans WHERE backup_plans.account_id = ?1) +
-    (SELECT COUNT(*) FROM backup_artifacts WHERE backup_artifacts.account_id = ?1)
+    (SELECT COUNT(*) FROM backup_artifacts WHERE backup_artifacts.account_id = ?1) +
+    (SELECT COUNT(*) FROM dns_zones WHERE dns_zones.account_id = ?1)
 `
 
 func (q *Queries) AccountResourceCount(ctx context.Context, accountID string) (int64, error) {

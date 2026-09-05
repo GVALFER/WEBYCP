@@ -14,6 +14,9 @@ fail() {
     exit 1
 }
 
+# shellcheck source=packaging/ubuntu/powerdns.sh
+. "$SCRIPT_DIR/powerdns.sh"
+
 usage() {
     printf '%s\n' "Usage: $0 [--source DIR] [--no-start]"
 }
@@ -76,6 +79,7 @@ check_source() {
         packaging/systemd/webycp-server.service \
         packaging/systemd/webycp-web.service \
         packaging/ubuntu/agent.env.example \
+        packaging/ubuntu/powerdns.sh \
         packaging/ubuntu/server.env.example \
         packaging/ubuntu/upgrade.sh \
         packaging/ubuntu/web.env.example \
@@ -93,6 +97,7 @@ check_source() {
 install_packages() {
     log "Installing Ubuntu packages"
     export DEBIAN_FRONTEND=noninteractive
+    webycp_check_powerdns
     apt-get update -qq
     apt-get install -y -qq --no-install-recommends \
         ca-certificates \
@@ -105,6 +110,7 @@ install_packages() {
         php8.3-cli \
         php8.3-fpm \
         php8.3-mysql
+    webycp_install_powerdns
 }
 
 ensure_identity() {
@@ -363,8 +369,9 @@ start_services() {
 
     log "Enabling and starting services"
     systemctl daemon-reload
-    systemctl enable nginx mysql php8.3-fpm cron webycp-agent webycp-server webycp-web >/dev/null
+    systemctl enable nginx mysql php8.3-fpm cron pdns webycp-agent webycp-server webycp-web >/dev/null
     systemctl start nginx mysql php8.3-fpm cron
+    webycp_start_powerdns || fail "PowerDNS did not become ready"
     systemctl restart webycp-agent
     wait_for_socket
     systemctl restart webycp-server
@@ -383,6 +390,10 @@ main() {
     prepare_directories
     install_release
     install_config
+    webycp_configure_powerdns
+    if [ "$START_SERVICES" = false ] && [ -d /run/systemd/system ]; then
+        systemctl stop pdns >/dev/null 2>&1 || true
+    fi
     install_nginx
     ensure_admin
     start_services

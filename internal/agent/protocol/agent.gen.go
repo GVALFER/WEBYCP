@@ -9,6 +9,33 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for DNSRecordSetType.
+const (
+	A     DNSRecordSetType = "A"
+	AAAA  DNSRecordSetType = "AAAA"
+	CNAME DNSRecordSetType = "CNAME"
+	MX    DNSRecordSetType = "MX"
+	TXT   DNSRecordSetType = "TXT"
+)
+
+// Valid indicates whether the value is a known member of the DNSRecordSetType enum.
+func (e DNSRecordSetType) Valid() bool {
+	switch e {
+	case A:
+		return true
+	case AAAA:
+		return true
+	case CNAME:
+		return true
+	case MX:
+		return true
+	case TXT:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthResponseStatus.
 const (
 	Ok HealthResponseStatus = "ok"
@@ -198,6 +225,24 @@ type CronEntry struct {
 	Schedule string `json:"schedule"`
 }
 
+// DNSRecordSet defines model for DNSRecordSet.
+type DNSRecordSet struct {
+	Name    string           `json:"name"`
+	Records []string         `json:"records"`
+	Ttl     int64            `json:"ttl"`
+	Type    DNSRecordSetType `json:"type"`
+}
+
+// DNSRecordSetType defines model for DNSRecordSet.Type.
+type DNSRecordSetType string
+
+// DNSZoneRequest defines model for DNSZoneRequest.
+type DNSZoneRequest struct {
+	Id          string   `json:"id"`
+	Name        string   `json:"name"`
+	Nameservers []string `json:"nameservers"`
+}
+
 // DatabaseGrantRequest defines model for DatabaseGrantRequest.
 type DatabaseGrantRequest struct {
 	Database string `json:"database"`
@@ -286,6 +331,7 @@ type RestoreBackupResult struct {
 type ServiceCapabilities struct {
 	Backups    []ServiceCapability `json:"backups"`
 	Databases  []ServiceCapability `json:"databases"`
+	Dns        []ServiceCapability `json:"dns"`
 	Runtimes   []ServiceCapability `json:"runtimes"`
 	Schedulers []ServiceCapability `json:"schedulers"`
 	Webservers []ServiceCapability `json:"webservers"`
@@ -306,6 +352,12 @@ type SyncCronRequest struct {
 	AccountId  string      `json:"accountId"`
 	Entries    []CronEntry `json:"entries"`
 	SystemUser string      `json:"systemUser"`
+}
+
+// SyncDNSRecordSetsRequest defines model for SyncDNSRecordSetsRequest.
+type SyncDNSRecordSetsRequest struct {
+	Rrsets []DNSRecordSet `json:"rrsets"`
+	Zone   DNSZoneRequest `json:"zone"`
 }
 
 // WebsiteRequest defines model for WebsiteRequest.
@@ -381,6 +433,15 @@ type DeleteDatabaseJSONRequestBody = DatabaseRequest
 
 // EnsureDatabaseJSONRequestBody defines body for EnsureDatabase for application/json ContentType.
 type EnsureDatabaseJSONRequestBody = DatabaseRequest
+
+// SyncDNSRecordSetsJSONRequestBody defines body for SyncDNSRecordSets for application/json ContentType.
+type SyncDNSRecordSetsJSONRequestBody = SyncDNSRecordSetsRequest
+
+// DeleteDNSZoneJSONRequestBody defines body for DeleteDNSZone for application/json ContentType.
+type DeleteDNSZoneJSONRequestBody = DNSZoneRequest
+
+// EnsureDNSZoneJSONRequestBody defines body for EnsureDNSZone for application/json ContentType.
+type EnsureDNSZoneJSONRequestBody = DNSZoneRequest
 
 // EnsureWebsiteJSONRequestBody defines body for EnsureWebsite for application/json ContentType.
 type EnsureWebsiteJSONRequestBody = WebsiteRequest

@@ -13,6 +13,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/certificates"
 	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
 	"github.com/GVALFER/WEBYCP/internal/databases"
+	dnscontrol "github.com/GVALFER/WEBYCP/internal/dns"
 	"github.com/GVALFER/WEBYCP/internal/httpapi/spec"
 	"github.com/GVALFER/WEBYCP/internal/httpx"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
@@ -36,6 +37,7 @@ type Options struct {
 	Cron         *cronjob.Service
 	Certificates *certificates.Service
 	Backups      *backups.Service
+	DNS          *dnscontrol.Service
 	Nodes        *nodes.Service
 	Jobs         *jobs.Service
 	Audit        audit.Recorder
@@ -108,6 +110,17 @@ func New(options Options) http.Handler {
 	mux.HandleFunc("DELETE /api/v1/backup-artifacts/{backupArtifactId}", h.withAuth(true, h.deleteBackupArtifact))
 	mux.HandleFunc("GET /api/v1/backup-artifacts/{backupArtifactId}/restore", h.withAuth(false, h.previewBackupRestore))
 	mux.HandleFunc("POST /api/v1/backup-artifacts/{backupArtifactId}/restore", h.withAuth(true, h.restoreBackup))
+	mux.HandleFunc("GET /api/v1/dns/providers", h.withAuth(false, h.listDNSProviders))
+	mux.HandleFunc("GET /api/v1/dns/settings", h.withAuth(false, h.getDNSSettings))
+	mux.HandleFunc("PUT /api/v1/dns/settings", h.withAuth(true, h.updateDNSSettings))
+	mux.HandleFunc("GET /api/v1/dns/zones", h.withAuth(false, h.listDNSZones))
+	mux.HandleFunc("POST /api/v1/dns/zones", h.withAuth(true, h.createDNSZone))
+	mux.HandleFunc("GET /api/v1/dns/zones/{dnsZoneId}", h.withAuth(false, h.getDNSZone))
+	mux.HandleFunc("DELETE /api/v1/dns/zones/{dnsZoneId}", h.withAuth(true, h.deleteDNSZone))
+	mux.HandleFunc("GET /api/v1/dns/zones/{dnsZoneId}/records", h.withAuth(false, h.listDNSRecords))
+	mux.HandleFunc("POST /api/v1/dns/zones/{dnsZoneId}/records", h.withAuth(true, h.createDNSRecord))
+	mux.HandleFunc("PATCH /api/v1/dns/records/{dnsRecordId}", h.withAuth(true, h.updateDNSRecord))
+	mux.HandleFunc("DELETE /api/v1/dns/records/{dnsRecordId}", h.withAuth(true, h.deleteDNSRecord))
 	mux.HandleFunc("GET /api/v1/nodes", h.withAuth(false, h.listNodes))
 	mux.HandleFunc("GET /api/v1/service-settings", h.withAuth(false, h.getServiceSettings))
 	mux.HandleFunc("PUT /api/v1/service-settings", h.withAuth(true, h.updateServiceSettings))

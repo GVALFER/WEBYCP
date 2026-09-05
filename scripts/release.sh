@@ -162,6 +162,7 @@ cp \
 cp \
     "$ROOT_DIR/packaging/ubuntu/agent.env.example" \
     "$ROOT_DIR/packaging/ubuntu/install.sh" \
+    "$ROOT_DIR/packaging/ubuntu/powerdns.sh" \
     "$ROOT_DIR/packaging/ubuntu/server.env.example" \
     "$ROOT_DIR/packaging/ubuntu/upgrade.sh" \
     "$ROOT_DIR/packaging/ubuntu/web.env.example" \
@@ -182,6 +183,7 @@ chmod 0755 \
     "$RELEASE_DIR/bin/webycp-server" \
     "$RELEASE_DIR/runtime/node" \
     "$RELEASE_DIR/packaging/ubuntu/install.sh" \
+    "$RELEASE_DIR/packaging/ubuntu/powerdns.sh" \
     "$RELEASE_DIR/packaging/ubuntu/upgrade.sh"
 
 mkdir -p "$OUTPUT_DIR"

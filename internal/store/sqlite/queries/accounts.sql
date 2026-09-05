@@ -81,7 +81,8 @@ SELECT
     (SELECT COUNT(*) FROM database_users WHERE database_users.account_id = sqlc.arg(account_id)) +
     (SELECT COUNT(*) FROM cron_jobs WHERE cron_jobs.account_id = sqlc.arg(account_id)) +
     (SELECT COUNT(*) FROM backup_plans WHERE backup_plans.account_id = sqlc.arg(account_id)) +
-    (SELECT COUNT(*) FROM backup_artifacts WHERE backup_artifacts.account_id = sqlc.arg(account_id));
+    (SELECT COUNT(*) FROM backup_artifacts WHERE backup_artifacts.account_id = sqlc.arg(account_id)) +
+    (SELECT COUNT(*) FROM dns_zones WHERE dns_zones.account_id = sqlc.arg(account_id));
 
 -- name: DeleteAccount :exec
 DELETE FROM accounts WHERE id = ?;

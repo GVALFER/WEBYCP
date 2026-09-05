@@ -231,6 +231,7 @@ func serviceCapabilitiesResponse(value services.Capabilities) publicapi.ServiceC
 		Databases:  publicCapabilityValues(value.Databases),
 		Schedulers: publicCapabilityValues(value.Schedulers),
 		Backups:    publicCapabilityValues(value.Backups),
+		Dns:        publicCapabilityValues(value.DNS),
 	}
 }
 

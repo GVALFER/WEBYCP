@@ -69,7 +69,7 @@ abstractions, generic entity stores, or premature microservices.
 | Scheduler | crontab | systemd timers, distributed scheduler |
 | Backup storage | Local filesystem | S3-compatible, R2, remote SSH |
 | Certificates | Let's Encrypt HTTP-01 | Other ACME CAs, DNS-01 |
-| DNS | Decision required in Step 5 | PowerDNS, Cloudflare, other providers |
+| DNS | PowerDNS Authoritative Server | Cloudflare, other providers |
 
 Drivers are Go interfaces compiled with the application in v1. Dynamic binary
 plugins are not required. A second driver is only introduced when its feature
@@ -99,7 +99,8 @@ Nginx
                                                 |-- databases
                                                 |-- certificates
                                                 |-- scheduled tasks
-                                                `-- backups
+                                                |-- backups
+                                                `-- authoritative DNS
 ```
 
 ### Responsibility boundaries
@@ -353,9 +354,13 @@ Certificate jobs derive allowed names from the Website's bindings.
 
 ### DNS
 
-- `DNSProvider`: driver configuration and encrypted credentials where required
+- `DNSProvider`: non-secret driver registration and health
 - `DNSZone`: an authoritative DNS zone owned by an Account
 - `DNSRecord`: a typed record inside a zone
+
+The local PowerDNS HTTP API is loopback-only. Its API key remains in a root-only
+Agent file and never enters control-plane SQLite, public API responses, jobs,
+audit metadata, or ordinary resource payloads.
 
 Website bindings and DNS zones are independent resources. Creating a Website
 does not silently create or take ownership of DNS. An explicit assisted flow
@@ -572,12 +577,14 @@ Verification:
 
 ### Step 5 — DNS foundation
 
-Decision gate before implementation:
+Selected implementation: PowerDNS Authoritative Server with its SQLite backend
+and loopback HTTP API.
 
-- Choose PowerDNS for a self-hosted authoritative DNS service, or
-- choose Cloudflare first for a smaller externally managed DNS integration.
+Status: implementation, release, real provider lifecycle, VPS upgrade, rollback,
+and recovery verification are complete. The visual browser pass remains pending
+because no global browser instance was available during acceptance.
 
-Deliverables after the decision:
+Deliverables:
 
 - Add typed DNS provider interface and one implementation only.
 - Add DNS zones and common record types.
@@ -667,6 +674,5 @@ A step is complete only when:
 
 ## 12. Immediate Next Step
 
-Begin **Step 1 — Design system and application shell** only after this plan is
-approved. Do not start the Website, Packages, or DNS refactors during the design
-step.
+Review **Step 5 — DNS foundation** and complete its visual pass when the global
+browser is available. Do not begin Step 6 until the result has been reviewed.

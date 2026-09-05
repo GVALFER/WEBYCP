@@ -41,6 +41,7 @@ build: build-go build-web
 
 check-packaging:
 	sh -n packaging/ubuntu/install.sh
+	sh -n packaging/ubuntu/powerdns.sh
 	sh -n packaging/ubuntu/upgrade.sh
 	sh -n scripts/release.sh
 	sh -n scripts/security.sh

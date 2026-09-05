@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	agentaccount "github.com/GVALFER/WEBYCP/internal/agent/account"
@@ -11,6 +12,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/agent/capability"
 	"github.com/GVALFER/WEBYCP/internal/agent/certificate/certbot"
 	"github.com/GVALFER/WEBYCP/internal/agent/database/mysql"
+	"github.com/GVALFER/WEBYCP/internal/agent/dns/powerdns"
 	"github.com/GVALFER/WEBYCP/internal/agent/runtime/phpfpm"
 	"github.com/GVALFER/WEBYCP/internal/agent/scheduler/crontab"
 	agentserver "github.com/GVALFER/WEBYCP/internal/agent/server"
@@ -32,6 +34,11 @@ func main() {
 	defer stop()
 
 	settings := config.AgentFromEnv()
+	powerDNSKey, err := os.ReadFile(settings.PowerDNSKeyPath)
+	if err != nil {
+		logger.Warn("PowerDNS API key is unavailable", "error", err, "path", settings.PowerDNSKeyPath)
+	}
+	dnsDriver := powerdns.New(settings.PowerDNSURL, strings.TrimSpace(string(powerDNSKey)))
 	listener, cleanup, err := agentserver.Listen(settings.Socket)
 	if err != nil {
 		logger.Error("failed to listen", "error", err, "socket", settings.Socket)
@@ -45,11 +52,12 @@ func main() {
 	accountManager := agentaccount.New(agentaccount.NewLinux(), runtimeDriver)
 	server := &http.Server{
 		Handler: agentserver.New(agentserver.Options{
-			Version: buildinfo.Version, Capabilities: capability.New(),
+			Version: buildinfo.Version, Capabilities: capability.New(dnsDriver),
 			Accounts: accountManager, AccountActions: accountManager,
 			Websites: websiteManager, Databases: mysql.New(), Cron: crontab.New(),
 			Certificates: certbot.New(nginxDriver), Logger: logger,
 			Backups: backuplocal.New(),
+			DNS:     dnsDriver,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
     title: WEBYCP Agent API
-    version: 0.4.0
+    version: 0.5.0
     description: Internal API exposed only through the protected Agent Unix socket.
 paths:
     /agent/v1/health:
@@ -306,6 +306,50 @@ paths:
                 "400": { description: The request body is malformed. }
                 "422": { description: The cron request is invalid. }
                 "500": { description: The cron operation failed. }
+    /agent/v1/dns/zones:
+        post:
+            operationId: ensureDNSZone
+            summary: Ensure a WEBYCP-owned PowerDNS zone exists
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DNSZoneRequest"
+            responses:
+                "204": { description: The DNS zone exists. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The DNS zone request is invalid. }
+                "500": { description: The DNS zone operation failed. }
+        delete:
+            operationId: deleteDNSZone
+            summary: Delete an exact WEBYCP-owned PowerDNS zone
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DNSZoneRequest"
+            responses:
+                "204": { description: The WEBYCP-owned DNS zone is absent. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The DNS zone request is invalid. }
+                "500": { description: The DNS zone operation failed. }
+    /agent/v1/dns/records:
+        put:
+            operationId: syncDNSRecordSets
+            summary: Atomically replace or delete selected PowerDNS record sets
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/SyncDNSRecordSetsRequest"
+            responses:
+                "204": { description: The DNS record sets are synchronized. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The DNS record request is invalid. }
+                "500": { description: The DNS record operation failed. }
     /agent/v1/backups:
         post:
             operationId: createBackup
@@ -418,7 +462,7 @@ components:
         ServiceCapabilities:
             type: object
             additionalProperties: false
-            required: [webservers, runtimes, databases, schedulers, backups]
+            required: [webservers, runtimes, databases, schedulers, backups, dns]
             properties:
                 webservers:
                     type: array
@@ -433,6 +477,9 @@ components:
                     type: array
                     items: { $ref: "#/components/schemas/ServiceCapability" }
                 backups:
+                    type: array
+                    items: { $ref: "#/components/schemas/ServiceCapability" }
+                dns:
                     type: array
                     items: { $ref: "#/components/schemas/ServiceCapability" }
         EnsureAccountRequest:
@@ -551,6 +598,43 @@ components:
                     maxItems: 100
                     items:
                         $ref: "#/components/schemas/CronEntry"
+        DNSZoneRequest:
+            type: object
+            additionalProperties: false
+            required: [id, name, nameservers]
+            properties:
+                id: { type: string }
+                name: { type: string }
+                nameservers:
+                    type: array
+                    minItems: 2
+                    maxItems: 2
+                    items: { type: string }
+        DNSRecordSet:
+            type: object
+            additionalProperties: false
+            required: [name, type, ttl, records]
+            properties:
+                name: { type: string }
+                type: { type: string, enum: [A, AAAA, CNAME, MX, TXT] }
+                ttl: { type: integer, format: int64, minimum: 0, maximum: 86400 }
+                records:
+                    type: array
+                    maxItems: 100
+                    items: { type: string }
+        SyncDNSRecordSetsRequest:
+            type: object
+            additionalProperties: false
+            required: [zone, rrsets]
+            properties:
+                zone:
+                    $ref: "#/components/schemas/DNSZoneRequest"
+                rrsets:
+                    type: array
+                    minItems: 1
+                    maxItems: 2
+                    items:
+                        $ref: "#/components/schemas/DNSRecordSet"
         CreateBackupRequest:
             type: object
             additionalProperties: false

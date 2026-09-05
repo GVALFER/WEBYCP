@@ -10,7 +10,8 @@ import (
 	agentbackup "github.com/GVALFER/WEBYCP/internal/agent/backup"
 	agentcertificate "github.com/GVALFER/WEBYCP/internal/agent/certificate"
 	agentdatabase "github.com/GVALFER/WEBYCP/internal/agent/database"
-	"github.com/GVALFER/WEBYCP/internal/agent/protocol"
+	agentdns "github.com/GVALFER/WEBYCP/internal/agent/dns"
+	agentapi "github.com/GVALFER/WEBYCP/internal/agent/protocol"
 	"github.com/GVALFER/WEBYCP/internal/agent/scheduler"
 	agentwebsite "github.com/GVALFER/WEBYCP/internal/agent/website"
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
@@ -49,6 +50,7 @@ type Options struct {
 	Cron           scheduler.Driver
 	Certificates   agentcertificate.Driver
 	Backups        agentbackup.Driver
+	DNS            agentdns.Driver
 	Logger         *slog.Logger
 }
 
@@ -257,6 +259,62 @@ func New(options Options) http.Handler {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
+	handleDNSZone := func(delete bool) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			var request agentapi.DNSZoneRequest
+			if err := httpx.DecodeJSON(w, r, &request); err != nil {
+				httpx.WriteJSON(w, http.StatusBadRequest, agentapi.ErrorResponse{Code: "invalid_json", Message: "The request body is invalid"})
+				return
+			}
+			zone := agentdns.Zone{ID: request.Id, Name: request.Name, Nameservers: request.Nameservers}
+			validateErr := agentdns.ValidateZone(zone)
+			if delete {
+				validateErr = agentdns.ValidateZoneIdentity(zone)
+			}
+			if options.DNS == nil || validateErr != nil {
+				httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{Code: "validation_error", Message: "The DNS zone request is invalid"})
+				return
+			}
+			var err error
+			if delete {
+				err = options.DNS.DeleteZone(r.Context(), zone)
+			} else {
+				err = options.DNS.EnsureZone(r.Context(), zone)
+			}
+			if err != nil {
+				logger.Error("DNS zone operation failed", "error", err, "zoneId", zone.ID)
+				httpx.WriteJSON(w, http.StatusInternalServerError, agentapi.ErrorResponse{Code: "dns_zone_failed", Message: "The DNS zone operation failed"})
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		}
+	}
+	mux.HandleFunc("POST /agent/v1/dns/zones", handleDNSZone(false))
+	mux.HandleFunc("DELETE /agent/v1/dns/zones", handleDNSZone(true))
+	mux.HandleFunc("PUT /agent/v1/dns/records", func(w http.ResponseWriter, r *http.Request) {
+		var request agentapi.SyncDNSRecordSetsRequest
+		if err := httpx.DecodeJSON(w, r, &request); err != nil {
+			httpx.WriteJSON(w, http.StatusBadRequest, agentapi.ErrorResponse{Code: "invalid_json", Message: "The request body is invalid"})
+			return
+		}
+		zone := agentdns.Zone{ID: request.Zone.Id, Name: request.Zone.Name, Nameservers: request.Zone.Nameservers}
+		sets := make([]agentdns.RecordSet, 0, len(request.Rrsets))
+		for _, set := range request.Rrsets {
+			sets = append(sets, agentdns.RecordSet{
+				Name: set.Name, Type: string(set.Type), TTL: set.Ttl, Records: set.Records,
+			})
+		}
+		if options.DNS == nil || agentdns.ValidateRecordSets(zone, sets) != nil {
+			httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{Code: "validation_error", Message: "The DNS record request is invalid"})
+			return
+		}
+		if err := options.DNS.SyncRecordSets(r.Context(), zone, sets); err != nil {
+			logger.Error("DNS record operation failed", "error", err, "zoneId", zone.ID)
+			httpx.WriteJSON(w, http.StatusInternalServerError, agentapi.ErrorResponse{Code: "dns_record_failed", Message: "The DNS record operation failed"})
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 	mux.HandleFunc("POST /agent/v1/certificates", func(w http.ResponseWriter, r *http.Request) {
 		var request agentapi.IssueCertificateRequest
 		if err := httpx.DecodeJSON(w, r, &request); err != nil {
@@ -415,6 +473,7 @@ func capabilitiesResponse(value services.Capabilities) agentapi.ServiceCapabilit
 		Databases:  capabilityValues(value.Databases),
 		Schedulers: capabilityValues(value.Schedulers),
 		Backups:    capabilityValues(value.Backups),
+		Dns:        capabilityValues(value.DNS),
 	}
 }
 

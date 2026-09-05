@@ -16,13 +16,18 @@ type Observer interface {
 	Observe(context.Context) services.Capabilities
 }
 
+type Checker interface {
+	Health(context.Context) error
+}
+
 type System struct {
 	run  func(context.Context, string, ...string) error
 	stat func(string) (fs.FileInfo, error)
+	dns  Checker
 }
 
-func New() *System {
-	return &System{run: execx.Run, stat: os.Stat}
+func New(dns Checker) *System {
+	return &System{run: execx.Run, stat: os.Stat, dns: dns}
 }
 
 func (s *System) Observe(ctx context.Context) services.Capabilities {
@@ -42,7 +47,22 @@ func (s *System) Observe(ctx context.Context) services.Capabilities {
 		Backups: []services.Capability{
 			s.directory(services.Local, "/var/backups/webycp"),
 		},
+		DNS: []services.Capability{
+			s.check(ctx, services.PowerDNS, s.dns),
+		},
 	}
+}
+
+func (s *System) check(ctx context.Context, driver string, checker Checker) services.Capability {
+	status := services.Unavailable
+	if checker != nil {
+		checkCtx, cancel := context.WithTimeout(ctx, checkTimeout)
+		defer cancel()
+		if checker.Health(checkCtx) == nil {
+			status = services.Healthy
+		}
+	}
+	return services.Capability{Driver: driver, Status: status}
 }
 
 func (s *System) command(

@@ -14,6 +14,10 @@ type fileInfo struct {
 
 func (f fileInfo) IsDir() bool { return f.directory }
 
+type checker func(context.Context) error
+
+func (c checker) Health(ctx context.Context) error { return c(ctx) }
+
 func TestObserve(t *testing.T) {
 	system := &System{
 		run: func(_ context.Context, name string, _ ...string) error {
@@ -23,6 +27,7 @@ func TestObserve(t *testing.T) {
 			return nil
 		},
 		stat: func(string) (fs.FileInfo, error) { return fileInfo{directory: true}, nil },
+		dns:  checker(func(context.Context) error { return nil }),
 	}
 
 	value := system.Observe(context.Background())
@@ -30,7 +35,8 @@ func TestObserve(t *testing.T) {
 		value.Runtimes[0].Version != "8.3" ||
 		value.Databases[0].Status != "unavailable" ||
 		value.Schedulers[0].Status != "healthy" ||
-		value.Backups[0].Status != "healthy" {
+		value.Backups[0].Status != "healthy" ||
+		value.DNS[0].Status != "healthy" {
 		t.Fatalf("capabilities = %+v", value)
 	}
 }

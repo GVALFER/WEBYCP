@@ -34,6 +34,9 @@ const (
 	KindCronSync             = "cron.sync"
 	KindBackupCreate         = "backup.create"
 	KindBackupRestore        = "backup.restore"
+	KindDNSZoneCreate        = "dns_zone.create"
+	KindDNSZoneDelete        = "dns_zone.delete"
+	KindDNSRecordSync        = "dns_record.sync"
 )
 
 var ErrNone = errors.New("no queued jobs")

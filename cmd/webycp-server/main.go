@@ -18,6 +18,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/config"
 	cronjob "github.com/GVALFER/WEBYCP/internal/cron"
 	"github.com/GVALFER/WEBYCP/internal/databases"
+	dnscontrol "github.com/GVALFER/WEBYCP/internal/dns"
 	"github.com/GVALFER/WEBYCP/internal/httpapi"
 	"github.com/GVALFER/WEBYCP/internal/httpx"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
@@ -94,6 +95,11 @@ func main() {
 	packageService := packages.NewService(store)
 	serviceService := services.NewService(store)
 	accountService := accounts.NewService(store, store, agent, packageService, worker.Notify)
+	dnsService := dnscontrol.NewService(store, accountService, store, agent, worker.Notify)
+	if _, err := dnsService.EnsureLocalProvider(ctx, node.ID); err != nil {
+		logger.Error("failed to register local DNS provider", "error", err)
+		os.Exit(1)
+	}
 	websiteService := websites.NewService(store, accountService, store, agent, worker.Notify)
 	databaseService := databases.NewService(store, accountService, store, agent, worker.Notify)
 	cronService := cronjob.NewService(store, accountService, store, agent, worker.Notify)
@@ -123,6 +129,9 @@ func main() {
 	worker.Handle(jobs.KindCertificateRenew, certificateService.Provision)
 	worker.Handle(jobs.KindBackupCreate, backupService.Create)
 	worker.Handle(jobs.KindBackupRestore, backupService.RestoreJob)
+	worker.Handle(jobs.KindDNSZoneCreate, dnsService.ProvisionZone)
+	worker.Handle(jobs.KindDNSZoneDelete, dnsService.ProvisionZone)
+	worker.Handle(jobs.KindDNSRecordSync, dnsService.ProvisionRecord)
 	worker.Handle(jobs.KindNodeProbe, func(ctx context.Context, job jobs.Job) error {
 		return nodeService.Probe(ctx, job.NodeID)
 	})
@@ -181,6 +190,7 @@ func main() {
 			Websites: websiteService, Databases: databaseService, Cron: cronService,
 			Certificates: certificateService,
 			Backups:      backupService,
+			DNS:          dnsService,
 			Nodes:        nodeService, Jobs: jobService,
 			Audit: store, Logger: logger,
 		}),

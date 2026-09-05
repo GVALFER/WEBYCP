@@ -9,6 +9,7 @@ import {
     Code2,
     Clock3,
     Database,
+    Dna,
     Globe2,
     HardDrive,
     LayoutDashboard,
@@ -20,6 +21,7 @@ import {
     Settings2,
     Wrench,
     Users,
+    Waypoints,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -103,6 +105,33 @@ const groups: Group[] = [
                 title: "SSL / TLS",
                 description: "Certificates, renewals and HTTPS policy.",
                 icon: LockKeyhole,
+            },
+        ],
+    },
+    {
+        label: "DNS",
+        icon: Waypoints,
+        children: [
+            {
+                href: "/dns/zones",
+                label: "Zones",
+                title: "DNS Zones",
+                description: "Authoritative DNS zones managed by WEBYCP.",
+                icon: Globe2,
+            },
+            {
+                href: "/dns/providers",
+                label: "Providers",
+                title: "DNS Providers",
+                description: "Authoritative DNS drivers and observed health.",
+                icon: Dna,
+            },
+            {
+                href: "/dns/nameservers",
+                label: "Nameservers",
+                title: "Nameservers",
+                description: "Default authoritative nameservers and TTL.",
+                icon: Server,
             },
         ],
     },
@@ -333,7 +362,7 @@ const NavLink = ({ active, nested = false, page, onNavigate }: NavLinkProps) => 
             {nested && (
                 <span
                     className={cn(
-                        "absolute top-1/2 -left-[1.42rem] size-2 -translate-y-1/2 rounded-full border-2 border-surface",
+                        "absolute top-1/2 left-[-1.42rem] size-2 -translate-y-1/2 rounded-full border-2 border-surface",
                         active ? "bg-accent" : "bg-border",
                     )}
                     aria-hidden="true"

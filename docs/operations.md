@@ -10,7 +10,7 @@ requests by hand.
 Check the control plane before and after maintenance:
 
 ```sh
-sudo systemctl is-active webycp-agent webycp-server webycp-web nginx mysql php8.3-fpm cron
+sudo systemctl is-active webycp-agent webycp-server webycp-web nginx mysql php8.3-fpm cron pdns
 curl --fail --silent --show-error http://127.0.0.1:8080/api/v1/health
 curl --fail --silent --show-error http://127.0.0.1:3000/login >/dev/null
 sudo curl --fail --silent --show-error \
@@ -37,6 +37,34 @@ sudo journalctl \
 
 Do not expose ports 3000 or 8080, or the Agent socket, publicly. They are local
 control-plane interfaces.
+
+## Authoritative DNS
+
+PowerDNS listens on TCP and UDP port 53 of the server's global addresses. Its
+HTTP API is restricted to `127.0.0.1:8081`. Allow inbound TCP and UDP port 53
+before delegating a public zone, then configure two distinct nameserver
+hostnames under **DNS > Nameservers**. The hostnames and any required registrar
+glue records must resolve to authoritative server addresses.
+
+WEBYCP creates zones independently from website hostname bindings. Creating a
+website does not publish DNS automatically. Each managed PowerDNS zone carries
+an internal WEBYCP ownership marker; the Agent will not overwrite or delete a
+foreign zone with the same name.
+
+Check PowerDNS without printing its API key:
+
+```sh
+sudo systemctl --no-pager --full status pdns
+sudo pdns_control ping
+dig @SERVER_IP example.com SOA
+sudo stat -c '%U:%G %a %n' \
+    /etc/webycp/powerdns.key \
+    /var/lib/powerdns/webycp.sqlite3
+```
+
+Expected ownership and modes are `root:root 600` for the API key and
+`pdns:pdns 640` for the authoritative database. Use the panel to change zones
+and records; do not edit the PowerDNS SQLite database directly.
 
 ## Administrator access
 
@@ -78,11 +106,11 @@ are recorded in SQLite.
 
 ### Backup coverage
 
-| Scope | Included | Not included |
-| --- | --- | --- |
-| Files | The managed account home directory | Symlinks; their presence fails the backup |
-| Databases | Dumps of active databases, including routines and events | MySQL users, passwords, and grants |
-| Metadata | Domains, aliases, database definitions, and cron jobs | Account records, sessions, backup plans, certificate records, and private keys |
+| Scope     | Included                                                 | Not included                                                                   |
+| --------- | -------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Files     | The managed account home directory                       | Symlinks; their presence fails the backup                                      |
+| Databases | Dumps of active databases, including routines and events | MySQL users, passwords, and grants                                             |
+| Metadata  | Domains, aliases, database definitions, and cron jobs    | Account records, sessions, backup plans, certificate records, and private keys |
 
 Local artifacts share the managed server's failure domain. Copy
 `/var/backups/webycp` to protected off-host storage or include it in a verified
@@ -134,9 +162,9 @@ For a failed issue or renewal:
 3. Run the health check and inspect the Agent and Nginx logs.
 4. Inspect Certbot's known certificates without reading private keys:
 
-   ```sh
-   sudo certbot certificates
-   ```
+    ```sh
+    sudo certbot certificates
+    ```
 
 5. Correct DNS, firewall, or unrelated Nginx errors, then use **Renew** in the
    panel. Use the panel operation instead of an ad-hoc Certbot command so that
@@ -226,6 +254,7 @@ off-host backup containing at least:
 - `/var/backups/webycp`
 - `/home/wcp_*` and `/home/.webycp-trash`
 - `/etc/webycp`
+- `/var/lib/powerdns/webycp.sqlite3`
 - `/etc/nginx/webycp` and `/etc/nginx/conf.d/webycp.conf`
 - `/etc/letsencrypt`
 - the MySQL state or restorable dumps

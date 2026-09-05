@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
     title: WEBYCP Public API
-    version: 0.8.0
+    version: 0.9.0
     description: Public REST API used by the WEBYCP web application.
 paths:
     /api/v1/health:
@@ -1129,6 +1129,219 @@ paths:
                 "404": { $ref: "#/components/responses/NotFoundError" }
                 "422": { $ref: "#/components/responses/ValidationError" }
                 "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/dns/providers:
+        get:
+            operationId: listDNSProviders
+            summary: List configured DNS providers and observed health
+            security: [{ cookieAuth: [] }]
+            responses:
+                "200":
+                    description: DNS providers.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DNSProviderListResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/dns/settings:
+        get:
+            operationId: getDNSSettings
+            summary: Get authoritative DNS defaults
+            security: [{ cookieAuth: [] }]
+            responses:
+                "200":
+                    description: DNS settings.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DNSSettings" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        put:
+            operationId: updateDNSSettings
+            summary: Update authoritative nameservers and default TTL
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/UpdateDNSSettingsRequest" }
+            responses:
+                "200":
+                    description: Updated DNS settings.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DNSSettings" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/dns/zones:
+        get:
+            operationId: listDNSZones
+            summary: List accessible authoritative DNS zones
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
+            responses:
+                "200":
+                    description: DNS zones.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DNSZoneListResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        post:
+            operationId: createDNSZone
+            summary: Create and queue provisioning for an authoritative DNS zone
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/CreateDNSZoneRequest" }
+            responses:
+                "202":
+                    description: DNS zone provisioning queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DNSZoneJobResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/dns/zones/{dnsZoneId}:
+        get:
+            operationId: getDNSZone
+            summary: Get an accessible authoritative DNS zone
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/DNSZoneID"
+            responses:
+                "200":
+                    description: DNS zone.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DNSZone" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        delete:
+            operationId: deleteDNSZone
+            summary: Delete an authoritative DNS zone
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/DNSZoneID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: DNS zone deletion queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DNSZoneJobResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/dns/zones/{dnsZoneId}/records:
+        get:
+            operationId: listDNSRecords
+            summary: List records in an accessible DNS zone
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/DNSZoneID"
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
+            responses:
+                "200":
+                    description: DNS records.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DNSRecordListResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        post:
+            operationId: createDNSRecord
+            summary: Create and queue synchronization for a DNS record
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/DNSZoneID"
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/WriteDNSRecordRequest" }
+            responses:
+                "202":
+                    description: DNS record synchronization queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DNSRecordJobResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/dns/records/{dnsRecordId}:
+        patch:
+            operationId: updateDNSRecord
+            summary: Update and queue synchronization for a DNS record
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/DNSRecordID"
+                - $ref: "#/components/parameters/CSRFToken"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/WriteDNSRecordRequest" }
+            responses:
+                "202":
+                    description: DNS record synchronization queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DNSRecordJobResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        delete:
+            operationId: deleteDNSRecord
+            summary: Delete and queue synchronization for a DNS record
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/DNSRecordID"
+                - $ref: "#/components/parameters/CSRFToken"
+            responses:
+                "202":
+                    description: DNS record synchronization queued.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/DNSRecordJobResponse" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "500": { $ref: "#/components/responses/InternalError" }
     /api/v1/backup-artifacts/{backupArtifactId}:
         delete:
             operationId: deleteBackupArtifact
@@ -1354,6 +1567,16 @@ components:
             in: path
             required: true
             schema: { type: string }
+        DNSZoneID:
+            name: dnsZoneId
+            in: path
+            required: true
+            schema: { type: string }
+        DNSRecordID:
+            name: dnsRecordId
+            in: path
+            required: true
+            schema: { type: string }
     responses:
         BadRequestError:
             description: The request is malformed.
@@ -1489,7 +1712,17 @@ components:
             type: object
             additionalProperties: false
             required:
-                [id, name, kind, endpoint, status, capabilities, capabilitiesAt, createdAt, updatedAt]
+                [
+                    id,
+                    name,
+                    kind,
+                    endpoint,
+                    status,
+                    capabilities,
+                    capabilitiesAt,
+                    createdAt,
+                    updatedAt,
+                ]
             properties:
                 id:
                     type: string
@@ -1532,7 +1765,7 @@ components:
         ServiceCapabilities:
             type: object
             additionalProperties: false
-            required: [webservers, runtimes, databases, schedulers, backups]
+            required: [webservers, runtimes, databases, schedulers, backups, dns]
             properties:
                 webservers:
                     type: array
@@ -1549,11 +1782,21 @@ components:
                 backups:
                     type: array
                     items: { $ref: "#/components/schemas/ServiceCapability" }
+                dns:
+                    type: array
+                    items: { $ref: "#/components/schemas/ServiceCapability" }
         ServiceDefaults:
             type: object
             additionalProperties: false
             required:
-                [webDriver, runtimeDriver, runtimeVersion, databaseDriver, schedulerDriver, backupDriver]
+                [
+                    webDriver,
+                    runtimeDriver,
+                    runtimeVersion,
+                    databaseDriver,
+                    schedulerDriver,
+                    backupDriver,
+                ]
             properties:
                 webDriver: { type: string, enum: [nginx] }
                 runtimeDriver: { type: string, enum: [phpfpm] }
@@ -1615,7 +1858,16 @@ components:
             type: object
             additionalProperties: false
             required:
-                [websites, domains, aliases, databases, databaseUsers, scheduledTasks, backupPlans, backupRetention]
+                [
+                    websites,
+                    domains,
+                    aliases,
+                    databases,
+                    databaseUsers,
+                    scheduledTasks,
+                    backupPlans,
+                    backupRetention,
+                ]
             properties:
                 websites: { type: integer, format: int64, minimum: 0, maximum: 1000000 }
                 domains: { type: integer, format: int64, minimum: 0, maximum: 1000000 }
@@ -1628,7 +1880,8 @@ components:
         PackageUsage:
             type: object
             additionalProperties: false
-            required: [websites, domains, aliases, databases, databaseUsers, scheduledTasks, backupPlans]
+            required:
+                [websites, domains, aliases, databases, databaseUsers, scheduledTasks, backupPlans]
             properties:
                 websites: { type: integer, format: int64, minimum: 0 }
                 domains: { type: integer, format: int64, minimum: 0 }
@@ -1661,7 +1914,19 @@ components:
         AccountOverview:
             type: object
             additionalProperties: false
-            required: [id, nodeId, name, systemUser, status, enabled, createdAt, updatedAt, package, usage]
+            required:
+                [
+                    id,
+                    nodeId,
+                    name,
+                    systemUser,
+                    status,
+                    enabled,
+                    createdAt,
+                    updatedAt,
+                    package,
+                    usage,
+                ]
             properties:
                 id: { type: string }
                 nodeId: { type: string }
@@ -1723,6 +1988,127 @@ components:
                     $ref: "#/components/schemas/Account"
                 job:
                     $ref: "#/components/schemas/Job"
+        DNSProvider:
+            type: object
+            additionalProperties: false
+            required: [id, nodeId, name, driver, status, createdAt, updatedAt]
+            properties:
+                id: { type: string }
+                nodeId: { type: string }
+                name: { type: string }
+                driver: { type: string, enum: [powerdns] }
+                status: { type: string, enum: [healthy, unavailable, unknown] }
+                createdAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+        DNSProviderListResponse:
+            type: object
+            additionalProperties: false
+            required: [items]
+            properties:
+                items:
+                    type: array
+                    items: { $ref: "#/components/schemas/DNSProvider" }
+        DNSSettings:
+            type: object
+            additionalProperties: false
+            required: [primaryNameserver, secondaryNameserver, defaultTtl, updatedAt]
+            properties:
+                primaryNameserver: { type: string }
+                secondaryNameserver: { type: string }
+                defaultTtl: { type: integer, format: int64, minimum: 60, maximum: 86400 }
+                updatedAt: { type: string, format: date-time }
+        UpdateDNSSettingsRequest:
+            type: object
+            additionalProperties: false
+            required: [primaryNameserver, secondaryNameserver, defaultTtl]
+            properties:
+                primaryNameserver: { type: string, maxLength: 253 }
+                secondaryNameserver: { type: string, maxLength: 253 }
+                defaultTtl: { type: integer, format: int64, minimum: 60, maximum: 86400 }
+        DNSZone:
+            type: object
+            additionalProperties: false
+            required:
+                [id, accountId, nodeId, providerId, name, nameservers, status, createdAt, updatedAt]
+            properties:
+                id: { type: string }
+                accountId: { type: string }
+                nodeId: { type: string }
+                providerId: { type: string }
+                name: { type: string }
+                nameservers:
+                    type: array
+                    minItems: 2
+                    maxItems: 2
+                    items: { type: string }
+                status: { type: string, enum: [pending, active, deleting, error] }
+                createdAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+        CreateDNSZoneRequest:
+            type: object
+            additionalProperties: false
+            required: [accountId, providerId, name]
+            properties:
+                accountId: { type: string }
+                providerId: { type: string }
+                name: { type: string, minLength: 4, maxLength: 253 }
+        DNSZoneListResponse:
+            type: object
+            additionalProperties: false
+            required: [items, pagination]
+            properties:
+                items:
+                    type: array
+                    items: { $ref: "#/components/schemas/DNSZone" }
+                pagination: { $ref: "#/components/schemas/Pagination" }
+        DNSZoneJobResponse:
+            type: object
+            additionalProperties: false
+            required: [zone, job]
+            properties:
+                zone: { $ref: "#/components/schemas/DNSZone" }
+                job: { $ref: "#/components/schemas/Job" }
+        DNSRecord:
+            type: object
+            additionalProperties: false
+            required: [id, zoneId, name, type, content, ttl, priority, status, createdAt, updatedAt]
+            properties:
+                id: { type: string }
+                zoneId: { type: string }
+                name: { type: string }
+                type: { type: string, enum: [A, AAAA, CNAME, MX, TXT] }
+                content: { type: string }
+                ttl: { type: integer, format: int64 }
+                priority: { type: integer, format: int64 }
+                status: { type: string, enum: [pending, active, deleting, error] }
+                createdAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+        WriteDNSRecordRequest:
+            type: object
+            additionalProperties: false
+            required: [name, type, content, ttl, priority]
+            properties:
+                name: { type: string, minLength: 1, maxLength: 253 }
+                type: { type: string, enum: [A, AAAA, CNAME, MX, TXT] }
+                content: { type: string, minLength: 1, maxLength: 1000 }
+                ttl: { type: integer, format: int64, minimum: 60, maximum: 86400 }
+                priority: { type: integer, format: int64, minimum: 0, maximum: 65535 }
+        DNSRecordListResponse:
+            type: object
+            additionalProperties: false
+            required: [items, pagination]
+            properties:
+                items:
+                    type: array
+                    items: { $ref: "#/components/schemas/DNSRecord" }
+                pagination: { $ref: "#/components/schemas/Pagination" }
+        DNSRecordJobResponse:
+            type: object
+            additionalProperties: false
+            required: [record, job]
+            properties:
+                record: { $ref: "#/components/schemas/DNSRecord" }
+                job: { $ref: "#/components/schemas/Job" }
         UpdateEnabledRequest:
             type: object
             additionalProperties: false
@@ -1733,7 +2119,21 @@ components:
             type: object
             additionalProperties: false
             required:
-                [id, accountId, nodeId, name, kind, documentRoot, webDriver, runtimeDriver, runtimeVersion, status, enabled, createdAt, updatedAt]
+                [
+                    id,
+                    accountId,
+                    nodeId,
+                    name,
+                    kind,
+                    documentRoot,
+                    webDriver,
+                    runtimeDriver,
+                    runtimeVersion,
+                    status,
+                    enabled,
+                    createdAt,
+                    updatedAt,
+                ]
             properties:
                 id: { type: string }
                 accountId: { type: string }
@@ -1758,7 +2158,8 @@ components:
         CreateWebsiteRequest:
             type: object
             additionalProperties: false
-            required: [accountId, name, primaryDomain, kind, webDriver, runtimeDriver, runtimeVersion]
+            required:
+                [accountId, name, primaryDomain, kind, webDriver, runtimeDriver, runtimeVersion]
             properties:
                 accountId: { type: string }
                 name:
@@ -2035,7 +2436,8 @@ components:
         Database:
             type: object
             additionalProperties: false
-            required: [id, accountId, nodeId, name, systemName, driver, status, createdAt, updatedAt]
+            required:
+                [id, accountId, nodeId, name, systemName, driver, status, createdAt, updatedAt]
             properties:
                 id: { type: string }
                 accountId: { type: string }
@@ -2049,7 +2451,8 @@ components:
         DatabaseUser:
             type: object
             additionalProperties: false
-            required: [id, accountId, nodeId, name, systemName, driver, status, createdAt, updatedAt]
+            required:
+                [id, accountId, nodeId, name, systemName, driver, status, createdAt, updatedAt]
             properties:
                 id: { type: string }
                 accountId: { type: string }
@@ -2226,7 +2629,16 @@ components:
             type: object
             additionalProperties: false
             required:
-                [accountId, name, schedule, retentionCount, storageDriver, includeFiles, includeDatabases, enabled]
+                [
+                    accountId,
+                    name,
+                    schedule,
+                    retentionCount,
+                    storageDriver,
+                    includeFiles,
+                    includeDatabases,
+                    enabled,
+                ]
             properties:
                 accountId: { type: string }
                 name: { type: string, minLength: 1, maxLength: 80 }

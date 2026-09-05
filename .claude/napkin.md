@@ -89,6 +89,15 @@
 10. **[2026-09-04] Separate observed capabilities from configured resource drivers**
     Do instead: let the Agent report honest per-service health, snapshot it on the Server, use global defaults only to preselect create forms, and persist the selected driver on every resource.
 
+## DNS & Provider State
+
+1. **[2026-09-05] DNS record retries must retain the last applied RRset identity**
+   Do instead: persist the last successfully synchronized record name and type, then replace both the old and desired RRsets atomically so repeated failed renames or type changes cannot leave orphaned provider records.
+2. **[2026-09-05] Keep local DNS credentials inside the Agent boundary**
+   Do instead: bind the PowerDNS API to loopback, keep its key in a root-only file, pass only typed DNS operations across the Agent socket, and reject deletion or mutation of zones without WEBYCP's immutable ownership marker.
+3. **[2026-09-05] PowerDNS API zone defaults contain an invalid SOA primary**
+   Do instead: create each zone atomically with explicit SOA and NS RRsets plus `SOA-EDIT-API=DEFAULT`; verify that later API record changes advance the serial.
+
 ## User Directives
 
 1. **[2026-09-03] Converse in European Portuguese**
