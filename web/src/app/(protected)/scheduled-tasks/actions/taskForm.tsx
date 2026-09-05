@@ -153,7 +153,7 @@ const TaskForm = ({ accounts, driver, task }: TaskFormProps) => {
                 <FormInput
                     inputClassName="font-mono"
                     name="schedule"
-                    label="Schedule"
+                    label="Schedule (UTC)"
                     maxLength={100}
                     required
                 />

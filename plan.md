@@ -131,13 +131,14 @@ page.tsx (Server Component)
    -> fetch initial typed data
    -> pass data as props
 route client component
-   -> seed SWR with fallbackData
+   -> display SSR data with fallbackData
    -> render shared components
 ```
 
-`fallbackData` is only the SWR mechanism for seeding the cache with the SSR
-response. It is not a compatibility fallback and must not fabricate missing
-business data.
+`fallbackData` displays the SSR response without populating the SWR cache. Do
+not seed the cache through a mount-time `mutate`. Initial mount skips duplicate
+revalidation; changed keys revalidate normally, including a return to the SSR
+page. Never fabricate missing business data.
 
 Additional rules:
 
@@ -605,7 +606,7 @@ Verification:
 ### Step 6 — Backups and destinations
 
 Status: implemented and deployed to the Ubuntu 24.04 test VPS as `0.1.1-rc.18`.
-Ready for review; Step 7 has not started. The local driver contract and observed
+Reviewed; Step 7 has also passed VPS acceptance. The local driver contract and observed
 node capabilities are reused; no remote provider has been selected.
 
 Acceptance evidence:
@@ -660,6 +661,84 @@ Verification:
 
 ### Step 7 — Scheduled Tasks and operational visibility
 
+Status: implemented, deployed as `0.1.1-rc.19` and validated on the Ubuntu 24.04
+test VPS. Awaiting review before Step 8. The archive-format change was explicitly
+approved before deployment.
+
+Local acceptance evidence:
+
+- `make check` passed, including regenerated contracts, migration tests, Go vet,
+  Go tests, frontend lint/types/tests and both application builds.
+- Targeted `-race` tests passed for tasks, worker jobs, SQLite, public API,
+  Agent protocol and the crontab driver.
+- Migration tests preserve existing schedules, kind/driver, timestamps, queued
+  jobs and Package usage. Old audit events gain no fabricated Job correlation.
+- Lifecycle tests cover create, update, disable, enable, retry and delete,
+  including non-member rejection and Agent failures. Driver tests reject root,
+  mismatched ownership and invalid commands while preserving installed files.
+- Global Playwright verified local task create/edit/reopen/enable/delete and
+  required-field rejection. The temporary task was removed. This isolated
+  fixture has no privileged Agent; real Linux command execution is not claimed.
+- Jobs detail and filtered Audit Log correctly show accepted requests and final
+  failures with the same Job ID. Desktop and 390 x 844 mobile views were inspected
+  in light/dark themes; no console errors or warnings occurred.
+- Pagination checks pass for 1 → 2 → 1, direct SSR on page 2 and independent
+  backup tables. Initial SSR requests are not duplicated; URL changes fetch the
+  affected list without document reloads or mount-time cache mutations.
+- Security checks passed: no vulnerable Go call paths, no production npm
+  advisories, and successful history/tree secret scans plus the negative fixture.
+  Govulncheck noted one advisory in a required module outside imported call paths.
+
+VPS acceptance evidence (2026-09-05):
+
+- Release checks, Linux amd64 build, artifact secret scan and transferred
+  SHA-256 passed. The upgrade migrated SQLite and restored all eight services;
+  Nginx, PHP-FPM and SQLite integrity checks passed.
+- Existing task `Smoke marker` migrated to kind `command`; its installed
+  crontab remained byte-for-byte unchanged.
+- Temporary Account `Step7 VPS QA` exercised create, edit, disable, enable and
+  delete through the global Playwright MCP. Cron executed as UID 1003, not root,
+  with the Account home as its working directory at 17:30 UTC. Disabling stopped
+  the 17:31 invocation; the edited two-minute schedule executed at 17:32.
+- A fresh v4 archive retained typed task metadata. Metadata-only restore
+  restored the original definition and crontab without replacing account files;
+  the restored task executed at 17:33. Deletion removed the crontab and prevented
+  the 17:34 invocation. All lifecycle Jobs succeeded, with request and final
+  execution audit events linked by Job ID.
+- Jobs detail and filtered Audit Log rendered correctly. Unauthenticated
+  requests returned 401. Audit pagination 1 → 2 → 1 made one list request per
+  changed key and no duplicate initial SSR fetch.
+- The temporary task, plan, archive and Account were removed. The Account home
+  remains recoverable at `/home/.webycp-trash/94fd374b7df00761674a83baf85ce033`;
+  the temporary archive was permanently deleted. Existing Accounts were retained.
+- Both pre-upgrade archives (v1 and v3) were copied and checksum-verified under
+  `/var/lib/webycp/preserved/before-rc19-Zhl8yTVg`, mode 0700, outside plan retention.
+  A new v4 `Smoke backup` archive, `822632185696d847b5fd6fdbdb9a836c`, passed live
+  preview verification with files, database contents and metadata. Normal retention
+  removed the active v1 archive; its protected copy remains intact.
+- Upgrade recovery point:
+  `/var/lib/webycp/upgrades/before-0.1.1-rc.19-20260905T172752Z.NNFCR5`.
+  This is a control-plane rollback point, not a full-host backup.
+- Known stabilization issue: previewing an old-format archive is rejected before
+  restore, but the API currently returns a generic 500 instead of a descriptive
+  validation error. The fresh v4 preview and restore passed.
+- The browser was left open. A user edit to `web/src/index.css` made after the
+  release build is preserved locally and is not part of rc.19.
+
+Implementation boundaries:
+
+- `command` is the only supported task kind; HTTP, backup and maintenance tasks
+  are not exposed yet. The execution identity is derived from the Account;
+  clients cannot submit `runAs` or privileged arbitrary commands.
+- Jobs show configuration synchronization, attempts and final outcomes, not
+  every command execution performed later by the cron daemon.
+- Overview shows timestamped last-observed capabilities. Historical Monitoring
+  stays hidden until collection and retention are implemented.
+- Backup format 4 replaces `cronJobs` metadata with typed `scheduledTasks`.
+  Existing version 3 archives are preserved but rejected by version 4 readers.
+  The pre-release compatibility impact was approved before deployment; keep the
+  matching old release and recovery snapshot for any required old restore.
+
 Deliverables:
 
 - Rename Cron Jobs to Scheduled Tasks across API, backend, Agent, routes, and
@@ -681,6 +760,8 @@ Verification:
 
 Deliverables:
 
+- Return a descriptive validation error for unsupported or invalid backup
+  archives instead of a generic 500, without adding old-format compatibility.
 - Remove development-only data and obsolete migrations.
 - Squash the schema into the first public baseline.
 - Complete installation, upgrade, rollback, backup, and disaster-recovery
@@ -713,5 +794,5 @@ A step is complete only when:
 
 ## 12. Immediate Next Step
 
-Review **Step 6 — Backups and destinations** on the test VPS. Its outstanding
-browser checks are complete. Do not begin Step 7 until this step has been reviewed.
+Review **Step 7 — Scheduled Tasks and operational visibility** on the test VPS
+(`0.1.1-rc.19`). Do not begin Step 8 without approval.

@@ -85,7 +85,7 @@ func TestPackageCountLimits(t *testing.T) {
 		{
 			name: "scheduled tasks", resource: packages.ScheduledTasks,
 			create: func(ctx context.Context, store *Store, account accounts.Account, n int) error {
-				_, _, err := store.CreateScheduledTask(ctx, testCron(account, n), limitJob(n, account.NodeID, jobs.KindTaskSync))
+				_, _, err := store.CreateScheduledTask(ctx, testTask(account, n), limitJob(n, account.NodeID, jobs.KindTaskSync))
 				return err
 			},
 		},
@@ -160,17 +160,17 @@ func TestConcurrentCreatesCannotExceedPackageLimit(t *testing.T) {
 
 func TestLowerPackageKeepsExistingResourcesUsable(t *testing.T) {
 	ctx, store, account := limitStore(t)
-	cron := testCron(account, 1)
-	if _, _, err := store.CreateScheduledTask(ctx, cron, limitJob(1, account.NodeID, jobs.KindTaskSync)); err != nil {
+	task := testTask(account, 1)
+	if _, _, err := store.CreateScheduledTask(ctx, task, limitJob(1, account.NodeID, jobs.KindTaskSync)); err != nil {
 		t.Fatal(err)
 	}
 	setLimit(t, ctx, store, account, func(value *packages.Limits) { value.ScheduledTasks = 0 })
 
-	cron.Name = "Updated task"
-	if _, _, err := store.UpdateScheduledTask(ctx, cron, limitJob(2, account.NodeID, jobs.KindTaskSync)); err != nil {
+	task.Name = "Updated task"
+	if _, _, err := store.UpdateScheduledTask(ctx, task, limitJob(2, account.NodeID, jobs.KindTaskSync)); err != nil {
 		t.Fatalf("update existing over-limit resource: %v", err)
 	}
-	if _, _, err := store.CreateScheduledTask(ctx, testCron(account, 2), limitJob(3, account.NodeID, jobs.KindTaskSync)); err == nil {
+	if _, _, err := store.CreateScheduledTask(ctx, testTask(account, 2), limitJob(3, account.NodeID, jobs.KindTaskSync)); err == nil {
 		t.Fatal("new resource was created above the lowered limit")
 	}
 	overview, err := store.AccountOverview(ctx, account.ID)
@@ -328,7 +328,7 @@ func testDatabase(account accounts.Account, n int) databases.Database {
 	}
 }
 
-func testCron(account accounts.Account, n int) tasks.ScheduledTask {
+func testTask(account accounts.Account, n int) tasks.ScheduledTask {
 	now := time.Now().UTC()
 	return tasks.ScheduledTask{
 		ID: limitID(3000 + n), AccountID: account.ID, NodeID: account.NodeID,

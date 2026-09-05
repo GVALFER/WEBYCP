@@ -24,6 +24,8 @@ func TestAuditRequiresAdministrator(t *testing.T) {
 	for _, route := range []authedHandler{h.listJobs, h.getJob} {
 		response := httptest.NewRecorder()
 		route(response, request, auth.Session{User: auth.User{Role: "user"}})
-		if response.Code != http.StatusForbidden { t.Fatalf("job user status = %d", response.Code) }
+		if response.Code != http.StatusForbidden {
+			t.Fatalf("job user status = %d", response.Code)
+		}
 	}
 }

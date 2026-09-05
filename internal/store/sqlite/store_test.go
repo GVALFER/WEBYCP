@@ -388,9 +388,9 @@ func TestV1ResourceStoresCreateAtomically(t *testing.T) {
 	if err != nil || database.Name != "app" || job.Status != "queued" {
 		t.Fatalf("database = %+v, job = %+v, error = %v", database, job, err)
 	}
-	cron, _, err := store.CreateScheduledTask(ctx, tasks.ScheduledTask{ID: "fedcba9876543210fedcba9876543210", AccountID: account.ID, NodeID: node.ID, Name: "Hourly", Schedule: "0 * * * *", Command: "php task.php", SchedulerDriver: services.Crontab, Kind: "command", Enabled: true, Status: "pending", CreatedAt: now, UpdatedAt: now}, testJob("job-cron", node.ID, "user-1", jobs.KindTaskSync, now))
-	if err != nil || !cron.Enabled {
-		t.Fatalf("cron = %+v, error = %v", cron, err)
+	task, _, err := store.CreateScheduledTask(ctx, tasks.ScheduledTask{ID: "fedcba9876543210fedcba9876543210", AccountID: account.ID, NodeID: node.ID, Name: "Hourly", Schedule: "0 * * * *", Command: "php task.php", SchedulerDriver: services.Crontab, Kind: "command", Enabled: true, Status: "pending", CreatedAt: now, UpdatedAt: now}, testJob("job-task", node.ID, "user-1", jobs.KindTaskSync, now))
+	if err != nil || !task.Enabled {
+		t.Fatalf("task = %+v, error = %v", task, err)
 	}
 	plan, err := store.CreateBackupPlan(ctx, backups.Plan{ID: "11111111111111111111111111111111", AccountID: account.ID, NodeID: node.ID, Name: "Daily", Schedule: "0 3 * * *", RetentionCount: 7, StorageDriver: services.Local, IncludeFiles: true, IncludeDatabases: true, Enabled: true, CreatedAt: now, UpdatedAt: now})
 	if err != nil || plan.RetentionCount != 7 {
@@ -429,8 +429,8 @@ func TestV1ResourceStoresCreateAtomically(t *testing.T) {
 	if database, err := store.Database(ctx, metadata.Databases[0].ID); err != nil || database.Status != "active" {
 		t.Fatalf("restored database = %+v, error = %v", database, err)
 	}
-	if cron, err := store.ScheduledTask(ctx, metadata.ScheduledTasks[0].ID); err != nil || cron.Status != "active" {
-		t.Fatalf("restored scheduled task = %+v, error = %v", cron, err)
+	if task, err := store.ScheduledTask(ctx, metadata.ScheduledTasks[0].ID); err != nil || task.Status != "active" {
+		t.Fatalf("restored scheduled task = %+v, error = %v", task, err)
 	}
 	metadata.Websites[0].NodeID = "ffffffffffffffffffffffffffffffff"
 	if err := store.RestoreMetadata(ctx, metadata); err == nil {

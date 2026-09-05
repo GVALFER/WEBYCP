@@ -64,7 +64,7 @@ func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventPara
 }
 
 const listAuditEventsPage = `-- name: ListAuditEventsPage :many
-SELECT id, user_id, "action", resource_type, resource_id, result, metadata, created_at, job_id FROM audit_events
+SELECT id, user_id, action, resource_type, resource_id, result, created_at, job_id FROM audit_events
 WHERE ?1 = '' OR job_id = ?1
 ORDER BY created_at DESC, id DESC
 LIMIT ?3 OFFSET ?2
@@ -76,15 +76,26 @@ type ListAuditEventsPageParams struct {
 	PageSize   int64       `json:"page_size"`
 }
 
-func (q *Queries) ListAuditEventsPage(ctx context.Context, arg ListAuditEventsPageParams) ([]AuditEvent, error) {
+type ListAuditEventsPageRow struct {
+	ID           string         `json:"id"`
+	UserID       sql.NullString `json:"user_id"`
+	Action       string         `json:"action"`
+	ResourceType string         `json:"resource_type"`
+	ResourceID   sql.NullString `json:"resource_id"`
+	Result       string         `json:"result"`
+	CreatedAt    int64          `json:"created_at"`
+	JobID        sql.NullString `json:"job_id"`
+}
+
+func (q *Queries) ListAuditEventsPage(ctx context.Context, arg ListAuditEventsPageParams) ([]ListAuditEventsPageRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAuditEventsPage, arg.JobID, arg.PageOffset, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []AuditEvent{}
+	items := []ListAuditEventsPageRow{}
 	for rows.Next() {
-		var i AuditEvent
+		var i ListAuditEventsPageRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -92,7 +103,6 @@ func (q *Queries) ListAuditEventsPage(ctx context.Context, arg ListAuditEventsPa
 			&i.ResourceType,
 			&i.ResourceID,
 			&i.Result,
-			&i.Metadata,
 			&i.CreatedAt,
 			&i.JobID,
 		); err != nil {

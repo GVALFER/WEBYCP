@@ -86,6 +86,15 @@ through command-line arguments, environment variables, or service logs.
 
 ## Account backups
 
+The current pre-release archive format is version 4. It stores typed
+`scheduledTasks` metadata instead of `cronJobs`. The migration does not convert
+or delete version 3 archives, but version 4 readers cannot preview or restore
+them. Normal plan retention still applies; keep any required old archive in a
+separate protected copy.
+Before upgrading, retain the matching old release and a full-host recovery
+point if an old archive may be needed. After upgrading, create and verify new
+account backups before relying on them for recovery.
+
 Create or edit plans from **Backups → Plans** in the panel. A plan belongs to one active
 hosting account and may contain its files, databases, or both. An empty schedule
 makes the plan manual-only; scheduled plans use standard five-field cron syntax
@@ -152,6 +161,32 @@ from step 1 is the recovery point.
 When metadata is restored, enabled domains and scheduled tasks are reconciled with the
 host. Existing active certificate records are reapplied, but certificate files
 and certificate records are not created from the account artifact.
+
+## Scheduled tasks and operational history
+
+Create and edit tasks under **Scheduled Tasks → Tasks**. The initial kind is
+`command`, using the `crontab` driver. The Agent writes an account-specific file
+in `/etc/cron.d`, derives its Linux identity from the Account and verifies its
+WEBYCP ownership marker. Commands run as that identity, from its home directory,
+never as root. Newlines, NUL characters and cron percent expansion are rejected.
+
+The supported server configuration uses UTC. Verify `timedatectl show -p Timezone`
+before enabling schedules: Ubuntu's cron daemon schedules against the server's
+timezone, not the administrator's display preference. Do not change the host
+timezone without reviewing existing schedules. Backup-plan scheduling remains
+UTC inside the Go server.
+
+Task changes are queued. Check **System → Jobs**, open the relevant `task.sync`
+job and review its attempts, steps and final status. A successful synchronization
+means the crontab definition was installed or removed; it does not prove that
+the command's next scheduled execution succeeded. Per-execution command output
+and exit-code history are not collected by the panel yet.
+
+The job detail links to **System → Audit Log**, filtered by the same Job ID.
+Request success means the change was accepted; `job.execute` records the final
+worker outcome. Legacy events without a Job ID remain unlinked. Job and audit
+reads require administrator access; audit responses exclude command contents
+and secret metadata. These pages refresh on focus, without polling.
 
 ## Certificate operations
 

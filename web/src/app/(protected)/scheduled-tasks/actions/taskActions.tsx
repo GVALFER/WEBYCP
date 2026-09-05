@@ -59,7 +59,7 @@ const TaskActions = ({ item }: TaskActionsProps) => {
                         },
                     })
                     .json<ScheduledTaskResponse>(),
-            item.enabled ? "Scheduled task disabled" : "Scheduled task enabled",
+            item.enabled ? "Scheduled task disable queued" : "Scheduled task enable queued",
         );
 
     const remove = () =>

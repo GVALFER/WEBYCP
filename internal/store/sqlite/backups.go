@@ -396,20 +396,20 @@ func (s *Store) RestoreMetadata(ctx context.Context, value backupfmt.Metadata) e
 			return err
 		}
 	}
-	for _, cron := range value.ScheduledTasks {
-		if validate.ID("scheduledTaskId", cron.ID) != nil || !account.NodeID.Valid || cron.NodeID != account.NodeID.String || cron.SchedulerDriver != services.Crontab || cron.Kind != "command" {
+	for _, task := range value.ScheduledTasks {
+		if validate.ID("scheduledTaskId", task.ID) != nil || !account.NodeID.Valid || task.NodeID != account.NodeID.String || task.SchedulerDriver != services.Crontab || task.Kind != "command" {
 			return fmt.Errorf("restored scheduled task metadata is invalid")
 		}
-		if _, err := validate.ResourceName(cron.Name); err != nil {
+		if _, err := validate.ResourceName(task.Name); err != nil {
 			return err
 		}
-		if _, err := validate.CronSchedule(cron.Schedule, false); err != nil {
+		if _, err := validate.CronSchedule(task.Schedule, false); err != nil {
 			return err
 		}
-		if _, err := validate.CronCommand(cron.Command); err != nil {
+		if _, err := validate.CronCommand(task.Command); err != nil {
 			return err
 		}
-		current, getErr := q.GetScheduledTask(ctx, cron.ID)
+		current, getErr := q.GetScheduledTask(ctx, task.ID)
 		if getErr == nil && current.AccountID != value.AccountID {
 			return fmt.Errorf("restored scheduled task belongs to another account")
 		}
@@ -421,8 +421,8 @@ func (s *Store) RestoreMetadata(ctx context.Context, value backupfmt.Metadata) e
 				return err
 			}
 		}
-		enabled := boolValue(cron.Enabled)
-		if err := q.UpsertRestoredScheduledTask(ctx, dbgen.UpsertRestoredScheduledTaskParams{Kind: cron.Kind, ID: cron.ID, AccountID: value.AccountID, NodeID: cron.NodeID, Name: cron.Name, Schedule: cron.Schedule, Command: cron.Command, SchedulerDriver: cron.SchedulerDriver, Enabled: enabled, Column10: enabled, CreatedAt: timeValue(now), UpdatedAt: timeValue(now)}); err != nil {
+		enabled := boolValue(task.Enabled)
+		if err := q.UpsertRestoredScheduledTask(ctx, dbgen.UpsertRestoredScheduledTaskParams{Kind: task.Kind, ID: task.ID, AccountID: value.AccountID, NodeID: task.NodeID, Name: task.Name, Schedule: task.Schedule, Command: task.Command, SchedulerDriver: task.SchedulerDriver, Enabled: enabled, Column10: enabled, CreatedAt: timeValue(now), UpdatedAt: timeValue(now)}); err != nil {
 			return err
 		}
 	}

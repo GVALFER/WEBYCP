@@ -53,7 +53,7 @@ const Tasks = ({ accounts, tasks, settings: initialSettings }: Props) => {
         },
         {
             id: "schedule",
-            label: "Schedule",
+            label: "Schedule (UTC)",
             cellClassName: "whitespace-nowrap font-mono text-xs text-foreground-500",
             render: (task) => task.schedule,
         },

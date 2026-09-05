@@ -798,7 +798,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List recent jobs */
+        /** List recent jobs (administrator only) */
         get: operations["listJobs"];
         put?: never;
         post?: never;
@@ -815,7 +815,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a job and its steps */
+        /** Get a job and its steps (administrator only) */
         get: operations["getJob"];
         put?: never;
         post?: never;
@@ -1635,6 +1635,7 @@ export interface operations {
                     "application/json": components["schemas"]["AuditEventListResponse"];
                 };
             };
+            400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["ForbiddenError"];
             422: components["responses"]["ValidationError"];
@@ -3584,6 +3585,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -3608,6 +3610,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
             404: components["responses"]["NotFoundError"];
             500: components["responses"]["InternalError"];
         };
