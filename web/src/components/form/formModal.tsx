@@ -37,55 +37,52 @@ export const FormModal = ({
     onOpenChange,
     onSubmit,
 }: Props) => (
-    <>
+    <Modal isOpen={open} onOpenChange={onOpenChange}>
         <Button
             isIconOnly={!triggerText}
             size="sm"
             variant={triggerVariant}
             aria-label={triggerLabel}
-            onPress={() => onOpenChange(true)}
         >
             {triggerIcon ?? <Plus className="size-4" aria-hidden="true" />}
             {triggerText}
         </Button>
 
         {open && (
-            <Modal isOpen onOpenChange={onOpenChange}>
-                <Modal.Backdrop variant="blur">
-                    <Modal.Container placement="center" size={size}>
-                        <Modal.Dialog>
-                            <form onSubmit={onSubmit}>
-                                <Modal.CloseTrigger aria-label="Close" />
-                                <Modal.Header>
-                                    <Modal.Heading>{title}</Modal.Heading>
-                                    <div className="mt-1 text-sm font-normal text-foreground-500">
-                                        {description}
-                                    </div>
-                                </Modal.Header>
-                                <Modal.Body className="space-y-4">{children}</Modal.Body>
-                                <Modal.Footer>
-                                    <Button
-                                        variant="tertiary"
-                                        isDisabled={pending}
-                                        onPress={() => onOpenChange(false)}
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        variant="primary"
-                                        isPending={pending}
-                                        isDisabled={submitDisabled}
-                                    >
-                                        {pending ? <Spinner color="current" size="sm" /> : null}
-                                        {submitLabel}
-                                    </Button>
-                                </Modal.Footer>
-                            </form>
-                        </Modal.Dialog>
-                    </Modal.Container>
-                </Modal.Backdrop>
-            </Modal>
+            <Modal.Backdrop variant="blur">
+                <Modal.Container placement="center" size={size}>
+                    <Modal.Dialog>
+                        <form onSubmit={onSubmit}>
+                            <Modal.CloseTrigger aria-label="Close" />
+                            <Modal.Header>
+                                <Modal.Heading>{title}</Modal.Heading>
+                                <div className="mt-1 text-sm font-normal text-foreground-500">
+                                    {description}
+                                </div>
+                            </Modal.Header>
+                            <Modal.Body className="space-y-4">{children}</Modal.Body>
+                            <Modal.Footer>
+                                <Button
+                                    variant="tertiary"
+                                    isDisabled={pending}
+                                    onPress={() => onOpenChange(false)}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    variant="primary"
+                                    isPending={pending}
+                                    isDisabled={submitDisabled}
+                                >
+                                    {pending ? <Spinner color="current" size="sm" /> : null}
+                                    {submitLabel}
+                                </Button>
+                            </Modal.Footer>
+                        </form>
+                    </Modal.Dialog>
+                </Modal.Container>
+            </Modal.Backdrop>
         )}
-    </>
+    </Modal>
 );

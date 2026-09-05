@@ -118,6 +118,7 @@ func decodePackage(w http.ResponseWriter, r *http.Request) (packages.Package, bo
 			ScheduledTasks:  request.Limits.ScheduledTasks,
 			BackupPlans:     request.Limits.BackupPlans,
 			BackupRetention: request.Limits.BackupRetention,
+			FTPAccounts:     request.Limits.FtpAccounts,
 		},
 	}, true
 }
@@ -132,6 +133,7 @@ func packageResponse(value packages.Package) publicapi.Package {
 			ScheduledTasks:  value.Limits.ScheduledTasks,
 			BackupPlans:     value.Limits.BackupPlans,
 			BackupRetention: value.Limits.BackupRetention,
+			FtpAccounts:     value.Limits.FTPAccounts,
 		},
 		AccountCount: value.AccountCount,
 		CreatedAt:    value.CreatedAt, UpdatedAt: value.UpdatedAt,

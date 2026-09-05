@@ -82,6 +82,7 @@ func (s *Store) UpdatePackage(ctx context.Context, value packages.Package) (pack
 		MaxDatabases: value.Limits.Databases, MaxDatabaseUsers: value.Limits.DatabaseUsers,
 		MaxScheduledTasks: value.Limits.ScheduledTasks, MaxBackupPlans: value.Limits.BackupPlans,
 		MaxBackupRetention: value.Limits.BackupRetention, UpdatedAt: timeValue(value.UpdatedAt), ID: value.ID,
+		MaxFtpAccounts: value.Limits.FTPAccounts,
 	})
 	if err != nil {
 		return packages.Package{}, err
@@ -120,6 +121,7 @@ func createPackageParams(value packages.Package) dbgen.CreatePackageParams {
 		MaxDatabases: value.Limits.Databases, MaxDatabaseUsers: value.Limits.DatabaseUsers,
 		MaxScheduledTasks: value.Limits.ScheduledTasks, MaxBackupPlans: value.Limits.BackupPlans,
 		MaxBackupRetention: value.Limits.BackupRetention,
+		MaxFtpAccounts:     value.Limits.FTPAccounts,
 		CreatedAt:          timeValue(value.CreatedAt), UpdatedAt: timeValue(value.UpdatedAt),
 	}
 }
@@ -132,6 +134,7 @@ func packageValue(row dbgen.Package, accountCount int64) packages.Package {
 			Databases: row.MaxDatabases, DatabaseUsers: row.MaxDatabaseUsers,
 			ScheduledTasks: row.MaxScheduledTasks, BackupPlans: row.MaxBackupPlans,
 			BackupRetention: row.MaxBackupRetention,
+			FTPAccounts:     row.MaxFtpAccounts,
 		},
 		AccountCount: accountCount, CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt),
 	}
@@ -145,6 +148,7 @@ func packageOverviewValue(row dbgen.PackageOverview) packages.Package {
 			Databases: row.MaxDatabases, DatabaseUsers: row.MaxDatabaseUsers,
 			ScheduledTasks: row.MaxScheduledTasks, BackupPlans: row.MaxBackupPlans,
 			BackupRetention: row.MaxBackupRetention,
+			FTPAccounts:     row.MaxFtpAccounts,
 		},
 		AccountCount: row.AccountCount, CreatedAt: timeFrom(row.CreatedAt), UpdatedAt: timeFrom(row.UpdatedAt),
 	}
@@ -160,6 +164,7 @@ const (
 	limitDatabaseUsers
 	limitScheduledTasks
 	limitBackupPlans
+	limitFTPAccounts
 )
 
 func requireCapacity(ctx context.Context, tx *sql.Tx, accountID string, kind limitKind) error {
@@ -171,12 +176,13 @@ func requireCapacity(ctx context.Context, tx *sql.Tx, accountID string, kind lim
 		`SELECT packages.max_database_users, (SELECT COUNT(*) FROM database_users WHERE database_users.account_id = accounts.id) FROM accounts JOIN account_packages ON account_packages.account_id = accounts.id JOIN packages ON packages.id = account_packages.package_id WHERE accounts.id = ?`,
 		`SELECT packages.max_scheduled_tasks, (SELECT COUNT(*) FROM scheduled_tasks WHERE scheduled_tasks.account_id = accounts.id) FROM accounts JOIN account_packages ON account_packages.account_id = accounts.id JOIN packages ON packages.id = account_packages.package_id WHERE accounts.id = ?`,
 		`SELECT packages.max_backup_plans, (SELECT COUNT(*) FROM backup_plans WHERE backup_plans.account_id = accounts.id) FROM accounts JOIN account_packages ON account_packages.account_id = accounts.id JOIN packages ON packages.id = account_packages.package_id WHERE accounts.id = ?`,
+		`SELECT packages.max_ftp_accounts, (SELECT COUNT(*) FROM ftp_accounts WHERE ftp_accounts.account_id = accounts.id) FROM accounts JOIN account_packages ON account_packages.account_id = accounts.id JOIN packages ON packages.id = account_packages.package_id WHERE accounts.id = ?`,
 	}
 	resources := [...]packages.Resource{
 		packages.Websites, packages.Domains, packages.Aliases, packages.Databases,
-		packages.DatabaseUsers, packages.ScheduledTasks, packages.BackupPlans,
+		packages.DatabaseUsers, packages.ScheduledTasks, packages.BackupPlans, packages.FTPAccounts,
 	}
-	if kind < limitWebsites || kind > limitBackupPlans {
+	if kind < limitWebsites || kind > limitFTPAccounts {
 		return fmt.Errorf("unknown package limit")
 	}
 	var limit, used int64

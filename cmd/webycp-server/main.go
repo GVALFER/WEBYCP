@@ -18,6 +18,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/config"
 	"github.com/GVALFER/WEBYCP/internal/databases"
 	dnscontrol "github.com/GVALFER/WEBYCP/internal/dns"
+	"github.com/GVALFER/WEBYCP/internal/ftp"
 	"github.com/GVALFER/WEBYCP/internal/httpapi"
 	"github.com/GVALFER/WEBYCP/internal/httpx"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
@@ -113,6 +114,7 @@ func main() {
 	websiteService := websites.NewService(store, accountService, store, agent, worker.Notify)
 	databaseService := databases.NewService(store, accountService, store, agent, worker.Notify)
 	taskService := tasks.NewService(store, accountService, store, agent, worker.Notify)
+	ftpService := ftp.NewService(store, accountService, store, agent, worker.Notify)
 	certificateService := certificates.NewService(store, websiteService, accountService, store, agent, worker.Notify)
 	backupService := backups.NewService(store, accountService, websiteService, databaseService, taskService, certificateService, store, agent, worker.Notify)
 	worker.Handle(jobs.KindAccountCreate, accountService.Provision)
@@ -135,6 +137,7 @@ func main() {
 	worker.Handle(jobs.KindDatabaseGrantCreate, databaseService.Provision)
 	worker.Handle(jobs.KindDatabaseGrantDelete, databaseService.Provision)
 	worker.Handle(jobs.KindTaskSync, taskService.Sync)
+	worker.Handle(jobs.KindFTPSync, ftpService.Sync)
 	worker.Handle(jobs.KindCertificateIssue, certificateService.Provision)
 	worker.Handle(jobs.KindCertificateRenew, certificateService.Provision)
 	worker.Handle(jobs.KindBackupCreate, backupService.Create)
@@ -198,6 +201,7 @@ func main() {
 			SecureCookie: settings.SecureCookie, Auth: authService,
 			Accounts: accountService, Packages: packageService, Services: serviceService,
 			Websites: websiteService, Databases: databaseService, Tasks: taskService,
+			FTP:          ftpService,
 			Certificates: certificateService,
 			Backups:      backupService,
 			DNS:          dnsService,

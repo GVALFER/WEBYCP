@@ -15,6 +15,7 @@ import (
 	agentclient "github.com/GVALFER/WEBYCP/internal/agent/client"
 	"github.com/GVALFER/WEBYCP/internal/auth"
 	dnscontrol "github.com/GVALFER/WEBYCP/internal/dns"
+	"github.com/GVALFER/WEBYCP/internal/ftp"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
 	"github.com/GVALFER/WEBYCP/internal/nodes"
 	"github.com/GVALFER/WEBYCP/internal/packages"
@@ -153,6 +154,7 @@ func TestTemporaryAdminSetupAndProbe(t *testing.T) {
 		t.Fatal(err)
 	}
 	checkTaskAPI(t, api, cookie, session.CSRFToken, accountResult.Account.ID)
+	checkFTPAPI(t, api, store, cookie, session.CSRFToken, accountResult.Account.ID)
 
 	settingsRequest := httptest.NewRequest(http.MethodPut, "/api/v1/dns/settings", strings.NewReader(`{
 		"primaryNameserver":"NS1.Example.COM.","secondaryNameserver":"ns2.example.com","defaultTtl":3600
@@ -368,6 +370,7 @@ func testAPI(t *testing.T) (http.Handler, *sqlite.Store, auth.Credentials) {
 		Services: services.NewService(store),
 		Websites: websites.NewService(store, accountService, store, agent, worker.Notify),
 		Tasks:    tasks.NewService(store, accountService, store, agent, worker.Notify),
+		FTP:      ftp.NewService(store, accountService, store, agent, worker.Notify),
 		DNS:      dnsService,
 		Nodes:    nodes.NewService(store, agent),
 		Jobs:     jobs.NewService(store, worker.Notify),

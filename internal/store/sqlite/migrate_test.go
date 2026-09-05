@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/GVALFER/WEBYCP/internal/packages"
+	"github.com/GVALFER/WEBYCP/migrations"
 )
 
 func TestBaseline(t *testing.T) {
@@ -98,5 +99,47 @@ func TestCheckSchemaMissing(t *testing.T) {
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("read-only preflight created a database: %v", err)
+	}
+}
+
+func TestFTPMigrationPreservesPackages(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "baseline.db")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseline, err := migrations.Files.ReadFile("0001_initial.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, string(baseline)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `
+		CREATE TABLE schema_migrations (name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL);
+		INSERT INTO schema_migrations VALUES ('0001_initial.sql', 1);
+		UPDATE packages SET name = 'Preserved package', max_websites = 7;
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store, err := Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	value, err := store.Package(ctx, packages.DefaultID)
+	if err != nil || value.Name != "Preserved package" || value.Limits.Websites != 7 || value.Limits.FTPAccounts != 10 {
+		t.Fatalf("migrated Package = %+v, error = %v", value, err)
+	}
+	var count int
+	if err := store.db.QueryRowContext(ctx, "SELECT count(*) FROM schema_migrations").Scan(&count); err != nil || count != 2 {
+		t.Fatalf("migration count = %d, error = %v", count, err)
+	}
+	if _, err := store.db.ExecContext(ctx, "UPDATE packages SET max_ftp_accounts = 101"); err == nil {
+		t.Fatal("FTP driver bound was not enforced")
 	}
 }

@@ -902,6 +902,92 @@ paths:
                 "404": { $ref: "#/components/responses/NotFoundError" }
                 "409": { $ref: "#/components/responses/ConflictError" }
                 "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/ftp-accounts:
+        get:
+            operationId: listFTPAccounts
+            summary: List accessible FTP credentials without secrets
+            security: [{ cookieAuth: [] }]
+            parameters:
+                - $ref: "#/components/parameters/Page"
+                - $ref: "#/components/parameters/PageSize"
+            responses:
+                "200":
+                    description: FTP accounts.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/FTPAccountListResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        post:
+            operationId: createFTPAccount
+            summary: Queue a Pure-FTPd virtual login jailed to the hosting Account home
+            security: [{ cookieAuth: [] }]
+            parameters: [{ $ref: "#/components/parameters/CSRFToken" }]
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/CreateFTPAccountRequest" }
+            responses:
+                "202":
+                    description: FTP synchronization queued. All FTP sessions of this hosting Account will be disconnected.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/FTPAccountResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+    /api/v1/ftp-accounts/{ftpAccountId}:
+        parameters:
+            - in: path
+              name: ftpAccountId
+              required: true
+              schema: { type: string, pattern: '^[a-f0-9]{32}$' }
+            - $ref: "#/components/parameters/CSRFToken"
+        patch:
+            operationId: updateFTPAccount
+            summary: Change a username, password or enabled state without moving the login to another Account
+            security: [{ cookieAuth: [] }]
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: { $ref: "#/components/schemas/UpdateFTPAccountRequest" }
+            responses:
+                "202":
+                    description: FTP synchronization queued. All FTP sessions of this hosting Account will be disconnected.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/FTPAccountResponse" }
+                "400": { $ref: "#/components/responses/BadRequestError" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
+        delete:
+            operationId: deleteFTPAccount
+            summary: Revoke an FTP login before deleting its metadata; leave customer files untouched
+            security: [{ cookieAuth: [] }]
+            responses:
+                "202":
+                    description: FTP revocation queued. All FTP sessions of this hosting Account will be disconnected.
+                    content:
+                        application/json:
+                            schema: { $ref: "#/components/schemas/Job" }
+                "401": { $ref: "#/components/responses/UnauthorizedError" }
+                "403": { $ref: "#/components/responses/ForbiddenError" }
+                "404": { $ref: "#/components/responses/NotFoundError" }
+                "409": { $ref: "#/components/responses/ConflictError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
+                "500": { $ref: "#/components/responses/InternalError" }
     /api/v1/scheduled-tasks:
         get:
             operationId: listScheduledTasks
@@ -1896,6 +1982,7 @@ components:
                     scheduledTasks,
                     backupPlans,
                     backupRetention,
+                    ftpAccounts,
                 ]
             properties:
                 websites: { type: integer, format: int64, minimum: 0, maximum: 1000000 }
@@ -1906,11 +1993,12 @@ components:
                 scheduledTasks: { type: integer, format: int64, minimum: 0, maximum: 1000000 }
                 backupPlans: { type: integer, format: int64, minimum: 0, maximum: 1000000 }
                 backupRetention: { type: integer, format: int64, minimum: 1, maximum: 100 }
+                ftpAccounts: { type: integer, format: int64, minimum: 0, maximum: 100 }
         PackageUsage:
             type: object
             additionalProperties: false
             required:
-                [websites, domains, aliases, databases, databaseUsers, scheduledTasks, backupPlans]
+                [websites, domains, aliases, databases, databaseUsers, scheduledTasks, backupPlans, ftpAccounts]
             properties:
                 websites: { type: integer, format: int64, minimum: 0 }
                 domains: { type: integer, format: int64, minimum: 0 }
@@ -1919,6 +2007,7 @@ components:
                 databaseUsers: { type: integer, format: int64, minimum: 0 }
                 scheduledTasks: { type: integer, format: int64, minimum: 0 }
                 backupPlans: { type: integer, format: int64, minimum: 0 }
+                ftpAccounts: { type: integer, format: int64, minimum: 0 }
         Package:
             type: object
             additionalProperties: false
@@ -2565,6 +2654,54 @@ components:
             required: [grant, job]
             properties:
                 grant: { $ref: "#/components/schemas/DatabaseGrant" }
+                job: { $ref: "#/components/schemas/Job" }
+        FTPAccount:
+            type: object
+            additionalProperties: false
+            required: [id, accountId, nodeId, username, accountName, accountStatus, home, enabled, deleting, status, createdAt, updatedAt]
+            properties:
+                id: { type: string }
+                accountId: { type: string }
+                nodeId: { type: string }
+                username: { type: string }
+                accountName: { type: string }
+                accountStatus: { type: string }
+                home: { type: string, description: Account chroot directory on the server. }
+                enabled: { type: boolean }
+                deleting: { type: boolean }
+                status: { type: string, enum: [pending, active, disabled, error] }
+                createdAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+        CreateFTPAccountRequest:
+            type: object
+            additionalProperties: false
+            required: [accountId, username, password, enabled]
+            properties:
+                accountId: { type: string, pattern: '^[a-f0-9]{32}$' }
+                username: { type: string, minLength: 3, maxLength: 32, pattern: '^[a-z0-9][a-z0-9._-]{2,31}$' }
+                password: { type: string, writeOnly: true, minLength: 12, maxLength: 128 }
+                enabled: { type: boolean }
+        UpdateFTPAccountRequest:
+            type: object
+            additionalProperties: false
+            minProperties: 1
+            properties:
+                username: { type: string, minLength: 3, maxLength: 32, pattern: '^[a-z0-9][a-z0-9._-]{2,31}$' }
+                password: { type: string, writeOnly: true, minLength: 12, maxLength: 128 }
+                enabled: { type: boolean }
+        FTPAccountListResponse:
+            type: object
+            additionalProperties: false
+            required: [items, pagination]
+            properties:
+                items: { type: array, items: { $ref: "#/components/schemas/FTPAccount" } }
+                pagination: { $ref: "#/components/schemas/Pagination" }
+        FTPAccountResponse:
+            type: object
+            additionalProperties: false
+            required: [ftpAccount, job]
+            properties:
+                ftpAccount: { $ref: "#/components/schemas/FTPAccount" }
                 job: { $ref: "#/components/schemas/Job" }
         TaskKind:
             type: string

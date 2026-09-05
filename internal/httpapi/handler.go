@@ -13,6 +13,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/certificates"
 	"github.com/GVALFER/WEBYCP/internal/databases"
 	dnscontrol "github.com/GVALFER/WEBYCP/internal/dns"
+	"github.com/GVALFER/WEBYCP/internal/ftp"
 	"github.com/GVALFER/WEBYCP/internal/httpapi/spec"
 	"github.com/GVALFER/WEBYCP/internal/httpx"
 	"github.com/GVALFER/WEBYCP/internal/jobs"
@@ -35,6 +36,7 @@ type Options struct {
 	Websites     *websites.Service
 	Databases    *databases.Service
 	Tasks        *tasks.Service
+	FTP          *ftp.Service
 	Certificates *certificates.Service
 	Backups      *backups.Service
 	DNS          *dnscontrol.Service
@@ -92,6 +94,10 @@ func New(options Options) http.Handler {
 	mux.HandleFunc("PUT /api/v1/databases/{databaseId}/users/{databaseUserId}", h.withAuth(true, h.createDatabaseGrant))
 	mux.HandleFunc("DELETE /api/v1/databases/{databaseId}/users/{databaseUserId}", h.withAuth(true, h.deleteDatabaseGrant))
 	mux.HandleFunc("GET /api/v1/scheduled-tasks", h.withAuth(false, h.listScheduledTasks))
+	mux.HandleFunc("GET /api/v1/ftp-accounts", h.withAuth(false, h.listFTPAccounts))
+	mux.HandleFunc("POST /api/v1/ftp-accounts", h.withAuth(true, h.createFTPAccount))
+	mux.HandleFunc("PATCH /api/v1/ftp-accounts/{ftpAccountId}", h.withAuth(true, h.updateFTPAccount))
+	mux.HandleFunc("DELETE /api/v1/ftp-accounts/{ftpAccountId}", h.withAuth(true, h.deleteFTPAccount))
 	mux.HandleFunc("POST /api/v1/scheduled-tasks", h.withAuth(true, h.createScheduledTask))
 	mux.HandleFunc("PATCH /api/v1/scheduled-tasks/{scheduledTaskId}", h.withAuth(true, h.setScheduledTask))
 	mux.HandleFunc("DELETE /api/v1/scheduled-tasks/{scheduledTaskId}", h.withAuth(true, h.deleteScheduledTask))

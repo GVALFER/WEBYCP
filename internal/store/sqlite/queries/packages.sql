@@ -2,8 +2,8 @@
 INSERT INTO packages (
     id, name, max_websites, max_domains, max_aliases, max_databases,
     max_database_users, max_scheduled_tasks, max_backup_plans,
-    max_backup_retention, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    max_backup_retention, max_ftp_accounts, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: PackageNameExists :one
@@ -36,6 +36,7 @@ SET
     max_scheduled_tasks = ?,
     max_backup_plans = ?,
     max_backup_retention = ?,
+    max_ftp_accounts = ?,
     updated_at = ?
 WHERE id = ?
 RETURNING *;

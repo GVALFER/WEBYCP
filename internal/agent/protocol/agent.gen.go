@@ -280,6 +280,14 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 }
 
+// FTPEntry defines model for FTPEntry.
+type FTPEntry struct {
+	Enabled      bool   `json:"enabled"`
+	Id           string `json:"id"`
+	PasswordHash string `json:"passwordHash"`
+	Username     string `json:"username"`
+}
+
 // HealthResponse defines model for HealthResponse.
 type HealthResponse struct {
 	Capabilities ServiceCapabilities `json:"capabilities"`
@@ -359,6 +367,13 @@ type ServiceCapabilityStatus string
 type SyncDNSRecordSetsRequest struct {
 	Rrsets []DNSRecordSet `json:"rrsets"`
 	Zone   DNSZoneRequest `json:"zone"`
+}
+
+// SyncFTPRequest defines model for SyncFTPRequest.
+type SyncFTPRequest struct {
+	AccountId  string     `json:"accountId"`
+	Entries    []FTPEntry `json:"entries"`
+	SystemUser string     `json:"systemUser"`
 }
 
 // SyncTasksRequest defines model for SyncTasksRequest.
@@ -458,6 +473,9 @@ type DeleteDNSZoneJSONRequestBody = DNSZoneRequest
 
 // EnsureDNSZoneJSONRequestBody defines body for EnsureDNSZone for application/json ContentType.
 type EnsureDNSZoneJSONRequestBody = DNSZoneRequest
+
+// SyncFTPJSONRequestBody defines body for SyncFTP for application/json ContentType.
+type SyncFTPJSONRequestBody = SyncFTPRequest
 
 // SyncTasksJSONRequestBody defines body for SyncTasks for application/json ContentType.
 type SyncTasksJSONRequestBody = SyncTasksRequest

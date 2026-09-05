@@ -459,6 +459,30 @@ func (e DatabaseUserStatus) Valid() bool {
 	}
 }
 
+// Defines values for FTPAccountStatus.
+const (
+	FTPAccountStatusActive   FTPAccountStatus = "active"
+	FTPAccountStatusDisabled FTPAccountStatus = "disabled"
+	FTPAccountStatusError    FTPAccountStatus = "error"
+	FTPAccountStatusPending  FTPAccountStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the FTPAccountStatus enum.
+func (e FTPAccountStatus) Valid() bool {
+	switch e {
+	case FTPAccountStatusActive:
+		return true
+	case FTPAccountStatusDisabled:
+		return true
+	case FTPAccountStatusError:
+		return true
+	case FTPAccountStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthResponseStatus.
 const (
 	Ok HealthResponseStatus = "ok"
@@ -1201,6 +1225,14 @@ type CreateDatabaseUserRequest struct {
 // CreateDatabaseUserRequestDriver defines model for CreateDatabaseUserRequest.Driver.
 type CreateDatabaseUserRequestDriver string
 
+// CreateFTPAccountRequest defines model for CreateFTPAccountRequest.
+type CreateFTPAccountRequest struct {
+	AccountId string  `json:"accountId"`
+	Enabled   bool    `json:"enabled"`
+	Password  *string `json:"password,omitempty"`
+	Username  string  `json:"username"`
+}
+
 // CreateWebsiteDomainRequest defines model for CreateWebsiteDomainRequest.
 type CreateWebsiteDomainRequest struct {
 	Hostname string `json:"hostname"`
@@ -1415,6 +1447,39 @@ type ErrorResponse struct {
 	Message string             `json:"message"`
 }
 
+// FTPAccount defines model for FTPAccount.
+type FTPAccount struct {
+	AccountId     string    `json:"accountId"`
+	AccountName   string    `json:"accountName"`
+	AccountStatus string    `json:"accountStatus"`
+	CreatedAt     time.Time `json:"createdAt"`
+	Deleting      bool      `json:"deleting"`
+	Enabled       bool      `json:"enabled"`
+
+	// Home Account chroot directory on the server.
+	Home      string           `json:"home"`
+	Id        string           `json:"id"`
+	NodeId    string           `json:"nodeId"`
+	Status    FTPAccountStatus `json:"status"`
+	UpdatedAt time.Time        `json:"updatedAt"`
+	Username  string           `json:"username"`
+}
+
+// FTPAccountStatus defines model for FTPAccount.Status.
+type FTPAccountStatus string
+
+// FTPAccountListResponse defines model for FTPAccountListResponse.
+type FTPAccountListResponse struct {
+	Items      []FTPAccount `json:"items"`
+	Pagination Pagination   `json:"pagination"`
+}
+
+// FTPAccountResponse defines model for FTPAccountResponse.
+type FTPAccountResponse struct {
+	FtpAccount FTPAccount `json:"ftpAccount"`
+	Job        Job        `json:"job"`
+}
+
 // HealthResponse defines model for HealthResponse.
 type HealthResponse struct {
 	// Service Example: webycp-server
@@ -1532,6 +1597,7 @@ type PackageLimits struct {
 	DatabaseUsers   int64 `json:"databaseUsers"`
 	Databases       int64 `json:"databases"`
 	Domains         int64 `json:"domains"`
+	FtpAccounts     int64 `json:"ftpAccounts"`
 	ScheduledTasks  int64 `json:"scheduledTasks"`
 	Websites        int64 `json:"websites"`
 }
@@ -1549,6 +1615,7 @@ type PackageUsage struct {
 	DatabaseUsers  int64 `json:"databaseUsers"`
 	Databases      int64 `json:"databases"`
 	Domains        int64 `json:"domains"`
+	FtpAccounts    int64 `json:"ftpAccounts"`
 	ScheduledTasks int64 `json:"scheduledTasks"`
 	Websites       int64 `json:"websites"`
 }
@@ -1674,6 +1741,13 @@ type UpdateDNSSettingsRequest struct {
 // UpdateEnabledRequest defines model for UpdateEnabledRequest.
 type UpdateEnabledRequest struct {
 	Enabled bool `json:"enabled"`
+}
+
+// UpdateFTPAccountRequest defines model for UpdateFTPAccountRequest.
+type UpdateFTPAccountRequest struct {
+	Enabled  *bool   `json:"enabled,omitempty"`
+	Password *string `json:"password,omitempty"`
+	Username *string `json:"username,omitempty"`
 }
 
 // UpdateProfileRequest defines model for UpdateProfileRequest.
@@ -2115,6 +2189,27 @@ type CreateDNSRecordParams struct {
 	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
 }
 
+// ListFTPAccountsParams defines parameters for ListFTPAccounts.
+type ListFTPAccountsParams struct {
+	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
+	Size *PageSize `form:"size,omitempty" json:"size,omitempty"`
+}
+
+// CreateFTPAccountParams defines parameters for CreateFTPAccount.
+type CreateFTPAccountParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// DeleteFTPAccountParams defines parameters for DeleteFTPAccount.
+type DeleteFTPAccountParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
+// UpdateFTPAccountParams defines parameters for UpdateFTPAccount.
+type UpdateFTPAccountParams struct {
+	XCSRFToken CSRFToken `json:"X-CSRF-Token"`
+}
+
 // ListJobsParams defines parameters for ListJobs.
 type ListJobsParams struct {
 	Page *Page     `form:"page,omitempty" json:"page,omitempty"`
@@ -2271,6 +2366,12 @@ type CreateDNSZoneJSONRequestBody = CreateDNSZoneRequest
 
 // CreateDNSRecordJSONRequestBody defines body for CreateDNSRecord for application/json ContentType.
 type CreateDNSRecordJSONRequestBody = WriteDNSRecordRequest
+
+// CreateFTPAccountJSONRequestBody defines body for CreateFTPAccount for application/json ContentType.
+type CreateFTPAccountJSONRequestBody = CreateFTPAccountRequest
+
+// UpdateFTPAccountJSONRequestBody defines body for UpdateFTPAccount for application/json ContentType.
+type UpdateFTPAccountJSONRequestBody = UpdateFTPAccountRequest
 
 // CreatePackageJSONRequestBody defines body for CreatePackage for application/json ContentType.
 type CreatePackageJSONRequestBody = WritePackageRequest

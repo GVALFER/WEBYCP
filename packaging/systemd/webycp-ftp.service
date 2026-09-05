@@ -1,0 +1,32 @@
+[Unit]
+Description=WEBYCP explicit FTPS server (Pure-FTPd)
+Documentation=https://github.com/GVALFER/WEBYCP
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/webycp/ftp/pureftpd.pdb
+ConditionPathExists=/etc/webycp/ftp/tls.pem
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/pure-ftpd --chrooteveryone --noanonymous --login=puredb:/etc/webycp/ftp/pureftpd.pdb --tls=3 --certfile=/etc/webycp/ftp/tls.pem --minuid=1000 --passiveportrange=40000:40100 --maxclientsnumber=50 --maxclientsperip=8 --umask=137:027
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=15s
+KillMode=control-group
+UMask=0077
+RuntimeDirectory=pure-ftpd
+RuntimeDirectoryMode=0755
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home /run/pure-ftpd
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

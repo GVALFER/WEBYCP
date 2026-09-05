@@ -26,6 +26,7 @@ const (
 	DatabaseUsers  Resource = "database users"
 	ScheduledTasks Resource = "scheduled tasks"
 	BackupPlans    Resource = "backup plans"
+	FTPAccounts    Resource = "FTP accounts"
 )
 
 type LimitError struct {
@@ -41,12 +42,14 @@ type Limits struct {
 	Websites, Domains, Aliases               int64
 	Databases, DatabaseUsers, ScheduledTasks int64
 	BackupPlans, BackupRetention             int64
+	FTPAccounts                              int64
 }
 
 type Usage struct {
 	Websites, Domains, Aliases               int64
 	Databases, DatabaseUsers, ScheduledTasks int64
 	BackupPlans                              int64
+	FTPAccounts                              int64
 }
 
 type Package struct {

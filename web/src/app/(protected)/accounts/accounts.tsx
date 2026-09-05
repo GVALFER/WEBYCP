@@ -76,6 +76,7 @@ const Accounts = ({ accounts, nodes, packages }: AccountsProps) => {
                     <Usage label="Websites" used={usage.websites} limit={value.limits.websites} />
                     <Usage label="Domains" used={usage.domains} limit={value.limits.domains} />
                     <Usage label="Aliases" used={usage.aliases} limit={value.limits.aliases} />
+                    <Usage label="FTP" used={usage.ftpAccounts} limit={value.limits.ftpAccounts} />
                     <Usage
                         label="Databases"
                         used={usage.databases}

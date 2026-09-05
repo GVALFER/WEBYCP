@@ -101,6 +101,9 @@ func prepare(value *Package) error {
 	if value.Limits.BackupRetention < 1 || value.Limits.BackupRetention > 100 {
 		return &validate.Error{Field: "maxBackupRetention", Message: "Use a retention between 1 and 100"}
 	}
+	if value.Limits.FTPAccounts < 0 || value.Limits.FTPAccounts > 100 {
+		return &validate.Error{Field: "maxFTPAccounts", Message: "Use an FTP account limit between 0 and 100"}
+	}
 	if value.Limits.Domains < value.Limits.Websites {
 		return &validate.Error{Field: "maxDomains", Message: fmt.Sprintf("Use at least %d domains for %d websites", value.Limits.Websites, value.Limits.Websites)}
 	}

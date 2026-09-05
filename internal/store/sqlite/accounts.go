@@ -156,6 +156,15 @@ func (s *Store) QueueAction(
 	}
 	defer tx.Rollback()
 	queries := s.queries.WithTx(tx)
+	if job.Kind == jobs.KindAccountDelete {
+		count, err := queries.AccountResourceCount(ctx, id)
+		if err != nil {
+			return accounts.Account{}, jobs.Job{}, err
+		}
+		if count != 0 {
+			return accounts.Account{}, jobs.Job{}, accounts.ErrNotEmpty
+		}
+	}
 	row, err := queries.QueueAccountAction(ctx, dbgen.QueueAccountActionParams{
 		Enabled: boolValue(enabled), UpdatedAt: timeValue(time.Now().UTC()), ID: id,
 	})
@@ -212,6 +221,7 @@ func accountOverviewValue(row dbgen.AccountOverview) accounts.Overview {
 				Databases: row.MaxDatabases, DatabaseUsers: row.MaxDatabaseUsers,
 				ScheduledTasks: row.MaxScheduledTasks, BackupPlans: row.MaxBackupPlans,
 				BackupRetention: row.MaxBackupRetention,
+				FTPAccounts:     row.MaxFtpAccounts,
 			},
 			AccountCount: row.PackageAccountCount,
 			CreatedAt:    timeFrom(row.PackageCreatedAt), UpdatedAt: timeFrom(row.PackageUpdatedAt),
@@ -220,6 +230,7 @@ func accountOverviewValue(row dbgen.AccountOverview) accounts.Overview {
 			Websites: row.UsedWebsites, Domains: row.UsedDomains, Aliases: row.UsedAliases,
 			Databases: row.UsedDatabases, DatabaseUsers: row.UsedDatabaseUsers,
 			ScheduledTasks: row.UsedScheduledTasks, BackupPlans: row.UsedBackupPlans,
+			FTPAccounts: row.UsedFtpAccounts,
 		},
 	}
 }

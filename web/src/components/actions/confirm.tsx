@@ -28,7 +28,7 @@ export const Confirm = ({ children, title, description, action = "Confirm", onCo
 
     return (
         <AlertDialog>
-            <AlertDialog.Trigger>{children}</AlertDialog.Trigger>
+            {children}
             <AlertDialog.Backdrop variant="blur">
                 <AlertDialog.Container placement="center" size="sm">
                     <AlertDialog.Dialog>

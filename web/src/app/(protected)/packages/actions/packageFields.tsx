@@ -22,6 +22,7 @@ export const packageSchema = v.pipe(
             databases: count,
             databaseUsers: count,
             scheduledTasks: count,
+            ftpAccounts: v.pipe(count, v.maxValue(100, "Use 100 FTP accounts or fewer.")),
             backupPlans: count,
             backupRetention: v.pipe(
                 v.number("Enter a retention."),
@@ -51,6 +52,7 @@ export const packageValues = (value?: Package): WritePackageRequest => ({
         databases: 10,
         databaseUsers: 10,
         scheduledTasks: 20,
+        ftpAccounts: 10,
         backupPlans: 5,
         backupRetention: 7,
     },
@@ -78,6 +80,7 @@ export const PackageFields = () => (
             required
         />
         <FormInput name="limits.backupPlans" label="Backup plans" type="number" min={0} required />
+        <FormInput name="limits.ftpAccounts" label="FTP accounts" type="number" min={0} max={100} required />
         <FormInput
             name="limits.backupRetention"
             label="Backup retention"

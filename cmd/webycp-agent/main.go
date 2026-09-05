@@ -13,6 +13,7 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/agent/certificate/certbot"
 	"github.com/GVALFER/WEBYCP/internal/agent/database/mysql"
 	"github.com/GVALFER/WEBYCP/internal/agent/dns/powerdns"
+	"github.com/GVALFER/WEBYCP/internal/agent/ftp/pureftpd"
 	"github.com/GVALFER/WEBYCP/internal/agent/runtime/phpfpm"
 	"github.com/GVALFER/WEBYCP/internal/agent/scheduler/crontab"
 	agentserver "github.com/GVALFER/WEBYCP/internal/agent/server"
@@ -49,7 +50,8 @@ func main() {
 	nginxDriver := nginx.New()
 	runtimeDriver := phpfpm.New()
 	websiteManager := agentwebsite.New(runtimeDriver, nginxDriver)
-	accountManager := agentaccount.New(agentaccount.NewLinux(), runtimeDriver)
+	ftpDriver := pureftpd.New()
+	accountManager := agentaccount.New(agentaccount.NewLinux(), runtimeDriver, ftpDriver)
 	server := &http.Server{
 		Handler: agentserver.New(agentserver.Options{
 			Version: buildinfo.Version, Capabilities: capability.New(dnsDriver),
@@ -58,6 +60,7 @@ func main() {
 			Certificates: certbot.New(nginxDriver), Logger: logger,
 			Backups: backuplocal.New(),
 			DNS:     dnsDriver,
+			FTP:     ftpDriver,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}

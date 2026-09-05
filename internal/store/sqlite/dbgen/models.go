@@ -48,6 +48,7 @@ type AccountOverview struct {
 	MaxScheduledTasks   int64          `json:"max_scheduled_tasks"`
 	MaxBackupPlans      int64          `json:"max_backup_plans"`
 	MaxBackupRetention  int64          `json:"max_backup_retention"`
+	MaxFtpAccounts      int64          `json:"max_ftp_accounts"`
 	UsedWebsites        int64          `json:"used_websites"`
 	UsedDomains         int64          `json:"used_domains"`
 	UsedAliases         int64          `json:"used_aliases"`
@@ -55,6 +56,7 @@ type AccountOverview struct {
 	UsedDatabaseUsers   int64          `json:"used_database_users"`
 	UsedScheduledTasks  int64          `json:"used_scheduled_tasks"`
 	UsedBackupPlans     int64          `json:"used_backup_plans"`
+	UsedFtpAccounts     int64          `json:"used_ftp_accounts"`
 }
 
 type AccountPackage struct {
@@ -217,6 +219,35 @@ type DnsZone struct {
 	UpdatedAt           int64  `json:"updated_at"`
 }
 
+type FtpAccount struct {
+	ID           string `json:"id"`
+	AccountID    string `json:"account_id"`
+	NodeID       string `json:"node_id"`
+	Username     string `json:"username"`
+	PasswordHash string `json:"password_hash"`
+	Enabled      int64  `json:"enabled"`
+	Deleting     int64  `json:"deleting"`
+	Status       string `json:"status"`
+	CreatedAt    int64  `json:"created_at"`
+	UpdatedAt    int64  `json:"updated_at"`
+}
+
+type FtpOverview struct {
+	ID            string `json:"id"`
+	AccountID     string `json:"account_id"`
+	NodeID        string `json:"node_id"`
+	Username      string `json:"username"`
+	PasswordHash  string `json:"password_hash"`
+	Enabled       int64  `json:"enabled"`
+	Deleting      int64  `json:"deleting"`
+	Status        string `json:"status"`
+	CreatedAt     int64  `json:"created_at"`
+	UpdatedAt     int64  `json:"updated_at"`
+	AccountName   string `json:"account_name"`
+	SystemUser    string `json:"system_user"`
+	AccountStatus string `json:"account_status"`
+}
+
 type Job struct {
 	ID          string         `json:"id"`
 	NodeID      sql.NullString `json:"node_id"`
@@ -268,6 +299,7 @@ type Package struct {
 	MaxBackupRetention int64  `json:"max_backup_retention"`
 	CreatedAt          int64  `json:"created_at"`
 	UpdatedAt          int64  `json:"updated_at"`
+	MaxFtpAccounts     int64  `json:"max_ftp_accounts"`
 }
 
 type PackageOverview struct {
@@ -283,6 +315,7 @@ type PackageOverview struct {
 	MaxBackupRetention int64  `json:"max_backup_retention"`
 	CreatedAt          int64  `json:"created_at"`
 	UpdatedAt          int64  `json:"updated_at"`
+	MaxFtpAccounts     int64  `json:"max_ftp_accounts"`
 	AccountCount       int64  `json:"account_count"`
 }
 

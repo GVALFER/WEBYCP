@@ -77,6 +77,7 @@ const Packages = ({ packages }: Props) => {
                 <Limits
                     values={[
                         ["Scheduled tasks", item.limits.scheduledTasks],
+                        ["FTP accounts", item.limits.ftpAccounts],
                         ["Backup plans", item.limits.backupPlans],
                         ["Backup retention", item.limits.backupRetention],
                     ]}

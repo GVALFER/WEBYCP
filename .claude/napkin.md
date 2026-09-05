@@ -9,6 +9,9 @@
 
 ## Shell & Tool Reliability
 
+1. **[2026-09-05] sqlc SQLite queries must not mix named and anonymous parameters**
+   Do instead: use `sqlc.arg(...)` for every parameter in a query once one is named; mixed `?` and generated numbered placeholders can compile but fail at runtime with missing arguments.
+
 1. **[2026-09-05] Playwright MCP code runs in a restricted JavaScript context**
    Do instead: use built-in snapshots and network inspection instead of persistent event listeners; unavailable globals such as `URL` can crash callbacks and terminate the transport. Keep the user's browser and tabs open.
 1. **[2026-09-05] Removed Next.js routes can leave stale dev type validators**

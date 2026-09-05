@@ -474,6 +474,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ftp-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List accessible FTP credentials without secrets */
+        get: operations["listFTPAccounts"];
+        put?: never;
+        /** Queue a Pure-FTPd virtual login jailed to the hosting Account home */
+        post: operations["createFTPAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ftp-accounts/{ftpAccountId}": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path: {
+                ftpAccountId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke an FTP login before deleting its metadata; leave customer files untouched */
+        delete: operations["deleteFTPAccount"];
+        options?: never;
+        head?: never;
+        /** Change a username, password or enabled state without moving the login to another Account */
+        patch: operations["updateFTPAccount"];
+        trace?: never;
+    };
     "/api/v1/scheduled-tasks": {
         parameters: {
             query?: never;
@@ -961,6 +1001,8 @@ export interface components {
             backupPlans: number;
             /** Format: int64 */
             backupRetention: number;
+            /** Format: int64 */
+            ftpAccounts: number;
         };
         PackageUsage: {
             /** Format: int64 */
@@ -977,6 +1019,8 @@ export interface components {
             scheduledTasks: number;
             /** Format: int64 */
             backupPlans: number;
+            /** Format: int64 */
+            ftpAccounts: number;
         };
         Package: {
             id: string;
@@ -1362,6 +1406,43 @@ export interface components {
         };
         DatabaseGrantJobResponse: {
             grant: components["schemas"]["DatabaseGrant"];
+            job: components["schemas"]["Job"];
+        };
+        FTPAccount: {
+            id: string;
+            accountId: string;
+            nodeId: string;
+            username: string;
+            accountName: string;
+            accountStatus: string;
+            /** @description Account chroot directory on the server. */
+            home: string;
+            enabled: boolean;
+            deleting: boolean;
+            /** @enum {string} */
+            status: "pending" | "active" | "disabled" | "error";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateFTPAccountRequest: {
+            accountId: string;
+            username: string;
+            password: string;
+            enabled: boolean;
+        };
+        UpdateFTPAccountRequest: {
+            username?: string;
+            password?: string;
+            enabled?: boolean;
+        };
+        FTPAccountListResponse: {
+            items: components["schemas"]["FTPAccount"][];
+            pagination: components["schemas"]["Pagination"];
+        };
+        FTPAccountResponse: {
+            ftpAccount: components["schemas"]["FTPAccount"];
             job: components["schemas"]["Job"];
         };
         /** @enum {string} */
@@ -2738,6 +2819,131 @@ export interface operations {
             403: components["responses"]["ForbiddenError"];
             404: components["responses"]["NotFoundError"];
             409: components["responses"]["ConflictError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listFTPAccounts: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                size?: components["parameters"]["PageSize"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description FTP accounts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FTPAccountListResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    createFTPAccount: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFTPAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description FTP synchronization queued. All FTP sessions of this hosting Account will be disconnected. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FTPAccountResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    deleteFTPAccount: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path: {
+                ftpAccountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description FTP revocation queued. All FTP sessions of this hosting Account will be disconnected. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    updateFTPAccount: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": components["parameters"]["CSRFToken"];
+            };
+            path: {
+                ftpAccountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFTPAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description FTP synchronization queued. All FTP sessions of this hosting Account will be disconnected. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FTPAccountResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };

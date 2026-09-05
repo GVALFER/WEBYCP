@@ -70,6 +70,10 @@ abstractions, generic entity stores, or premature microservices.
 | Backup storage | Local filesystem | S3-compatible, R2, remote SSH |
 | Certificates | Let's Encrypt HTTP-01 | Other ACME CAs, DNS-01 |
 | DNS | PowerDNS Authoritative Server | Cloudflare, other providers |
+| File transfer | Pure-FTPd with explicit FTPS | Separate SFTP driver |
+| Firewall | firewalld with nftables | Other host firewall drivers |
+| Service lifecycle | systemd | Other supported host managers |
+| WAF | ModSecurity v3 with OWASP CRS and Nginx connector | Validated connectors for other web servers |
 
 Drivers are Go interfaces compiled with the application in v1. Dynamic binary
 plugins are not required. A second driver is only introduced when its feature
@@ -234,9 +238,10 @@ Databases
 |-- Users
 `-- Permissions
 
-File Access                           later
-|-- File Manager
-`-- SFTP / FTP Accounts
+File Access
+|-- FTP Accounts
+|-- File Manager                      later
+`-- SFTP Accounts                     later
 
 Backups
 |-- Plans
@@ -253,11 +258,10 @@ Monitoring
 |-- Logs
 `-- Alerts                            later
 
-Security                              later
-|-- Overview
+Security
 |-- Firewall
-|-- SSH
-`-- Protection
+|-- WAF
+`-- SSH                               later
 
 Applications                          later
 |-- Catalog
@@ -453,6 +457,10 @@ model instead of compatibility code.
 - Scheduled Tasks using the crontab driver
 - Local backup plans, archives, verification, and restore
 - DNS zones, records, and one selected initial DNS driver
+- Pure-FTPd virtual credentials with mandatory explicit FTPS
+- Host firewall rules and service profiles through firewalld
+- Allowlisted service status and lifecycle operations through systemd
+- A separately validated WAF step using ModSecurity v3 and OWASP CRS
 - Durable Jobs and Audit Log
 - Native installation, upgrade, rollback, and recovery procedures
 
@@ -463,9 +471,9 @@ model instead of compatibility code.
 - Multiple PHP versions and non-PHP Website kinds
 - MariaDB, PostgreSQL, MongoDB, and Redis management
 - Mail hosting
-- File Manager and FTP server management
+- File Manager and SFTP server management
 - Docker, application catalog, and extension marketplace
-- Advanced firewall, WAF, intrusion detection, and malware scanning
+- Intrusion detection and malware scanning
 - High-availability control plane
 
 Deferred features influence boundaries and naming only. They do not justify
@@ -756,10 +764,147 @@ Verification:
 - No default polling is introduced.
 - Stop for review.
 
-### Step 8 — Release stabilization
+### Step 8 — FTP / FTPS
 
-Status: in progress. The local schema and backup hardening work is implemented;
-no Step 8 candidate has been deployed or published. The current test VPS remains
+Status: authorized and in progress. Implement this step before Firewall,
+Services Management, WAF and final clean-host acceptance. Do not deploy to or
+reinstall the existing rc.19 VPS as part of local development.
+
+Reviewable increments:
+
+1. **8.1 — Agent and driver:** typed synchronization, private PureDB state,
+   Account chroot, revocation, Linux Account lifecycle hooks and tested TLS
+   installation. Include an opt-in Ubuntu integration test and proposed service
+   unit. This increment does not install/start FTP on existing machines or add
+   menu placeholders. The initial jail is the Account home; an arbitrary path
+   or per-Website jail is not part of this contract.
+2. **8.2 — Control plane and UI:** metadata, Jobs/audit, permissions, Package
+   limits, paginated SSR page and modal actions. Credential changes disconnect
+   all FTP sessions belonging to that Account; other Accounts are unaffected.
+3. **8.3 — Deployment and acceptance:** installer/upgrade integration, capability
+   reporting, panel certificate lifecycle wiring, backup/restore and clean-host
+   service acceptance. Review the complete FTP step before starting Firewall.
+
+8.1 acceptance (2026-09-05):
+
+- Agent contract/client/handler and the Pure-FTPd driver are implemented. Shared
+  Argon2id hash validation is reused; no dependency or frontend change was needed.
+- `make generate`, `make check`, targeted race tests and `make security` pass.
+  The Agent also builds for Linux amd64. No release artifact was published.
+- The real Ubuntu 24.04 Pure-FTPd 1.0.50 package passed wire-level FTPS tests in
+  a native ARM64 container: encrypted control/data, login/upload/download, wrong
+  passwords, plaintext rejection, traversal/symlink jail checks, password rotation,
+  revocation, suspension/re-enable, deletion preserving files, Account UID/GID
+  and mode 0640. A second Account's open session survived another's revocation.
+- Certificate replacement was verified by an FTPS client trusting the new
+  certificate. Unit tests cover invalid/mismatched/expired PEMs and rollback.
+- The amd64 Docker attempt could not complete: packaged `pure-ftpwho` terminates
+  with SIGTRAP under the current emulated environment. No workaround was added
+  to production code. Native amd64/systemd and clean-VPS acceptance remain open.
+- The proposed systemd unit is not wired into installation or upgrades yet;
+  certificate lifecycle wiring, control-plane/UI, Packages and backups remain
+  8.2/8.3 work. The existing VPS and browser were not touched.
+
+8.2 acceptance (2026-09-05):
+
+- Added FTP metadata, public API, Account authorization, CSRF, durable `ftp.sync`
+  Jobs and request/execution audit correlation. Passwords are hashed before
+  storage and excluded from public responses, Job payloads and audit metadata.
+- Added atomic Package limits/usage (`ftpAccounts`, default 10, maximum 100),
+  node-scoped username uniqueness, per-Account queued-write exclusion, partial
+  updates merged transactionally and recoverable deletion after Agent revocation.
+  Account deletion rechecks resource ownership inside the queue transaction.
+- Added File Access > FTP Accounts with SSR, SWR, URL pagination, shared Table,
+  modal actions, confirmations, stable pending labels and spinners. No polling
+  or mount-time cache seeding. The shared HeroUI modal/confirmation triggers
+  were corrected after browser testing exposed accessibility warnings.
+- `make generate`, `make check`, targeted race tests and `make security` pass.
+  Service tests use the real Agent socket with a recording driver; HTTP tests
+  cover auth/CSRF, validation, forbidden overrides and secret-free responses.
+  The forward migration preserves existing consolidated-baseline Package data.
+- Global Playwright passed local light/dark/mobile checks, page 1 → 2 → 1
+  without reload, form validation/conflicts, queued writes and unavailable-Agent
+  errors. The disposable UI fixture does not provision real host services.
+- A pre-existing initial-admin-setup issue was observed: protected child SSR
+  requests may receive 403 while the layout renders the mandatory setup form.
+  The setup completes, but this server-side request/error belongs to the final
+  stabilization review; authentication was not refactored in this FTP increment.
+- No installer or VPS change. Native amd64/systemd, capability reporting,
+  certificate lifecycle, backups and clean-host acceptance remain in 8.3.
+
+Deliverables:
+
+- A File Access > FTP Accounts page with SSR data, URL pagination, modal forms,
+  focused action components, confirmations and pending spinners.
+- Pure-FTPd virtual logins mapped to the existing Account Unix identity, with
+  a chroot limited to an authorized existing Account directory. No new Linux
+  identity per FTP login and no implicit SSH/SFTP access.
+- Create, edit, change password, enable, disable and delete credentials through
+  typed API/Agent contracts, durable Jobs and audit events. Never persist or log
+  plaintext passwords; deleting credentials leaves customer files untouched.
+- Atomic Package limits and usage for FTP credentials; account suspension and
+  deletion must not leave working FTP access or active transfer sessions.
+- Mandatory TLS for control and data, no anonymous/PAM/Unix login, port 21 and
+  an explicit passive range. Service certificate installation and renewal must
+  remain protected and must not weaken the existing panel TLS lifecycle.
+- Installer, Agent sandbox, capability checks and backup/restore integration.
+  Firewall changes belong to the next step, not implicit installer mutations.
+
+Verification:
+
+- Contracts, validation, permissions, Package limits, lifecycle/retry and secret
+  handling tests pass across the real Agent socket.
+- Ubuntu 24.04 integration checks cover encrypted login/upload/download, wrong
+  passwords, plaintext rejection, chroot escape, suspension, password rotation,
+  deletion preserving files, and TLS certificate handling.
+- Browser checks cover modal forms, errors, pagination and light/dark layouts.
+- Record any clean-host acceptance still pending; stop for review.
+
+### Step 9 — Firewall
+
+Status: planned; starts only after Step 8 review.
+
+- Security > Firewall uses firewalld/nftables through a narrow Agent driver.
+- Show explicit rules, service profiles and default policy, not an invented
+  list of every closed port. A permitted port does not mean a daemon is listening.
+- Manage ports/ranges, TCP/UDP and source IP/CIDR for IPv4 and IPv6.
+- Protect SSH and panel access, with a local timed rollback independent of the
+  browser/API. Detect conflicting firewall owners; do not silently adopt them.
+- Test runtime/permanent consistency, reboot persistence and recovery from an
+  interrupted rule change. Stop for review.
+
+### Step 10 — Services Management
+
+Status: planned; starts only after Step 9 review.
+
+- System > Services reports real systemd running/stopped/failed state separately
+  from configuration validity and timestamped capability observations.
+- Start, stop, restart and supported reload operations use an explicit service
+  allowlist, typed Agent actions, Jobs, audit events and UI confirmations.
+- Never accept arbitrary unit names or shell commands. Protect WEBYCP's own
+  API/Agent/Web services and keep firewall access changes in the firewall flow.
+- Validate configuration before activating changes and test failure recovery.
+  Stop for review.
+
+### Step 11 — WAF
+
+Status: planned; starts only after Step 10 review.
+
+- Security > WAF uses ModSecurity v3, the Nginx connector and OWASP CRS; do not
+  implement a custom request-filtering engine.
+- Global and per-Website off/detection-only/blocking modes, beginning with
+  detection-only; actionable events and narrowly scoped rule/URL exclusions.
+- Pin and validate engine/module/rule compatibility, controlled updates and
+  rollback. Protect log privacy and define retention.
+- Test false positives, representative attacks, CPU/memory/latency and Nginx
+  package/module updates. Other web server integrations need separate validation.
+  Stop for review.
+
+### Step 12 — Release stabilization
+
+Status: local foundations implemented; clean-host acceptance resumes after
+Steps 8–11. No stabilization candidate has been deployed or published. The current
+test VPS remains
 on `0.1.1-rc.19` with its database and protected old archives unchanged.
 
 Implemented:
@@ -842,7 +987,12 @@ A step is complete only when:
 
 ## 12. Immediate Next Step
 
-Continue **Step 8 — Release stabilization** with clean-install, uninstall and
-recovery acceptance on a separate fresh Ubuntu 24.04 VPS. Preserve the existing
-`0.1.1-rc.19` test host; the consolidated schema is not an in-place upgrade from
-its development history. Do not publish until the remaining release gates pass.
+Review **8.2 — FTP control plane and UI**, then implement **8.3 — FTP deployment
+and acceptance**: installer/upgrade, capabilities, panel certificate lifecycle,
+backup/restore and native amd64/systemd tests. Finish FTP before starting Firewall,
+Services Management and WAF, in that order.
+
+Clean-install, uninstall and recovery acceptance remain Step 12 and require a
+separate fresh Ubuntu 24.04 VPS. Preserve the existing `0.1.1-rc.19` test host;
+the consolidated schema is not an in-place upgrade from its development history.
+Do not publish until the remaining release gates pass.

@@ -11,6 +11,7 @@ import (
 	agentcertificate "github.com/GVALFER/WEBYCP/internal/agent/certificate"
 	agentdatabase "github.com/GVALFER/WEBYCP/internal/agent/database"
 	agentdns "github.com/GVALFER/WEBYCP/internal/agent/dns"
+	"github.com/GVALFER/WEBYCP/internal/agent/ftp"
 	agentapi "github.com/GVALFER/WEBYCP/internal/agent/protocol"
 	"github.com/GVALFER/WEBYCP/internal/agent/scheduler"
 	agentwebsite "github.com/GVALFER/WEBYCP/internal/agent/website"
@@ -51,6 +52,7 @@ type Options struct {
 	Certificates   agentcertificate.Driver
 	Backups        agentbackup.Driver
 	DNS            agentdns.Driver
+	FTP            ftp.Driver
 	Logger         *slog.Logger
 }
 
@@ -60,6 +62,7 @@ func New(options Options) http.Handler {
 		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
 	mux := http.NewServeMux()
+	mux.HandleFunc("PUT /agent/v1/ftp-accounts", ftpHandler(options.FTP))
 
 	mux.HandleFunc("GET /agent/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		if options.Capabilities == nil {

@@ -291,6 +291,27 @@ paths:
                 "400": { description: The request body is malformed. }
                 "422": { description: The grant request is invalid. }
                 "500": { description: The grant operation failed. }
+    /agent/v1/ftp-accounts:
+        put:
+            operationId: syncFTP
+            summary: Replace an account's virtual FTPS logins without changing customer files
+            description: >-
+                The Agent derives the Unix UID/GID and chroot from the managed
+                Account. Only password hashes cross this socket. Synchronization
+                terminates existing FTP sessions for this Account, including
+                sessions using a removed or changed credential.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/SyncFTPRequest"
+            responses:
+                "204": { description: FTP logins are synchronized and previous sessions are terminated. }
+                "400": { description: The request body is malformed. }
+                "422": { description: The account identity or FTP entries are invalid. }
+                "500": { description: The FTP operation failed. }
+                "503": { description: The FTP driver is not configured. }
     /agent/v1/scheduled-tasks:
         put:
             operationId: syncTasks
@@ -589,6 +610,27 @@ components:
                 schedule: { type: string }
                 command: { type: string }
                 kind: { type: string, enum: [command] }
+        FTPEntry:
+            type: object
+            additionalProperties: false
+            required: [id, username, passwordHash, enabled]
+            properties:
+                id: { type: string, pattern: "^[a-f0-9]{32}$" }
+                username: { type: string, pattern: "^[a-z0-9][a-z0-9._-]{2,31}$" }
+                passwordHash: { type: string, maxLength: 128 }
+                enabled: { type: boolean }
+        SyncFTPRequest:
+            type: object
+            additionalProperties: false
+            required: [accountId, systemUser, entries]
+            properties:
+                accountId: { type: string, pattern: "^[a-f0-9]{32}$" }
+                systemUser: { type: string, pattern: "^wcp_[a-f0-9]{12}$" }
+                entries:
+                    type: array
+                    maxItems: 100
+                    items:
+                        $ref: "#/components/schemas/FTPEntry"
         SyncTasksRequest:
             type: object
             additionalProperties: false

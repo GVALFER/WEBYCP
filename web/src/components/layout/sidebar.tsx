@@ -10,6 +10,7 @@ import {
     Code2,
     Clock3,
     Database,
+    FolderLock,
     Dna,
     Globe2,
     HardDrive,
@@ -146,6 +147,19 @@ const groups: Group[] = [
                 title: "Databases",
                 description: "MySQL databases, users and access grants.",
                 icon: Database,
+            },
+        ],
+    },
+    {
+        label: "File Access",
+        icon: FolderLock,
+        children: [
+            {
+                href: "/ftp-accounts",
+                label: "FTP Accounts",
+                title: "FTP Accounts",
+                description: "Encrypted file access for hosting accounts.",
+                icon: FolderLock,
             },
         ],
     },

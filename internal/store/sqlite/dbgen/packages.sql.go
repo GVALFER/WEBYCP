@@ -49,9 +49,9 @@ const createPackage = `-- name: CreatePackage :one
 INSERT INTO packages (
     id, name, max_websites, max_domains, max_aliases, max_databases,
     max_database_users, max_scheduled_tasks, max_backup_plans,
-    max_backup_retention, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, name, max_websites, max_domains, max_aliases, max_databases, max_database_users, max_scheduled_tasks, max_backup_plans, max_backup_retention, created_at, updated_at
+    max_backup_retention, max_ftp_accounts, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, name, max_websites, max_domains, max_aliases, max_databases, max_database_users, max_scheduled_tasks, max_backup_plans, max_backup_retention, created_at, updated_at, max_ftp_accounts
 `
 
 type CreatePackageParams struct {
@@ -65,6 +65,7 @@ type CreatePackageParams struct {
 	MaxScheduledTasks  int64  `json:"max_scheduled_tasks"`
 	MaxBackupPlans     int64  `json:"max_backup_plans"`
 	MaxBackupRetention int64  `json:"max_backup_retention"`
+	MaxFtpAccounts     int64  `json:"max_ftp_accounts"`
 	CreatedAt          int64  `json:"created_at"`
 	UpdatedAt          int64  `json:"updated_at"`
 }
@@ -81,6 +82,7 @@ func (q *Queries) CreatePackage(ctx context.Context, arg CreatePackageParams) (P
 		arg.MaxScheduledTasks,
 		arg.MaxBackupPlans,
 		arg.MaxBackupRetention,
+		arg.MaxFtpAccounts,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -98,6 +100,7 @@ func (q *Queries) CreatePackage(ctx context.Context, arg CreatePackageParams) (P
 		&i.MaxBackupRetention,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MaxFtpAccounts,
 	)
 	return i, err
 }
@@ -119,7 +122,7 @@ func (q *Queries) DeletePackage(ctx context.Context, id string) (int64, error) {
 }
 
 const getAccountOverview = `-- name: GetAccountOverview :one
-SELECT id, node_id, name, system_user, status, created_at, updated_at, enabled, package_id, package_name, package_created_at, package_updated_at, package_account_count, max_websites, max_domains, max_aliases, max_databases, max_database_users, max_scheduled_tasks, max_backup_plans, max_backup_retention, used_websites, used_domains, used_aliases, used_databases, used_database_users, used_scheduled_tasks, used_backup_plans FROM account_overviews WHERE id = ? LIMIT 1
+SELECT id, node_id, name, system_user, status, created_at, updated_at, enabled, package_id, package_name, package_created_at, package_updated_at, package_account_count, max_websites, max_domains, max_aliases, max_databases, max_database_users, max_scheduled_tasks, max_backup_plans, max_backup_retention, max_ftp_accounts, used_websites, used_domains, used_aliases, used_databases, used_database_users, used_scheduled_tasks, used_backup_plans, used_ftp_accounts FROM account_overviews WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetAccountOverview(ctx context.Context, id string) (AccountOverview, error) {
@@ -147,6 +150,7 @@ func (q *Queries) GetAccountOverview(ctx context.Context, id string) (AccountOve
 		&i.MaxScheduledTasks,
 		&i.MaxBackupPlans,
 		&i.MaxBackupRetention,
+		&i.MaxFtpAccounts,
 		&i.UsedWebsites,
 		&i.UsedDomains,
 		&i.UsedAliases,
@@ -154,12 +158,13 @@ func (q *Queries) GetAccountOverview(ctx context.Context, id string) (AccountOve
 		&i.UsedDatabaseUsers,
 		&i.UsedScheduledTasks,
 		&i.UsedBackupPlans,
+		&i.UsedFtpAccounts,
 	)
 	return i, err
 }
 
 const getPackageOverview = `-- name: GetPackageOverview :one
-SELECT id, name, max_websites, max_domains, max_aliases, max_databases, max_database_users, max_scheduled_tasks, max_backup_plans, max_backup_retention, created_at, updated_at, account_count FROM package_overviews WHERE id = ? LIMIT 1
+SELECT id, name, max_websites, max_domains, max_aliases, max_databases, max_database_users, max_scheduled_tasks, max_backup_plans, max_backup_retention, created_at, updated_at, max_ftp_accounts, account_count FROM package_overviews WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetPackageOverview(ctx context.Context, id string) (PackageOverview, error) {
@@ -178,13 +183,14 @@ func (q *Queries) GetPackageOverview(ctx context.Context, id string) (PackageOve
 		&i.MaxBackupRetention,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MaxFtpAccounts,
 		&i.AccountCount,
 	)
 	return i, err
 }
 
 const listAccountOverviewsPage = `-- name: ListAccountOverviewsPage :many
-SELECT id, node_id, name, system_user, status, created_at, updated_at, enabled, package_id, package_name, package_created_at, package_updated_at, package_account_count, max_websites, max_domains, max_aliases, max_databases, max_database_users, max_scheduled_tasks, max_backup_plans, max_backup_retention, used_websites, used_domains, used_aliases, used_databases, used_database_users, used_scheduled_tasks, used_backup_plans FROM account_overviews
+SELECT id, node_id, name, system_user, status, created_at, updated_at, enabled, package_id, package_name, package_created_at, package_updated_at, package_account_count, max_websites, max_domains, max_aliases, max_databases, max_database_users, max_scheduled_tasks, max_backup_plans, max_backup_retention, max_ftp_accounts, used_websites, used_domains, used_aliases, used_databases, used_database_users, used_scheduled_tasks, used_backup_plans, used_ftp_accounts FROM account_overviews
 ORDER BY created_at ASC
 LIMIT ?2 OFFSET ?1
 `
@@ -225,6 +231,7 @@ func (q *Queries) ListAccountOverviewsPage(ctx context.Context, arg ListAccountO
 			&i.MaxScheduledTasks,
 			&i.MaxBackupPlans,
 			&i.MaxBackupRetention,
+			&i.MaxFtpAccounts,
 			&i.UsedWebsites,
 			&i.UsedDomains,
 			&i.UsedAliases,
@@ -232,6 +239,7 @@ func (q *Queries) ListAccountOverviewsPage(ctx context.Context, arg ListAccountO
 			&i.UsedDatabaseUsers,
 			&i.UsedScheduledTasks,
 			&i.UsedBackupPlans,
+			&i.UsedFtpAccounts,
 		); err != nil {
 			return nil, err
 		}
@@ -247,7 +255,7 @@ func (q *Queries) ListAccountOverviewsPage(ctx context.Context, arg ListAccountO
 }
 
 const listPackageOverviewsPage = `-- name: ListPackageOverviewsPage :many
-SELECT id, name, max_websites, max_domains, max_aliases, max_databases, max_database_users, max_scheduled_tasks, max_backup_plans, max_backup_retention, created_at, updated_at, account_count FROM package_overviews
+SELECT id, name, max_websites, max_domains, max_aliases, max_databases, max_database_users, max_scheduled_tasks, max_backup_plans, max_backup_retention, created_at, updated_at, max_ftp_accounts, account_count FROM package_overviews
 ORDER BY name COLLATE NOCASE ASC
 LIMIT ?2 OFFSET ?1
 `
@@ -279,6 +287,7 @@ func (q *Queries) ListPackageOverviewsPage(ctx context.Context, arg ListPackageO
 			&i.MaxBackupRetention,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MaxFtpAccounts,
 			&i.AccountCount,
 		); err != nil {
 			return nil, err
@@ -295,7 +304,7 @@ func (q *Queries) ListPackageOverviewsPage(ctx context.Context, arg ListPackageO
 }
 
 const listUserAccountOverviewsPage = `-- name: ListUserAccountOverviewsPage :many
-SELECT account_overviews.id, account_overviews.node_id, account_overviews.name, account_overviews.system_user, account_overviews.status, account_overviews.created_at, account_overviews.updated_at, account_overviews.enabled, account_overviews.package_id, account_overviews.package_name, account_overviews.package_created_at, account_overviews.package_updated_at, account_overviews.package_account_count, account_overviews.max_websites, account_overviews.max_domains, account_overviews.max_aliases, account_overviews.max_databases, account_overviews.max_database_users, account_overviews.max_scheduled_tasks, account_overviews.max_backup_plans, account_overviews.max_backup_retention, account_overviews.used_websites, account_overviews.used_domains, account_overviews.used_aliases, account_overviews.used_databases, account_overviews.used_database_users, account_overviews.used_scheduled_tasks, account_overviews.used_backup_plans
+SELECT account_overviews.id, account_overviews.node_id, account_overviews.name, account_overviews.system_user, account_overviews.status, account_overviews.created_at, account_overviews.updated_at, account_overviews.enabled, account_overviews.package_id, account_overviews.package_name, account_overviews.package_created_at, account_overviews.package_updated_at, account_overviews.package_account_count, account_overviews.max_websites, account_overviews.max_domains, account_overviews.max_aliases, account_overviews.max_databases, account_overviews.max_database_users, account_overviews.max_scheduled_tasks, account_overviews.max_backup_plans, account_overviews.max_backup_retention, account_overviews.max_ftp_accounts, account_overviews.used_websites, account_overviews.used_domains, account_overviews.used_aliases, account_overviews.used_databases, account_overviews.used_database_users, account_overviews.used_scheduled_tasks, account_overviews.used_backup_plans, account_overviews.used_ftp_accounts
 FROM account_overviews
 JOIN account_members ON account_members.account_id = account_overviews.id
 WHERE account_members.user_id = ?1
@@ -340,6 +349,7 @@ func (q *Queries) ListUserAccountOverviewsPage(ctx context.Context, arg ListUser
 			&i.MaxScheduledTasks,
 			&i.MaxBackupPlans,
 			&i.MaxBackupRetention,
+			&i.MaxFtpAccounts,
 			&i.UsedWebsites,
 			&i.UsedDomains,
 			&i.UsedAliases,
@@ -347,6 +357,7 @@ func (q *Queries) ListUserAccountOverviewsPage(ctx context.Context, arg ListUser
 			&i.UsedDatabaseUsers,
 			&i.UsedScheduledTasks,
 			&i.UsedBackupPlans,
+			&i.UsedFtpAccounts,
 		); err != nil {
 			return nil, err
 		}
@@ -393,9 +404,10 @@ SET
     max_scheduled_tasks = ?,
     max_backup_plans = ?,
     max_backup_retention = ?,
+    max_ftp_accounts = ?,
     updated_at = ?
 WHERE id = ?
-RETURNING id, name, max_websites, max_domains, max_aliases, max_databases, max_database_users, max_scheduled_tasks, max_backup_plans, max_backup_retention, created_at, updated_at
+RETURNING id, name, max_websites, max_domains, max_aliases, max_databases, max_database_users, max_scheduled_tasks, max_backup_plans, max_backup_retention, created_at, updated_at, max_ftp_accounts
 `
 
 type UpdatePackageParams struct {
@@ -408,6 +420,7 @@ type UpdatePackageParams struct {
 	MaxScheduledTasks  int64  `json:"max_scheduled_tasks"`
 	MaxBackupPlans     int64  `json:"max_backup_plans"`
 	MaxBackupRetention int64  `json:"max_backup_retention"`
+	MaxFtpAccounts     int64  `json:"max_ftp_accounts"`
 	UpdatedAt          int64  `json:"updated_at"`
 	ID                 string `json:"id"`
 }
@@ -423,6 +436,7 @@ func (q *Queries) UpdatePackage(ctx context.Context, arg UpdatePackageParams) (P
 		arg.MaxScheduledTasks,
 		arg.MaxBackupPlans,
 		arg.MaxBackupRetention,
+		arg.MaxFtpAccounts,
 		arg.UpdatedAt,
 		arg.ID,
 	)
@@ -440,6 +454,7 @@ func (q *Queries) UpdatePackage(ctx context.Context, arg UpdatePackageParams) (P
 		&i.MaxBackupRetention,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MaxFtpAccounts,
 	)
 	return i, err
 }

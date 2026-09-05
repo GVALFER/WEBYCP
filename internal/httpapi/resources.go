@@ -274,6 +274,7 @@ func accountOverviewResponse(value accounts.Overview) publicapi.AccountOverview 
 			Aliases: value.Usage.Aliases, Databases: value.Usage.Databases,
 			DatabaseUsers:  value.Usage.DatabaseUsers,
 			ScheduledTasks: value.Usage.ScheduledTasks, BackupPlans: value.Usage.BackupPlans,
+			FtpAccounts: value.Usage.FTPAccounts,
 		},
 	}
 }
