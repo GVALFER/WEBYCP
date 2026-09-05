@@ -1115,6 +1115,7 @@ paths:
         get:
             operationId: previewBackupRestore
             summary: Verify and preview a restore
+            description: Unsupported formats return backup_version; damaged archives return backup_invalid. Both use HTTP 422.
             security: [{ cookieAuth: [] }]
             parameters:
                 - $ref: "#/components/parameters/BackupArtifactID"
@@ -1127,6 +1128,7 @@ paths:
                 "401": { $ref: "#/components/responses/UnauthorizedError" }
                 "403": { $ref: "#/components/responses/ForbiddenError" }
                 "404": { $ref: "#/components/responses/NotFoundError" }
+                "422": { $ref: "#/components/responses/ValidationError" }
                 "500": { $ref: "#/components/responses/InternalError" }
         post:
             operationId: restoreBackup

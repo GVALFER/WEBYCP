@@ -36,9 +36,10 @@ func main() {
 	}
 	args := os.Args[1:]
 	migrateOnly := len(args) == 1 && args[0] == "migrate"
+	checkSchema := len(args) == 1 && args[0] == "check-schema"
 	adminCommand := (len(args) == 2 && args[0] == "admin" && args[1] == "init") ||
 		(len(args) == 3 && args[0] == "admin" && args[1] == "reset-password")
-	if len(args) > 0 && !migrateOnly && !adminCommand {
+	if len(args) > 0 && !migrateOnly && !checkSchema && !adminCommand {
 		usage()
 		os.Exit(2)
 	}
@@ -47,6 +48,15 @@ func main() {
 	ctx, stop := signalx.Context()
 	defer stop()
 	settings := config.ServerFromEnv()
+
+	if checkSchema {
+		if err := sqlite.CheckSchema(ctx, settings.DatabasePath); err != nil {
+			logger.Error("database schema is not compatible", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("database schema is compatible")
+		return
+	}
 
 	store, err := sqlite.Open(ctx, settings.DatabasePath)
 	if err != nil {
@@ -209,7 +219,7 @@ func main() {
 func usage() {
 	fmt.Fprintln(
 		os.Stderr,
-		"usage: webycp-server [--version|migrate|admin init|admin reset-password USERNAME]",
+		"usage: webycp-server [--version|migrate|check-schema|admin init|admin reset-password USERNAME]",
 	)
 }
 

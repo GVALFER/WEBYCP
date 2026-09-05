@@ -87,10 +87,10 @@ through command-line arguments, environment variables, or service logs.
 ## Account backups
 
 The current pre-release archive format is version 4. It stores typed
-`scheduledTasks` metadata instead of `cronJobs`. The migration does not convert
-or delete version 3 archives, but version 4 readers cannot preview or restore
-them. Normal plan retention still applies; keep any required old archive in a
-separate protected copy.
+`scheduledTasks` metadata instead of `cronJobs`. Version 4 readers cannot preview
+or restore other versions; they do not convert or delete those archives. Normal
+plan retention still applies; keep any required old archive in a separate
+protected copy.
 Before upgrading, retain the matching old release and a full-host recovery
 point if an old archive may be needed. After upgrading, create and verify new
 account backups before relying on them for recovery.
@@ -123,6 +123,13 @@ All drivers implement creation, verified preview, scoped restore and idempotent
 deletion. Preview and restore must verify identity, entry paths and checksums
 before writing. Restore must reject absent scopes and repair managed ownership;
 the control plane reconciles selected metadata after the Agent succeeds.
+
+Preview returns HTTP 422 with `backup_version` for an unsupported format, or
+`backup_invalid` for a damaged archive, checksum mismatch, or invalid manifest.
+The panel displays the corresponding message. Do not edit the version or
+checksum to bypass validation: create a new backup using the current release,
+or use another verified artifact. Filesystem and service failures remain
+internal errors; inspect Agent logs rather than assuming the archive is damaged.
 
 ### Backup coverage
 
@@ -157,6 +164,14 @@ does not delete unrelated content to recreate an exact point-in-time image.
 Files, databases, and metadata are not restored inside one global transaction,
 so a failed restore must be investigated before it is retried. The fresh backup
 from step 1 is the recovery point.
+
+File reads and restore writes stay relative to opened account-directory
+descriptors. Restore writes each regular file to a temporary file in its target
+directory and replaces the target only after copying and setting its ownership
+and permissions. This avoids following a replaced path outside the account or
+overwriting another file through a hard link. It is not an account-wide atomic
+restore, and a running website can still change its files during a backup;
+quiesce the application when an application-consistent snapshot is required.
 
 When metadata is restored, enabled domains and scheduled tasks are reconciled with the
 host. Existing active certificate records are reapplied, but certificate files

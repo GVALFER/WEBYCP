@@ -254,6 +254,17 @@ func (c *Client) jsonResult(ctx context.Context, socket, method, path string, re
 	defer cleanup()
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
+		if response.StatusCode == http.StatusUnprocessableEntity {
+			var failure agentapi.ErrorResponse
+			if json.NewDecoder(io.LimitReader(response.Body, 4<<10)).Decode(&failure) == nil {
+				switch failure.Code {
+				case "backup_version":
+					return backupfmt.ErrVersion
+				case "backup_invalid":
+					return backupfmt.ErrInvalid
+				}
+			}
+		}
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4<<10))
 		return fmt.Errorf("%s returned status %d", operation, response.StatusCode)
 	}

@@ -181,6 +181,10 @@ func (h *handler) writeBackupError(w http.ResponseWriter, r *http.Request, err e
 		return
 	}
 	switch {
+	case errors.Is(err, backupfmt.ErrVersion):
+		writeError(w, http.StatusUnprocessableEntity, "backup_version", backupfmt.ErrVersion.Error())
+	case errors.Is(err, backupfmt.ErrInvalid):
+		writeError(w, http.StatusUnprocessableEntity, "backup_invalid", backupfmt.ErrInvalid.Error())
 	case errors.Is(err, sql.ErrNoRows):
 		writeError(w, http.StatusNotFound, "not_found", "Backup resource not found")
 	case errors.Is(err, accounts.ErrForbidden):

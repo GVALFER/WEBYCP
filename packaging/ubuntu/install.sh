@@ -385,6 +385,18 @@ main() {
     require_root
     check_host
     check_source
+    if [ -e /etc/webycp/server.env ] || [ -L /etc/webycp/server.env ]; then
+        [ -f /etc/webycp/server.env ] && [ ! -L /etc/webycp/server.env ] ||
+            fail "Server environment must be a regular file"
+        (
+            set -a
+            # shellcheck disable=SC1091
+            . /etc/webycp/server.env
+            if [ -e "${WEBYCP_DATABASE_PATH:-/var/lib/webycp/server/webycp.db}" ]; then
+                "$SOURCE_DIR/bin/webycp-server" check-schema
+            fi
+        ) || fail "database schema is incompatible; installation was not changed"
+    fi
     install_packages
     ensure_identity
     prepare_directories

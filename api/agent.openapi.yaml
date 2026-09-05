@@ -388,6 +388,7 @@ paths:
         post:
             operationId: previewBackup
             summary: Verify an artifact and return its manifest
+            description: HTTP 422 uses backup_version for unsupported formats and backup_invalid for damaged archives.
             requestBody:
                 required: true
                 content:
@@ -408,6 +409,7 @@ paths:
         post:
             operationId: restoreBackup
             summary: Restore selected backup scopes
+            description: HTTP 422 uses backup_version for unsupported formats and backup_invalid for damaged archives. Verification precedes all restore writes.
             requestBody:
                 required: true
                 content:

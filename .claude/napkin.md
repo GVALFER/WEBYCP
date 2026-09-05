@@ -10,7 +10,7 @@
 ## Shell & Tool Reliability
 
 1. **[2026-09-05] Playwright MCP code runs in a restricted JavaScript context**
-   Do instead: record `request.url()` directly in network listeners; do not use unavailable globals such as `URL`, since exceptions in event callbacks can terminate the MCP transport.
+   Do instead: use built-in snapshots and network inspection instead of persistent event listeners; unavailable globals such as `URL` can crash callbacks and terminate the transport. Keep the user's browser and tabs open.
 1. **[2026-09-05] Removed Next.js routes can leave stale dev type validators**
    Do instead: move only the generated `.next/dev` cache aside when it still imports deleted pages; regenerate build types instead of restoring obsolete routes.
 1. **[2026-09-04] Release builds require Node.js 24 and Docker Buildx**
@@ -29,7 +29,7 @@
 1. **[2026-09-04] Security checks must cover source, history, and release artifacts**
    Do instead: run pinned `govulncheck`, production `npm audit`, and redacted Gitleaks scans; prove leak detection with a temporary negative fixture and scan every archive before checksumming it.
 2. **[2026-09-03] Keep test-host credentials out of the repository and logs**
-   Do instead: rotate any chat-shared password, install a temporary SSH key, verify the target read-only, confirm recovery, and state destructive scope before remote integration tests.
+   Do instead: enter authorized test credentials through a non-echoing prompt, verify the target read-only, confirm recovery, and state destructive scope before remote integration tests. Recommend rotation, but obtain authorization before changing passwords or installing SSH keys.
 3. **[2026-09-03] Scope Go package commands away from frontend dependencies**
    Do instead: run Go checks against `./cmd/... ./internal/...`; `./...` may traverse Go packages embedded in `web/node_modules`.
 4. **[2026-09-03] Treat SSL lifecycle as a complete v1 requirement**

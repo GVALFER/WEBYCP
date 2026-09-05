@@ -133,14 +133,19 @@ func TestPreviewRejectsTamperedArtifact(t *testing.T) {
 	}
 	file.Close()
 	_, err = driver.Preview(context.Background(), backup.ArtifactRequest{AccountID: accountID, Path: artifact.Path, Checksum: artifact.Checksum})
-	if err == nil {
-		t.Fatal("expected checksum error")
+	if !errors.Is(err, backupfmt.ErrInvalid) {
+		t.Fatalf("expected invalid archive error, got %v", err)
 	}
 }
 
 func TestSafeTargetRejectsExistingSymlink(t *testing.T) {
-	root := t.TempDir()
-	if err := os.Symlink(t.TempDir(), filepath.Join(root, "web")); err != nil {
+	path := t.TempDir()
+	root, err := os.OpenRoot(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	if err := os.Symlink(t.TempDir(), filepath.Join(path, "web")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := safeTarget(root, "web/index.html"); err == nil {
@@ -153,10 +158,15 @@ func TestPreviewRejectsIncompleteArchive(t *testing.T) {
 	for _, test := range []struct {
 		name                          string
 		metadata, truncate, duplicate bool
+		version                       int
+		want                          error
 	}{
-		{name: "missing metadata", metadata: true},
-		{name: "truncated gzip trailer", truncate: true},
-		{name: "duplicate manifest", duplicate: true},
+		{name: "missing metadata", metadata: true, version: backupfmt.Version, want: backupfmt.ErrInvalid},
+		{name: "truncated gzip trailer", truncate: true, version: backupfmt.Version, want: backupfmt.ErrInvalid},
+		{name: "duplicate manifest", duplicate: true, version: backupfmt.Version, want: backupfmt.ErrInvalid},
+		{name: "old version", version: backupfmt.Version - 1, want: backupfmt.ErrVersion},
+		{name: "future version", version: backupfmt.Version + 1, want: backupfmt.ErrVersion},
+		{name: "missing version", want: backupfmt.ErrInvalid},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			driver := New()
@@ -173,7 +183,7 @@ func TestPreviewRejectsIncompleteArchive(t *testing.T) {
 			}
 			gz := gzip.NewWriter(file)
 			writer := tar.NewWriter(gz)
-			value, err := json.Marshal(backupfmt.Manifest{Version: backupfmt.Version, AccountID: accountID, RunID: runID, Metadata: test.metadata})
+			value, err := json.Marshal(backupfmt.Manifest{Version: test.version, AccountID: accountID, RunID: runID, Metadata: test.metadata})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -206,8 +216,15 @@ func TestPreviewRejectsIncompleteArchive(t *testing.T) {
 				t.Fatal(err)
 			}
 			request := backup.ArtifactRequest{AccountID: accountID, Path: filePath, Checksum: checksum}
-			if _, err := driver.Preview(context.Background(), request); err == nil {
-				t.Fatal("incomplete archive accepted even with a matching outer checksum")
+			if _, err := driver.Preview(context.Background(), request); !errors.Is(err, test.want) {
+				t.Fatalf("preview error = %v, want %v", err, test.want)
+			}
+			driver.lookup = func(string) (*user.User, error) {
+				t.Fatal("invalid archive reached restore identity lookup")
+				return nil, nil
+			}
+			if _, err := driver.Restore(context.Background(), backup.RestoreRequest{ArtifactRequest: request, Metadata: true}); !errors.Is(err, test.want) {
+				t.Fatalf("restore error = %v, want %v", err, test.want)
 			}
 		})
 	}

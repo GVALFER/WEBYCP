@@ -582,6 +582,12 @@ main() {
     fi
 
     check_release
+    (
+        set -a
+        # shellcheck disable=SC1091
+        . /etc/webycp/server.env
+        "$SOURCE_DIR/bin/webycp-server" check-schema
+    ) || fail "database schema is incompatible; no services or release files were changed"
     webycp_check_powerdns
     check_live_install
     log "Preflight passed for $RELEASE_VERSION"

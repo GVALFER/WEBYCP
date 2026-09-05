@@ -13,18 +13,22 @@ The v1 feature and native packaging baseline is now present:
 - Installer-generated temporary administrator credentials, mandatory first-login
   password change, server-side sessions, CSRF protection, and audit events
 - Linux hosting account create, enable, disable, and recoverable delete
-- Domain and alias lifecycle with isolated Nginx and PHP-FPM 8.3 configuration
+- Websites and hostname bindings with isolated Nginx and PHP-FPM 8.3 configuration
+- Account Packages with enforced limits and explicit service defaults
 - Let's Encrypt HTTP-01 certificates for hosted domains and the panel, DNS
   preflight, HTTPS redirects, expiry state, and renewal jobs
 - MySQL database, user, and same-account grant lifecycle with one-time generated
   credentials
-- Validated per-account cron files
+- Authoritative DNS zones and records through a local PowerDNS Agent driver
+- Scheduled Tasks through validated per-account crontab files
 - Scheduled and on-demand local backups with retention, SHA-256 verification,
   restore preview, and selective file/database/metadata restore
 
-Native Ubuntu packaging, hardening, and the external Ubuntu 24.04 lifecycle
-acceptance suite are complete. See [plan.md](plan.md) for the remaining release
-gate and full milestone status.
+This is a pre-release project. Steps 1–7 have passed acceptance on the test VPS;
+Step 8 is stabilizing the first public schema and release lifecycle. Clean
+installation, uninstall, and recovery acceptance remain release gates. See
+[plan.md](plan.md) for the current status; do not treat development candidates
+as production releases.
 
 ## Requirements
 
@@ -57,6 +61,11 @@ make dev-web
 
 `make dev-init` creates the local `admin` user once and prints its temporary
 password. Complete the profile and replace that password on the first login.
+
+The first public schema uses `0001_initial.sql`. Databases created by the old
+development migration chain are rejected, not converted or deleted. Preserve
+any existing development database and use a separate fresh database path for
+this baseline; never rename migration records to bypass the check.
 
 The Next.js development server proxies `/api` to `127.0.0.1:8080`. Host
 mutations require the expected Ubuntu services and root Agent permissions;
@@ -100,14 +109,16 @@ restore, certificate, Agent, and full-host recovery procedures.
 ## REST resources
 
 - Authentication and administrator profile: `/api/v1/auth/*`
-- Nodes and jobs: `/api/v1/nodes`, `/api/v1/jobs`
-- Hosting accounts: `/api/v1/accounts`
-- Domains and aliases: `/api/v1/domains`, `/api/v1/domains/{domainId}/aliases`
+- Nodes, jobs, and audit: `/api/v1/nodes`, `/api/v1/jobs`, `/api/v1/audit-events`
+- Hosting accounts and Packages: `/api/v1/accounts`, `/api/v1/packages`
+- Websites and hostnames: `/api/v1/websites`, `/api/v1/website-domains`
 - Certificates: `/api/v1/certificates`,
-  `/api/v1/domains/{domainId}/certificate`
+  `/api/v1/websites/{websiteId}/certificate`
 - MySQL: `/api/v1/databases`, `/api/v1/database-users`,
   `/api/v1/database-grants`
-- Cron: `/api/v1/cron-jobs`
+- Scheduled Tasks: `/api/v1/scheduled-tasks`
+- Authoritative DNS: `/api/v1/dns/*`
+- Service defaults: `/api/v1/service-settings`
 - Backup plans, runs, artifacts, previews, and restores: `/api/v1/backup-*`
 - Health: `/api/v1/health`
 

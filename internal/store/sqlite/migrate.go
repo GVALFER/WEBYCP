@@ -4,10 +4,28 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
+	"path/filepath"
 	"sort"
 
 	"github.com/GVALFER/WEBYCP/migrations"
 )
+
+// CheckSchema verifies an existing database without applying migrations.
+func CheckSchema(ctx context.Context, path string) error {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	dsn := (&url.URL{Scheme: "file", Path: absolute, RawQuery: "mode=ro"}).String()
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	_, err = migrationHistory(ctx, db)
+	return err
+}
 
 func migrate(ctx context.Context, db *sql.DB) error {
 	if _, err := db.ExecContext(ctx, `
@@ -25,19 +43,13 @@ func migrate(ctx context.Context, db *sql.DB) error {
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
 
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
+	applied, err := migrationHistory(ctx, db)
+	if err != nil {
+		return err
+	}
 
-		var applied int
-		err := db.QueryRowContext(ctx,
-			"SELECT COUNT(*) FROM schema_migrations WHERE name = ?", entry.Name(),
-		).Scan(&applied)
-		if err != nil {
-			return fmt.Errorf("check migration %s: %w", entry.Name(), err)
-		}
-		if applied > 0 {
+	for _, entry := range entries {
+		if entry.IsDir() || applied[entry.Name()] {
 			continue
 		}
 
@@ -65,4 +77,24 @@ func migrate(ctx context.Context, db *sql.DB) error {
 	}
 
 	return nil
+}
+
+func migrationHistory(ctx context.Context, db *sql.DB) (map[string]bool, error) {
+	rows, err := db.QueryContext(ctx, "SELECT name FROM schema_migrations")
+	if err != nil {
+		return nil, fmt.Errorf("read migration history: %w", err)
+	}
+	defer rows.Close()
+	applied := make(map[string]bool)
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, fmt.Errorf("read migration name: %w", err)
+		}
+		if _, err := migrations.Files.ReadFile(name); err != nil {
+			return nil, fmt.Errorf("database migration %q is not supported by this release; use the matching release or a fresh installation", name)
+		}
+		applied[name] = true
+	}
+	return applied, rows.Err()
 }

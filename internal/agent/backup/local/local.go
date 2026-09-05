@@ -24,8 +24,9 @@ import (
 	"github.com/GVALFER/WEBYCP/internal/agent/hostuser"
 	"github.com/GVALFER/WEBYCP/internal/backupfmt"
 	"github.com/GVALFER/WEBYCP/internal/execx"
-	"github.com/GVALFER/WEBYCP/internal/fsx"
+	"github.com/GVALFER/WEBYCP/internal/idgen"
 	"github.com/GVALFER/WEBYCP/internal/validate"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -119,9 +120,14 @@ func (d *Driver) Preview(_ context.Context, request backup.ArtifactRequest) (bac
 		return backupfmt.Manifest{}, err
 	}
 	if actual != request.Checksum {
-		return backupfmt.Manifest{}, fmt.Errorf("backup artifact checksum does not match")
+		return backupfmt.Manifest{}, fmt.Errorf("%w: artifact checksum mismatch", backupfmt.ErrInvalid)
 	}
-	return inspectArchive(request.Path, request.AccountID)
+	manifest, err := inspectArchive(request.Path, request.AccountID)
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, gzip.ErrHeader) ||
+		errors.Is(err, gzip.ErrChecksum) || errors.Is(err, tar.ErrHeader) {
+		return backupfmt.Manifest{}, fmt.Errorf("%w: %v", backupfmt.ErrInvalid, err)
+	}
+	return manifest, err
 }
 
 func (d *Driver) Restore(ctx context.Context, request backup.RestoreRequest) (string, error) {
@@ -138,6 +144,14 @@ func (d *Driver) Restore(ctx context.Context, request backup.RestoreRequest) (st
 	identity, webGID, err := d.restoreIdentity(request.AccountID, request.SystemUser)
 	if err != nil {
 		return "", err
+	}
+	var home *os.Root
+	if request.Files {
+		home, err = os.OpenRoot(identity.Home)
+		if err != nil {
+			return "", err
+		}
+		defer home.Close()
 	}
 	file, gz, reader, err := openArchive(request.Path)
 	if err != nil {
@@ -156,7 +170,7 @@ func (d *Driver) Restore(ctx context.Context, request backup.RestoreRequest) (st
 		}
 		switch {
 		case request.Files && strings.HasPrefix(header.Name, "files/"):
-			if err := d.restoreFile(reader, header, identity, webGID); err != nil {
+			if err := d.restoreFile(home, reader, header, identity, webGID); err != nil {
 				return "", err
 			}
 		case request.Databases && strings.HasPrefix(header.Name, "databases/") && header.Typeflag == tar.TypeReg:
@@ -196,19 +210,22 @@ func (d *Driver) writeArchive(output io.Writer, request backup.CreateRequest, st
 	tarWriter := tar.NewWriter(gz)
 	closeAll := func() error { return errors.Join(tarWriter.Close(), gz.Close()) }
 	if request.IncludeFiles {
-		root := filepath.Join(d.home, request.SystemUser)
-		if err := filepath.WalkDir(root, func(filePath string, entry fs.DirEntry, walkErr error) error {
+		root, err := os.OpenRoot(filepath.Join(d.home, request.SystemUser))
+		if err != nil {
+			return errors.Join(err, closeAll())
+		}
+		defer root.Close()
+		if err := fs.WalkDir(root.FS(), ".", func(relative string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
 			}
-			relative, err := filepath.Rel(root, filePath)
-			if err != nil || relative == "." {
-				return err
+			if relative == "." {
+				return nil
 			}
 			if entry.Type()&os.ModeSymlink != 0 {
 				return fmt.Errorf("backup source contains a symlink: %s", relative)
 			}
-			return addPath(tarWriter, filePath, path.Join("files", filepath.ToSlash(relative)), manifest)
+			return addPath(tarWriter, root, relative, path.Join("files", relative), manifest)
 		}); err != nil {
 			return errors.Join(err, closeAll())
 		}
@@ -217,8 +234,13 @@ func (d *Driver) writeArchive(output io.Writer, request backup.CreateRequest, st
 	if err != nil {
 		return errors.Join(err, closeAll())
 	}
+	stageRoot, err := os.OpenRoot(stage)
+	if err != nil {
+		return errors.Join(err, closeAll())
+	}
+	defer stageRoot.Close()
 	for _, entry := range entries {
-		if err := addPath(tarWriter, filepath.Join(stage, entry.Name()), path.Join("databases", entry.Name()), manifest); err != nil {
+		if err := addPath(tarWriter, stageRoot, entry.Name(), path.Join("databases", entry.Name()), manifest); err != nil {
 			return errors.Join(err, closeAll())
 		}
 	}
@@ -237,10 +259,18 @@ func (d *Driver) writeArchive(output io.Writer, request backup.CreateRequest, st
 	return closeAll()
 }
 
-func addPath(writer *tar.Writer, source, name string, manifest *backupfmt.Manifest) error {
-	info, err := os.Lstat(source)
+func addPath(writer *tar.Writer, root *os.Root, source, name string, manifest *backupfmt.Manifest) error {
+	file, err := root.OpenFile(source, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
 	if err != nil {
 		return err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() && !info.IsDir() {
+		return fmt.Errorf("unsupported backup source: %s", source)
 	}
 	header, err := tar.FileInfoHeader(info, "")
 	if err != nil {
@@ -255,11 +285,6 @@ func addPath(writer *tar.Writer, source, name string, manifest *backupfmt.Manife
 	if !info.Mode().IsRegular() {
 		return nil
 	}
-	file, err := os.Open(source)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
 	hash := sha256.New()
 	if _, err := io.Copy(io.MultiWriter(writer, hash), file); err != nil {
 		return err
@@ -305,10 +330,10 @@ func inspectArchive(filePath, accountID string) (backupfmt.Manifest, error) {
 			return backupfmt.Manifest{}, err
 		}
 		if !validEntryPath(header.Name) || (header.Typeflag != tar.TypeReg && header.Typeflag != tar.TypeDir) {
-			return backupfmt.Manifest{}, fmt.Errorf("unsafe backup entry: %s", header.Name)
+			return backupfmt.Manifest{}, fmt.Errorf("%w: unsafe entry", backupfmt.ErrInvalid)
 		}
 		if seen[header.Name] {
-			return backupfmt.Manifest{}, fmt.Errorf("duplicate backup entry: %s", header.Name)
+			return backupfmt.Manifest{}, fmt.Errorf("%w: duplicate entry", backupfmt.ErrInvalid)
 		}
 		seen[header.Name] = true
 		hasFiles = hasFiles || strings.HasPrefix(header.Name, "files/")
@@ -316,7 +341,7 @@ func inspectArchive(filePath, accountID string) (backupfmt.Manifest, error) {
 		hasMetadata = hasMetadata || header.Name == "metadata.json" && header.Typeflag == tar.TypeReg
 		if header.Name == "manifest.json" {
 			if header.Size > 1<<20 || json.NewDecoder(io.LimitReader(reader, header.Size)).Decode(&manifest) != nil {
-				return backupfmt.Manifest{}, fmt.Errorf("backup manifest is invalid")
+				return backupfmt.Manifest{}, fmt.Errorf("%w: malformed manifest", backupfmt.ErrInvalid)
 			}
 			continue
 		}
@@ -332,19 +357,22 @@ func inspectArchive(filePath, accountID string) (backupfmt.Manifest, error) {
 	if _, err := io.Copy(io.Discard, gz); err != nil {
 		return backupfmt.Manifest{}, fmt.Errorf("read backup trailer: %w", err)
 	}
-	if manifest.Version != backupfmt.Version || manifest.AccountID != accountID || validate.ID("runId", manifest.RunID) != nil {
-		return backupfmt.Manifest{}, fmt.Errorf("backup manifest identity is invalid")
+	if !seen["manifest.json"] || manifest.Version <= 0 || manifest.AccountID != accountID || validate.ID("runId", manifest.RunID) != nil {
+		return backupfmt.Manifest{}, fmt.Errorf("%w: invalid manifest identity", backupfmt.ErrInvalid)
+	}
+	if manifest.Version != backupfmt.Version {
+		return backupfmt.Manifest{}, backupfmt.ErrVersion
 	}
 	if hasFiles && !manifest.Files || hasDatabases != manifest.Databases || hasMetadata != manifest.Metadata {
-		return backupfmt.Manifest{}, fmt.Errorf("backup manifest scope does not match its content")
+		return backupfmt.Manifest{}, fmt.Errorf("%w: scope mismatch", backupfmt.ErrInvalid)
 	}
 	if len(manifest.Entries) != len(computed) {
-		return backupfmt.Manifest{}, fmt.Errorf("backup manifest entry count does not match")
+		return backupfmt.Manifest{}, fmt.Errorf("%w: entry count mismatch", backupfmt.ErrInvalid)
 	}
 	for _, entry := range manifest.Entries {
 		actual, ok := computed[entry.Path]
 		if !ok || actual.Size != entry.Size || actual.Checksum != entry.Checksum {
-			return backupfmt.Manifest{}, fmt.Errorf("backup entry checksum does not match: %s", entry.Path)
+			return backupfmt.Manifest{}, fmt.Errorf("%w: entry checksum mismatch", backupfmt.ErrInvalid)
 		}
 		delete(computed, entry.Path)
 	}
@@ -364,9 +392,9 @@ func openArchive(filePath string) (*os.File, *gzip.Reader, *tar.Reader, error) {
 	return file, gz, tar.NewReader(gz), nil
 }
 
-func (d *Driver) restoreFile(reader io.Reader, header *tar.Header, identity hostuser.Identity, webGID int) error {
+func (d *Driver) restoreFile(root *os.Root, reader io.Reader, header *tar.Header, identity hostuser.Identity, webGID int) error {
 	relative := strings.TrimPrefix(header.Name, "files/")
-	target, err := safeTarget(identity.Home, relative)
+	target, err := safeTarget(root, relative)
 	if err != nil {
 		return err
 	}
@@ -375,40 +403,58 @@ func (d *Driver) restoreFile(reader io.Reader, header *tar.Header, identity host
 		gid = webGID
 	}
 	if header.Typeflag == tar.TypeDir {
-		mode := uint32(header.Mode) & 0o770
+		mode := os.FileMode(header.Mode) & 0o770
 		if header.Mode&0o2000 != 0 {
-			mode |= 0o2000
+			mode |= os.ModeSetgid
 		}
-		if err := os.MkdirAll(target, os.FileMode(mode)); err != nil {
+		if err := root.MkdirAll(target, mode.Perm()); err != nil {
 			return err
 		}
-		directory, err := fsx.OpenDir(target)
+		directory, err := root.OpenFile(target, os.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW, 0)
 		if err != nil {
 			return err
 		}
 		defer directory.Close()
-		return directory.Configure(mode, identity.UID, gid)
+		if err := directory.Chown(identity.UID, gid); err != nil {
+			return err
+		}
+		return directory.Chmod(mode)
 	}
 	if header.Typeflag != tar.TypeReg {
 		return fmt.Errorf("unsupported file backup entry: %s", header.Name)
 	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
+	if err := root.MkdirAll(filepath.Dir(target), 0o750); err != nil {
 		return err
 	}
-	file, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(header.Mode)&0o660)
+	parent, err := root.OpenRoot(filepath.Dir(target))
 	if err != nil {
 		return err
 	}
+	defer parent.Close()
+	id, err := idgen.ID()
+	if err != nil {
+		return err
+	}
+	temporary := ".webycp-restore-" + id
+	file, err := parent.OpenFile(temporary, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	defer parent.Remove(temporary)
+	defer file.Close()
+	if _, err := io.CopyN(file, reader, header.Size); err != nil {
+		return err
+	}
 	if err := file.Chown(identity.UID, gid); err != nil {
-		file.Close()
 		return fmt.Errorf("set restored file owner: %w", err)
 	}
 	if err := file.Chmod(os.FileMode(header.Mode) & 0o660); err != nil {
-		file.Close()
 		return fmt.Errorf("set restored file mode: %w", err)
 	}
-	_, copyErr := io.Copy(file, io.LimitReader(reader, header.Size))
-	return errors.Join(copyErr, file.Close())
+	if err := file.Close(); err != nil {
+		return err
+	}
+	return parent.Rename(temporary, filepath.Base(target))
 }
 
 func (d *Driver) restoreIdentity(accountID, systemUser string) (hostuser.Identity, int, error) {
@@ -454,19 +500,14 @@ func validEntryPath(value string) bool {
 	return value != "" && value == path.Clean(value) && !path.IsAbs(value) && value != ".." && !strings.HasPrefix(value, "../")
 }
 
-func safeTarget(root, relative string) (string, error) {
+func safeTarget(root *os.Root, relative string) (string, error) {
 	if !validEntryPath(filepath.ToSlash(relative)) {
 		return "", fmt.Errorf("unsafe restore path: %s", relative)
 	}
-	target := filepath.Join(root, filepath.FromSlash(relative))
-	value, err := filepath.Rel(root, target)
-	if err != nil || strings.HasPrefix(value, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("restore path escapes account home")
-	}
-	current := root
-	for _, part := range strings.Split(value, string(filepath.Separator)) {
+	current := ""
+	for _, part := range strings.Split(filepath.FromSlash(relative), string(filepath.Separator)) {
 		current = filepath.Join(current, part)
-		info, statErr := os.Lstat(current)
+		info, statErr := root.Lstat(current)
 		if statErr == nil && info.Mode()&os.ModeSymlink != 0 {
 			return "", fmt.Errorf("restore target contains a symlink: %s", current)
 		}
@@ -474,7 +515,7 @@ func safeTarget(root, relative string) (string, error) {
 			return "", statErr
 		}
 	}
-	return target, nil
+	return relative, nil
 }
 
 func fileChecksum(filePath string) (string, int64, error) {

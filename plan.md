@@ -662,8 +662,8 @@ Verification:
 ### Step 7 — Scheduled Tasks and operational visibility
 
 Status: implemented, deployed as `0.1.1-rc.19` and validated on the Ubuntu 24.04
-test VPS. Awaiting review before Step 8. The archive-format change was explicitly
-approved before deployment.
+test VPS. Reviewed; Step 8 has been authorized. The archive-format change was
+explicitly approved before deployment.
 
 Local acceptance evidence:
 
@@ -758,6 +758,54 @@ Verification:
 
 ### Step 8 — Release stabilization
 
+Status: in progress. The local schema and backup hardening work is implemented;
+no Step 8 candidate has been deployed or published. The current test VPS remains
+on `0.1.1-rc.19` with its database and protected old archives unchanged.
+
+Implemented:
+
+- Backup preview returns HTTP 422 with `backup_version` or `backup_invalid` for
+  unsupported or damaged archives. Known error codes cross the Agent socket
+  without exposing private paths; unrelated internal failures remain 500.
+- Backup reads and restore writes use opened account roots. Restored regular
+  files are written separately and renamed into place after ownership and mode
+  checks, avoiding symlink traversal and writes through existing hard links.
+- The twelve development migrations were replaced with `0001_initial.sql`,
+  preserving the final schema and typed queries without obsolete conversions.
+  The new baseline has no administrator or customer fixture data. Removed SQL
+  and migration-only tests remain recoverable through Git history.
+- Server `check-schema` checks migration history read-only. Installer and upgrade
+  preflight reject old or unknown histories before host changes. There is no
+  in-place conversion from the rc19 development database to this baseline.
+- README, packaging and operations documentation describe the new boundary,
+  current resources, archive errors and per-file restore behavior.
+
+Local acceptance evidence:
+
+- `make generate`, `make check` and targeted race tests pass. Generated `sqlc`
+  output is unchanged after consolidation; fresh-schema tests cover empty
+  operational tables, default Package state and valid foreign-key targets.
+- `make security` passes: no reachable Go vulnerabilities, no production npm
+  vulnerabilities, and history/tree secret scans plus the negative fixture
+  pass. One advisory exists in a required Go module outside imported packages.
+- Linux amd64 Server and Agent builds pass. The backup suite passes as UID/GID
+  1000 in an isolated Ubuntu 24.04 container; filesystem isolation regressions
+  also pass as root. Fresh migration, repeated migration, read-only schema
+  validation and rejection of a missing database pass in that container.
+- Tests reject old/future migration histories without replacing existing data,
+  reject old/future/corrupt archives before restore writes, and preserve the
+  previous file when a replacement cannot be copied completely.
+
+Remaining release gates:
+
+- Validate a clean installation on a separate fresh Ubuntu 24.04 VPS; do not
+  reinstall or clear the current test host. A second host has been requested.
+- Implement and validate the uninstall lifecycle with an explicit data-retention
+  boundary; no uninstall or purge has been run.
+- Exercise upgrade and recovery between candidates sharing this baseline, run
+  the full v1 lifecycle suite and scan the final release archive before publishing.
+- Container tests do not replace systemd, hosting-service or full-host acceptance.
+
 Deliverables:
 
 - Return a descriptive validation error for unsupported or invalid backup
@@ -794,5 +842,7 @@ A step is complete only when:
 
 ## 12. Immediate Next Step
 
-Review **Step 7 — Scheduled Tasks and operational visibility** on the test VPS
-(`0.1.1-rc.19`). Do not begin Step 8 without approval.
+Continue **Step 8 — Release stabilization** with clean-install, uninstall and
+recovery acceptance on a separate fresh Ubuntu 24.04 VPS. Preserve the existing
+`0.1.1-rc.19` test host; the consolidated schema is not an in-place upgrade from
+its development history. Do not publish until the remaining release gates pass.

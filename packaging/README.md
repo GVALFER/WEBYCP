@@ -4,6 +4,10 @@ These files define the production layout for Ubuntu 24.04. The installer
 consumes an already-built Linux amd64 release, so Go and Node.js are not needed
 on the managed server.
 
+The first public baseline is still undergoing Step 8 acceptance. Do not publish
+or deploy it over an older development candidate: those candidates use a
+different migration history. See the schema boundary below.
+
 ## Install
 
 Download the release archive and its adjacent `.sha256` file, then verify and
@@ -48,6 +52,25 @@ The installer is idempotent and preserves existing environment files and
 WEBYCP-managed Nginx and PowerDNS configuration. It stops on conflicting identities,
 symlinks, or configuration owned by another application. An existing PowerDNS
 installation is not adopted automatically.
+
+### Schema boundary
+
+The initial public schema is `0001_initial.sql`. The previous twelve development
+migrations have been replaced, not supplemented with a compatibility adapter.
+Old development databases, including the `0.1.1-rc.19` test installation, cannot
+be upgraded in place to this baseline.
+
+Both installation over an existing configured database and upgrade preflight
+run the candidate Server's `check-schema` command before changing packages,
+release files, or services. The command opens the database read-only and fails
+if its migration history contains an entry absent from the candidate release.
+`upgrade.sh --check` includes this check; no migrations are applied by preflight.
+
+If preflight rejects the database, keep the matching old release and its state
+together. Validate the new baseline on a separate fresh Ubuntu 24.04 host. Do
+not delete SQLite state, rewrite migration names, or run a fresh installer over
+the current host to force an upgrade. Account archives do not contain enough
+state to replace a complete installation.
 
 ## Upgrade and recovery
 

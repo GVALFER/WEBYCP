@@ -502,6 +502,14 @@ func manifestResponse(value backupfmt.Manifest) agentapi.BackupManifest {
 }
 
 func writeBackupFailure(w http.ResponseWriter, logger *slog.Logger, err error, operation string) {
+	switch {
+	case errors.Is(err, backupfmt.ErrVersion):
+		httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{Code: "backup_version", Message: backupfmt.ErrVersion.Error()})
+		return
+	case errors.Is(err, backupfmt.ErrInvalid):
+		httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{Code: "backup_invalid", Message: backupfmt.ErrInvalid.Error()})
+		return
+	}
 	var validationError *validate.Error
 	if errors.As(err, &validationError) {
 		httpx.WriteJSON(w, http.StatusUnprocessableEntity, agentapi.ErrorResponse{Code: "validation_error", Message: validationError.Message})

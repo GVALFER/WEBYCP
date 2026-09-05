@@ -604,7 +604,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Verify and preview a restore */
+        /**
+         * Verify and preview a restore
+         * @description Unsupported formats return backup_version; damaged archives return backup_invalid. Both use HTTP 422.
+         */
         get: operations["previewBackupRestore"];
         put?: never;
         /** Restore selected scopes from a verified artifact */
@@ -3078,6 +3081,7 @@ export interface operations {
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["ForbiddenError"];
             404: components["responses"]["NotFoundError"];
+            422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };
